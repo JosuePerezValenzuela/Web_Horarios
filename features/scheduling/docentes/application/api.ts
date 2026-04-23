@@ -55,6 +55,9 @@ export async function fetchDocentes(
 ): Promise<DocentesApiResponse> {
   const searchParams = new URLSearchParams()
 
+  // Default pageSize to 8 if not provided
+  const pageSize = params.pageSize ?? 8
+
   // Build filter object for json filter
   const filter: Record<string, string | number> = {}
   if (params.facultadId) filter.facultad_id = Number(params.facultadId)
@@ -68,7 +71,7 @@ export async function fetchDocentes(
 
   if (params.search) searchParams.set("search", params.search)
   if (params.page) searchParams.set("page", params.page.toString())
-  if (params.pageSize) searchParams.set("pageSize", params.pageSize.toString())
+  searchParams.set("pageSize", pageSize.toString())
   if (params.sortBy) searchParams.set("sort", params.sortBy)
   if (params.sortOrder)
     searchParams.set("sort", `${params.sortOrder === "desc" ? "-" : ""}${params.sortBy}`)

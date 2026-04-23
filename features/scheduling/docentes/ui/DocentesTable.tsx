@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
-import { PlusIcon, EyeIcon, PencilIcon } from "lucide-react"
+import { PlusIcon, CalendarClock } from "lucide-react"
 
 export function DocentesTable() {
   const { docentes = [], loadingDocentes } = useDocentesStore()
@@ -46,7 +46,6 @@ export function DocentesTable() {
     <div className="space-y-4">
       {/* Header with Register button */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Lista de Docentes</h2>
         {canCreateDocente && (
           <Button variant="outline">
             <PlusIcon className="mr-2 size-4" />
@@ -62,7 +61,7 @@ export function DocentesTable() {
             <TableHead>Codigo</TableHead>
             <TableHead>CI</TableHead>
             <TableHead>Nombre</TableHead>
-            <TableHead className="w-32">Acciones</TableHead>
+            <TableHead className="w-20">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -73,24 +72,24 @@ export function DocentesTable() {
               </TableCell>
             </TableRow>
           ) : (
-            docentes.map((docente) => (
-              <TableRow key={docente.codigo}>
+            docentes.map((docente, index) => (
+              <TableRow
+                key={docente.codigo}
+                className={
+                  index % 2 === 0 ? "bg-surface-container-low" : "bg-surface-container-lowest"
+                }
+              >
                 <TableCell>{docente.codigo}</TableCell>
                 <TableCell>{docente.documento || "Sin registrar"}</TableCell>
                 <TableCell>{docente.nombres}</TableCell>
                 <TableCell>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="p-1 hover:text-primary"
-                      aria-label="Ver detalles"
-                    >
-                      <EyeIcon className="size-4" />
-                    </button>
-                    <button type="button" className="p-1 hover:text-primary" aria-label="Editar">
-                      <PencilIcon className="size-4" />
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    className="p-1 hover:text-primary"
+                    aria-label="Asignar horarios"
+                  >
+                    <CalendarClock className="size-4" />
+                  </button>
                 </TableCell>
               </TableRow>
             ))
