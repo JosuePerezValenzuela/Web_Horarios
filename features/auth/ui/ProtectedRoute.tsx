@@ -39,13 +39,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const hasToken = token || tokenFromStorage
 
   // Only redirect inside useEffect and only after hydration
+  // Note: token is intentionally excluded to avoid infinite redirect loops
   useEffect(() => {
     // If still no token after hydration, redirect to login
     const currentToken = token || (typeof window !== "undefined" ? getAuthFromStorage() : null)
     if (!currentToken) {
       router.push("/login")
     }
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router])
 
   if (!hasToken) {
     return null
