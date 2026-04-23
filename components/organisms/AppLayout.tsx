@@ -4,7 +4,7 @@
  * AppLayout Component
  * Main layout with Sidebar + TopHeader + Content area
  * Used for all protected routes (except login)
- * Uses flexbox for responsive layout
+ * Sidebar is fixed, only main content scrolls
  */
 
 import type { ReactNode } from "react"
@@ -30,20 +30,26 @@ export function AppLayout({ children, breadcrumbs, className }: AppLayoutProps) 
       {/* Top Header - Full width at top */}
       <TopHeader breadcrumbs={breadcrumbs} />
 
-      {/* Main container - flex row below header */}
-      <div className="flex flex-1">
-        {/* Sidebar - flex item, shrinks only */}
+      {/* Main container with sidebar as fixed */}
+      <div className="flex-1">
+        {/* Sidebar - fixed position, doesn't scroll */}
         <div
           className={cn(
-            "shrink-0 transition-all duration-300 overflow-hidden",
+            "fixed left-0 top-16 bottom-0 z-20 transition-all duration-300 overflow-hidden",
             sidebarCollapsed ? "w-16" : "w-64"
           )}
         >
           <Sidebar />
         </div>
 
-        {/* Main Content - flex item, grows to fill space */}
-        <main className={cn("flex-1 py-6 px-6 lg:px-8 xl:px-12 overflow-y-auto", className)}>
+        {/* Main Content - scrolls independently */}
+        <main
+          className={cn(
+            "pt-6 px-6 lg:px-8 xl:px-12 overflow-y-auto",
+            sidebarCollapsed ? "ml-16" : "ml-64",
+            className
+          )}
+        >
           {children}
         </main>
       </div>
