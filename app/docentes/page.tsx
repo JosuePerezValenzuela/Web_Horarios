@@ -29,19 +29,19 @@ export default function DocentesPage() {
       >
         <div className="flex flex-col gap-8">
           {/* Page Header */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-3xl font-semibold text-primary tracking-tight mb-1">Docentes</h2>
-              <p className="text-muted-foreground">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
+            <div className="flex items-baseline gap-3">
+              <h2 className="text-3xl font-semibold text-primary tracking-tight">Docentes</h2>
+              <p className="text-sm text-muted-foreground">
                 Busca docentes y accede a la gestión de su carga horaria.
               </p>
             </div>
           </div>
 
           {/* Filters Section */}
-          <div className="bg-surface-container-lowest rounded-xl p-6 shadow-sm">
-            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-5">
-              Filtros de Búsqueda
+          <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
+              Filtros de Busqueda
             </h3>
             <DocentesFilters />
           </div>
