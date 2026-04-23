@@ -2,12 +2,13 @@
 
 /**
  * TopHeader Component
- * Header with breadcrumbs and user actions
+ * Header with toggle sidebar, breadcrumbs and user actions
  */
 
 import { useAuth } from "@/features/auth/application/useAuth"
+import { useUIStore } from "@/shared/stores/uiStore"
 import { cn } from "@/lib/utils"
-import { Menu, Moon, Bell, HelpCircle, User, LogOut } from "lucide-react"
+import { Moon, Bell, HelpCircle, User, LogOut, PanelLeftClose, PanelLeft } from "lucide-react"
 
 interface TopHeaderProps {
   className?: string
@@ -18,7 +19,8 @@ interface TopHeaderProps {
 }
 
 export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
+  const { sidebarCollapsed, toggleSidebar } = useUIStore()
 
   const handleLogout = () => {
     logout()
@@ -28,18 +30,31 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
   return (
     <header
       className={cn(
-        "fixed top-0 right-0 h-16 bg-white/80 backdrop-blur-md z-40 border-b border-stone-100 shadow-sm shadow-black/5 font-sans text-sm tracking-wide",
+        "sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-stone-100 shadow-sm font-sans text-sm tracking-wide",
         className
       )}
     >
-      <div className="flex items-center justify-between px-8 h-full">
-        {/* Left: Breadcrumb */}
-        <div className="flex items-center gap-4">
-          <button className="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center">
-            <Menu className="w-5 h-5" />
+      <div className="flex items-center justify-between px-4 md:px-6 lg:px-8 h-full">
+        {/* Left: Toggle + System Name + Breadcrumbs */}
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* Toggle Sidebar Button */}
+          <button
+            onClick={toggleSidebar}
+            className="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="w-5 h-5" />
+            ) : (
+              <PanelLeftClose className="w-5 h-5" />
+            )}
           </button>
-          <div className="font-semibold text-primary hidden sm:block">Sistema de Horarios UMSS</div>
-          <div className="hidden md:flex items-center text-sm ml-4 border-l border-outline-variant/20 pl-4 gap-2 text-muted-foreground">
+
+          {/* System Name - hidden on small screens */}
+          <div className="font-semibold text-primary hidden md:block">Sistema de Horarios UMSS</div>
+
+          {/* Breadcrumbs - hidden on small screens */}
+          <div className="hidden lg:flex items-center text-sm border-l border-outline-variant/20 pl-4 gap-2 text-muted-foreground">
             <a className="hover:text-primary transition-colors" href="/dashboard">
               Inicio
             </a>
@@ -59,7 +74,14 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Mobile Breadcrumb */}
+          <div className="lg:hidden flex items-center text-sm text-muted-foreground">
+            {breadcrumbs.length > 0 && (
+              <span className="font-medium">{breadcrumbs[breadcrumbs.length - 1].name}</span>
+            )}
+          </div>
+
           <button className="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center">
             <Moon className="w-5 h-5" />
           </button>
@@ -71,13 +93,13 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
           </button>
 
           {/* Profile + Logout */}
-          <div className="flex items-center gap-2 ml-2">
+          <div className="flex items-center gap-2 ml-1">
             <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/10 overflow-hidden flex items-center justify-center text-muted-foreground">
               <User className="w-5 h-5" />
             </div>
             <button
               onClick={handleLogout}
-              className="text-sm text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1"
+              className="text-sm text-muted-foreground hover:text-destructive transition-colors flex items-center gap-1 hidden sm:flex"
             >
               <LogOut className="w-4 h-4" />
             </button>
