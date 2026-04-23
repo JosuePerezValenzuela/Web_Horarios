@@ -77,8 +77,19 @@ export function DocentesFilters() {
 
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
+      {/* Search Input - takes remaining space */}
+      <div className="flex-1 min-w-64">
+        <Input
+          type="text"
+          placeholder="Buscar por CI, código o nombre..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={handleSearch}
+        />
+      </div>
+
       {/* Faculty Select */}
-      <div className="w-full sm:w-48">
+      <div className="w-full sm:w-auto">
         <Select
           value={filters.facultadId || "all"}
           onValueChange={handleFacultadChange}
@@ -99,7 +110,7 @@ export function DocentesFilters() {
       </div>
 
       {/* Career Select - only enabled when facultad is selected */}
-      <div className="w-full sm:w-48">
+      <div className="w-full sm:w-auto">
         <Select
           value={filters.carreraId || "all"}
           onValueChange={handleCarreraChange}
@@ -120,7 +131,7 @@ export function DocentesFilters() {
       </div>
 
       {/* Subject Select */}
-      <div className="w-full sm:w-48">
+      <div className="w-full sm:w-auto">
         <Select
           value={filters.asignaturaId || "all"}
           onValueChange={handleAsignaturaChange}
@@ -138,17 +149,6 @@ export function DocentesFilters() {
             ))}
           </SelectContent>
         </Select>
-      </div>
-
-      {/* Search Input */}
-      <div className="flex-1">
-        <Input
-          type="text"
-          placeholder="Buscar por CI, código o nombre..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={handleSearch}
-        />
       </div>
     </div>
   )
