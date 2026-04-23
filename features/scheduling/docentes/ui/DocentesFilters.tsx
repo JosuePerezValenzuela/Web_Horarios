@@ -15,7 +15,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { SearchIcon } from "lucide-react"
 
 export function DocentesFilters() {
   const {
@@ -74,11 +73,6 @@ export function DocentesFilters() {
     if (e.key === "Enter") {
       setSearch(search)
     }
-  }
-
-  // Handle search button click
-  const handleSearchClick = () => {
-    setSearch(search)
   }
 
   return (

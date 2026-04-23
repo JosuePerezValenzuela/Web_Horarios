@@ -3,8 +3,7 @@
  */
 
 import { apiClient } from "@/shared/services/api/client"
-import type { ApiResponse } from "../domain/types"
-import type { Docente, DocentesFilters } from "../domain/types"
+import type { ApiResponse, DocentesFilters } from "../domain/types"
 
 export interface Facultad {
   id: string

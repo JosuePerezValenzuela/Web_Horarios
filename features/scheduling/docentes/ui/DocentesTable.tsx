@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button"
 import { PlusIcon, EyeIcon, PencilIcon } from "lucide-react"
 
 export function DocentesTable() {
-  const { docentes = [], loadingDocentes, pagination } = useDocentesStore()
+  const { docentes = [], loadingDocentes } = useDocentesStore()
   const { user } = useAuthStore()
 
   // Check if user has CREAR_DOCENTE permission
