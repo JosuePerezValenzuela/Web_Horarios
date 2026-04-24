@@ -2,10 +2,10 @@
 
 /**
  * Docentes filters component
- * Faculty, Career, Subject dropdowns + search input
+ * Faculty, Career, Subject dropdowns with search
  */
 
-import { useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
 import {
   Select,
@@ -34,6 +34,24 @@ export function DocentesFilters() {
     resetAsignaturas,
   } = useDocentesStore()
 
+  // Search filters for dropdowns
+  const [facultadSearch, setFacultadSearch] = useState("")
+  const [carreraSearch, setCarreraSearch] = useState("")
+  const [asignaturaSearch, setAsignaturaSearch] = useState("")
+  const [localSearch, setLocalSearch] = useState(search)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Debounce: wait 300ms before calling setSearch
+  const handleLocalSearchChange = (value: string) => {
+    setLocalSearch(value)
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+    }
+    debounceRef.current = setTimeout(() => {
+      setSearch(value)
+    }, 300)
+  }
+
   // Load facultades on mount
   useEffect(() => {
     if (facultades.length === 0) {
@@ -45,6 +63,7 @@ export function DocentesFilters() {
   const handleFacultadChange = (facultadId: string) => {
     resetCarreras()
     resetAsignaturas()
+    setFacultadSearch("")
     const newFacultadId = facultadId === "all" ? undefined : facultadId
     setFilters({ facultadId: newFacultadId })
     if (newFacultadId) {
@@ -55,6 +74,7 @@ export function DocentesFilters() {
   // Handle carrera change - cascade to reset asignatura
   const handleCarreraChange = (carreraId: string) => {
     resetAsignaturas()
+    setCarreraSearch("")
     const newCarreraId = carreraId === "all" ? undefined : carreraId
     setFilters({ carreraId: newCarreraId })
     if (newCarreraId && filters.facultadId) {
@@ -64,15 +84,18 @@ export function DocentesFilters() {
 
   // Handle asignatura change
   const handleAsignaturaChange = (asignaturaId: string) => {
+    setAsignaturaSearch("")
     const newAsignaturaId = asignaturaId === "all" ? undefined : asignaturaId
     setFilters({ asignaturaId: newAsignaturaId })
   }
 
-  // Handle search key press (Enter)
-  const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      setSearch(search)
-    }
+  // Handle search input (debounced via useEffect)
+
+  // Filter helper
+  const filterItems = <T extends { nombre: string }>(items: T[], searchValue: string): T[] => {
+    if (!searchValue) return items
+    const lower = searchValue.toLowerCase()
+    return items.filter((item) => item.nombre.toLowerCase().includes(lower))
   }
 
   return (
@@ -81,26 +104,25 @@ export function DocentesFilters() {
       <div className="flex-1 min-w-64">
         <Input
           type="text"
-          placeholder="Buscar por CI, código o nombre..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={handleSearch}
+          placeholder="Buscar por CI, codigo o nombre..."
+          value={localSearch}
+          onChange={(e) => handleLocalSearchChange(e.target.value)}
         />
       </div>
 
       {/* Faculty Select */}
-      <div className="w-full sm:w-auto">
+      <div className="w-48 shrink-0">
         <Select
           value={filters.facultadId || "all"}
           onValueChange={handleFacultadChange}
           disabled={loadingFacultades}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Facultad" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent showSearch onFilterChange={setFacultadSearch}>
             <SelectItem value="all">Todas las facultades</SelectItem>
-            {facultades.map((facultad) => (
+            {filterItems(facultades, facultadSearch).map((facultad) => (
               <SelectItem key={facultad.id} value={facultad.id}>
                 {facultad.nombre}
               </SelectItem>
@@ -109,19 +131,19 @@ export function DocentesFilters() {
         </Select>
       </div>
 
-      {/* Career Select - only enabled when facultad is selected */}
-      <div className="w-full sm:w-auto">
+      {/* Career Select */}
+      <div className="w-48 shrink-0">
         <Select
           value={filters.carreraId || "all"}
           onValueChange={handleCarreraChange}
           disabled={loadingCarreras || !filters.facultadId}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Carrera" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent showSearch onFilterChange={setCarreraSearch}>
             <SelectItem value="all">Todas las carreras</SelectItem>
-            {carreras.map((carrera) => (
+            {filterItems(carreras, carreraSearch).map((carrera) => (
               <SelectItem key={carrera.id} value={carrera.id}>
                 {carrera.nombre}
               </SelectItem>
@@ -131,18 +153,18 @@ export function DocentesFilters() {
       </div>
 
       {/* Subject Select */}
-      <div className="w-full sm:w-auto">
+      <div className="w-48 shrink-0">
         <Select
           value={filters.asignaturaId || "all"}
           onValueChange={handleAsignaturaChange}
           disabled={!filters.carreraId}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Asignatura" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent showSearch onFilterChange={setAsignaturaSearch}>
             <SelectItem value="all">Todas las asignaturas</SelectItem>
-            {asignaturas.map((asignatura) => (
+            {filterItems(asignaturas, asignaturaSearch).map((asignatura) => (
               <SelectItem key={asignatura.id} value={asignatura.id}>
                 {asignatura.nombre}
               </SelectItem>

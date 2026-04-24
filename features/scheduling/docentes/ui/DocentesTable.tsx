@@ -14,6 +14,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableRowEven,
+  TableRowOdd,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, CalendarClock } from "lucide-react"
@@ -72,27 +74,25 @@ export function DocentesTable() {
               </TableCell>
             </TableRow>
           ) : (
-            docentes.map((docente, index) => (
-              <TableRow
-                key={docente.codigo}
-                className={
-                  index % 2 === 0 ? "bg-surface-container-low" : "bg-surface-container-lowest"
-                }
-              >
-                <TableCell>{docente.codigo}</TableCell>
-                <TableCell>{docente.documento || "Sin registrar"}</TableCell>
-                <TableCell>{docente.nombres}</TableCell>
-                <TableCell>
-                  <button
-                    type="button"
-                    className="p-1 hover:text-primary"
-                    aria-label="Asignar horarios"
-                  >
-                    <CalendarClock className="size-4" />
-                  </button>
-                </TableCell>
-              </TableRow>
-            ))
+            docentes.map((docente, index) => {
+              const Row = index % 2 === 0 ? TableRowEven : TableRowOdd
+              return (
+                <Row key={docente.codigo}>
+                  <TableCell>{docente.codigo}</TableCell>
+                  <TableCell>{docente.documento || "Sin registrar"}</TableCell>
+                  <TableCell>{docente.nombres}</TableCell>
+                  <TableCell>
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-primary"
+                      aria-label="Asignar horarios"
+                    >
+                      <CalendarClock className="size-5" />
+                    </button>
+                  </TableCell>
+                </Row>
+              )
+            })
           )}
         </TableBody>
       </Table>
