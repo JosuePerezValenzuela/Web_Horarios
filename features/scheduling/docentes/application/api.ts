@@ -3,7 +3,7 @@
  */
 
 import { apiClient } from "@/shared/services/api/client"
-import type { ApiResponse, DocentesFilters } from "../domain/types"
+import type { ApiResponse, DocenteHorariosApiResponse, DocentesFilters } from "../domain/types"
 
 export interface Facultad {
   id: string
@@ -120,4 +120,13 @@ export async function fetchAsignaturas(
 
   const response = await apiClient.get<ApiResponse<Asignatura[]>>(endpoint)
   return response.data
+}
+
+/**
+ * Fetch horarios by docente id
+ */
+export async function getDocenteHorariosById(
+  id: string | number
+): Promise<DocenteHorariosApiResponse> {
+  return apiClient.get<DocenteHorariosApiResponse>(`/docentes/${id}/horarios`)
 }

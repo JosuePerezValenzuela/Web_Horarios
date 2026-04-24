@@ -19,8 +19,10 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { PlusIcon, CalendarClock } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function DocentesTable() {
+  const router = useRouter()
   const { docentes = [], loadingDocentes } = useDocentesStore()
   const { user } = useAuthStore()
 
@@ -85,7 +87,12 @@ export function DocentesTable() {
                     <button
                       type="button"
                       className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-primary"
-                      aria-label="Asignar horarios"
+                      aria-label="Ver horario docente"
+                      disabled={!docente.id}
+                      onClick={() => {
+                        if (!docente.id) return
+                        router.push(`/docentes/${docente.id}/horarios`)
+                      }}
                     >
                       <CalendarClock className="size-5" />
                     </button>
