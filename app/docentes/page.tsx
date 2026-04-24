@@ -39,7 +39,7 @@ export default function DocentesPage() {
           </div>
 
           {/* Filters Section */}
-          <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+          <div className="bg-muted rounded-xl p-5 shadow-sm">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-4">
               Filtros de Busqueda
             </h3>
@@ -47,12 +47,12 @@ export default function DocentesPage() {
           </div>
 
           {/* Table Section */}
-          <div className="bg-surface-container-lowest rounded-xl overflow-hidden shadow-sm">
+          <div className="bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
             <DocentesTable />
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-outline-variant/10 pt-4">
+          <div className="border-t border-border pt-4">
             <DocentesPagination />
           </div>
         </div>
