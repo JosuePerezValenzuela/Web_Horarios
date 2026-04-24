@@ -57,7 +57,7 @@ interface DocentesState {
 
 const defaultPagination: Pagination = {
   currentPage: 1,
-  pageSize: 8,
+  pageSize: 6,
   totalRecords: 0,
   totalPages: 0,
   nextPage: null,

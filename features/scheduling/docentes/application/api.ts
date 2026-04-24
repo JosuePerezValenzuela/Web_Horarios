@@ -55,8 +55,8 @@ export async function fetchDocentes(
 ): Promise<DocentesApiResponse> {
   const searchParams = new URLSearchParams()
 
-  // Default pageSize to 8 if not provided
-  const pageSize = params.pageSize ?? 8
+  // Default pageSize to 6 if not provided
+  const pageSize = params.pageSize ?? 6
 
   // Build filter object for json filter
   const filter: Record<string, string | number> = {}
