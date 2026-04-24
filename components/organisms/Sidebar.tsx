@@ -58,7 +58,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "h-full pt-6 bg-surface-container-low flex flex-col border-r border-outline-variant/10 font-sans transition-all duration-300 overflow-hidden",
+        "h-full pt-6 bg-muted flex flex-col border-r border-border font-sans transition-all duration-300 overflow-hidden",
         sidebarCollapsed ? "w-16" : "w-64",
         className
       )}
@@ -108,12 +108,7 @@ export function Sidebar({ className }: SidebarProps) {
         </div>
 
         {/* Footer Links */}
-        <div
-          className={cn(
-            "border-t border-outline-variant/10 pt-4",
-            sidebarCollapsed ? "px-1" : "px-2"
-          )}
-        >
+        <div className={cn("border-t border-border pt-4", sidebarCollapsed ? "px-1" : "px-2")}>
           <nav className="flex flex-col space-y-1">
             {bottomNavItems.map((item) => {
               const Icon = item.icon

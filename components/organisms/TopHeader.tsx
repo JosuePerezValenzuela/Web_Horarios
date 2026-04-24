@@ -30,7 +30,7 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-30 h-16 bg-white/80 backdrop-blur-md border-b border-stone-100 shadow-sm font-sans text-sm tracking-wide",
+        "sticky top-0 z-30 h-16 bg-secondary/80 backdrop-blur-md border-b border-border shadow-sm font-sans text-sm tracking-wide",
         className
       )}
     >
@@ -54,13 +54,13 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
           <div className="font-semibold text-primary hidden md:block">Sistema de Horarios UMSS</div>
 
           {/* Breadcrumbs - hidden on small screens */}
-          <div className="hidden lg:flex items-center text-sm border-l border-outline-variant/20 pl-4 gap-2 text-muted-foreground">
+          <div className="hidden lg:flex items-center text-sm border-l border-border pl-4 gap-2 text-muted-foreground">
             <a className="hover:text-primary transition-colors" href="/dashboard">
               Inicio
             </a>
             {breadcrumbs.map((crumb, index) => (
               <span key={index} className="flex items-center gap-2">
-                <span className="text-outline-variant text-xs">/</span>
+                <span className="text-muted-foreground/50 text-xs">/</span>
                 {crumb.href ? (
                   <a className="hover:text-primary transition-colors" href={crumb.href}>
                     {crumb.name}
@@ -94,7 +94,7 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
 
           {/* Profile + Logout */}
           <div className="flex items-center gap-2 ml-1">
-            <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/10 overflow-hidden flex items-center justify-center text-muted-foreground">
+            <div className="w-8 h-8 rounded-full bg-muted border border-border overflow-hidden flex items-center justify-center text-muted-foreground">
               <User className="w-5 h-5" />
             </div>
             <button
