@@ -9,20 +9,12 @@ import { useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-const PAGE_SIZE_OPTIONS = [8, 16, 24, 32]
 
 export function DocentesPagination() {
   const { pagination, loadingDocentes, setPage, setPageSize } = useDocentesStore()
   const { currentPage, totalPages, pageSize, totalRecords } = pagination
   const [inputPage, setInputPage] = useState("")
+  const [inputPageSize, setInputPageSize] = useState(pageSize.toString())
 
   // Calculate record range
   const startRecord = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1
@@ -98,12 +90,18 @@ export function DocentesPagination() {
     }
   }
 
-  // Handle pageSize change
-  const handlePageSizeChange = (value: string) => {
-    const newSize = parseInt(value, 10)
-    if (!isNaN(newSize) && newSize !== pageSize) {
+  // Handle pageSize input
+  const handlePageSizeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, "")
+    setInputPageSize(value)
+  }
+
+  const applyPageSize = () => {
+    const newSize = parseInt(inputPageSize, 10)
+    if (!isNaN(newSize) && newSize > 0 && newSize !== pageSize) {
       setPageSize(newSize)
     }
+    setInputPageSize((newSize > 0 ? newSize : pageSize).toString())
   }
 
   // Handle first/previous/next/last
@@ -121,19 +119,21 @@ export function DocentesPagination() {
 
       {/* Right: All navigation controls */}
       <div className="flex flex-wrap items-center gap-1">
-        {/* PageSize selector */}
-        <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
-          <SelectTrigger className="h-8 w-16 shrink-0" disabled={loadingDocentes}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PAGE_SIZE_OPTIONS.map((size) => (
-              <SelectItem key={size} value={size.toString()}>
-                {size} por pagina
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {/* PageSize input */}
+        <div className="flex shrink-0 items-center gap-1">
+          <span className="text-xs text-muted-foreground">Reg/pag</span>
+          <Input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={inputPageSize}
+            onChange={handlePageSizeChange}
+            onBlur={applyPageSize}
+            disabled={loadingDocentes}
+            className="h-8 w-14 text-center text-sm"
+            aria-label="Registros por pagina"
+          />
+        </div>
 
         {/* First */}
         <Button
@@ -167,11 +167,15 @@ export function DocentesPagination() {
                 <span className="px-1 text-muted-foreground">...</span>
               ) : (
                 <Button
-                  variant={page === currentPage ? "secondary" : "ghost"}
+                  variant="ghost"
                   size="sm"
                   onClick={() => handlePageClick(page as number)}
                   disabled={loadingDocentes}
-                  className="size-8 min-w-8 px-0"
+                  className={`size-8 min-w-8 px-0 ${
+                    page === currentPage
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                      : "hover:bg-muted"
+                  }`}
                 >
                   {page}
                 </Button>

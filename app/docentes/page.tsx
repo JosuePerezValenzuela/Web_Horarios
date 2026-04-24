@@ -27,7 +27,7 @@ export default function DocentesPage() {
           { name: "Gestión de carga horaria" },
         ]}
       >
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-4">
           {/* Page Header */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
             <div className="flex items-baseline gap-3">

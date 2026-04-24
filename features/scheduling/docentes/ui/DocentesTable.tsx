@@ -47,7 +47,7 @@ export function DocentesTable() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Header with Register button */}
       <div className="flex items-center justify-between">
         {canCreateDocente && (
@@ -59,19 +59,19 @@ export function DocentesTable() {
       </div>
 
       {/* Table */}
-      <Table>
+      <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <TableHead>Codigo</TableHead>
-            <TableHead>CI</TableHead>
-            <TableHead>Nombre</TableHead>
-            <TableHead className="w-20">Acciones</TableHead>
+            <TableHead className="h-10 w-[19%] px-3 py-2 text-xs">Codigo</TableHead>
+            <TableHead className="h-10 w-[21%] px-3 py-2 text-xs">CI</TableHead>
+            <TableHead className="h-10 px-3 py-2 text-xs">Nombre</TableHead>
+            <TableHead className="h-10 w-16 px-2 py-2 text-center text-xs">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {loadingDocentes ? (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-8">
+              <TableCell colSpan={4} className="px-3 py-6 text-center">
                 <span className="text-muted-foreground">Cargando...</span>
               </TableCell>
             </TableRow>
@@ -80,13 +80,15 @@ export function DocentesTable() {
               const Row = index % 2 === 0 ? TableRowEven : TableRowOdd
               return (
                 <Row key={docente.codigo}>
-                  <TableCell>{docente.codigo}</TableCell>
-                  <TableCell>{docente.documento || "Sin registrar"}</TableCell>
-                  <TableCell>{docente.nombres}</TableCell>
-                  <TableCell>
+                  <TableCell className="truncate px-3 py-2">{docente.codigo}</TableCell>
+                  <TableCell className="px-3 py-2">
+                    {docente.documento || "Sin registrar"}
+                  </TableCell>
+                  <TableCell className="px-3 py-2 break-words">{docente.nombres}</TableCell>
+                  <TableCell className="px-2 py-2 text-center">
                     <button
                       type="button"
-                      className="p-1.5 rounded-lg hover:bg-secondary transition-colors text-muted-foreground hover:text-primary"
+                      className="rounded-lg p-1 transition-colors text-muted-foreground hover:bg-secondary hover:text-primary"
                       aria-label="Ver horario docente"
                       disabled={!docente.id}
                       onClick={() => {
@@ -94,7 +96,7 @@ export function DocentesTable() {
                         router.push(`/docentes/${docente.id}/horarios`)
                       }}
                     >
-                      <CalendarClock className="size-5" />
+                      <CalendarClock className="size-[18px]" />
                     </button>
                   </TableCell>
                 </Row>

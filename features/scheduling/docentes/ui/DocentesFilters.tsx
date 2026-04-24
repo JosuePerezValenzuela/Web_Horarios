@@ -94,9 +94,9 @@ export function DocentesFilters() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
       {/* Search Input - takes remaining space */}
-      <div className="flex-1 min-w-64">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-6">
         <Input
           type="text"
           placeholder="Buscar por CI, codigo o nombre..."
@@ -106,7 +106,7 @@ export function DocentesFilters() {
       </div>
 
       {/* Faculty Select */}
-      <div className="w-48 shrink-0">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-2">
         <Select
           value={filters.facultadId || "all"}
           onValueChange={handleFacultadChange}
@@ -127,7 +127,7 @@ export function DocentesFilters() {
       </div>
 
       {/* Career Select */}
-      <div className="w-48 shrink-0">
+      <div className="min-w-0 sm:col-span-1 lg:col-span-2">
         <Select
           value={filters.carreraId || "all"}
           onValueChange={handleCarreraChange}
@@ -148,7 +148,7 @@ export function DocentesFilters() {
       </div>
 
       {/* Subject Select */}
-      <div className="w-48 shrink-0">
+      <div className="min-w-0 sm:col-span-2 lg:col-span-2">
         <Select
           value={filters.asignaturaId || "all"}
           onValueChange={handleAsignaturaChange}
