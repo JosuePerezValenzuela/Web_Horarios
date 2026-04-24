@@ -7,14 +7,9 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
+import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 
 export function DocentesFilters() {
   const {
@@ -120,14 +115,14 @@ export function DocentesFilters() {
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Facultad" />
           </SelectTrigger>
-          <SelectContent showSearch onFilterChange={setFacultadSearch}>
+          <SearchableSelectContent onFilterChange={setFacultadSearch}>
             <SelectItem value="all">Todas las facultades</SelectItem>
             {filterItems(facultades, facultadSearch).map((facultad) => (
               <SelectItem key={facultad.id} value={facultad.id}>
                 {facultad.nombre}
               </SelectItem>
             ))}
-          </SelectContent>
+          </SearchableSelectContent>
         </Select>
       </div>
 
@@ -141,14 +136,14 @@ export function DocentesFilters() {
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Carrera" />
           </SelectTrigger>
-          <SelectContent showSearch onFilterChange={setCarreraSearch}>
+          <SearchableSelectContent onFilterChange={setCarreraSearch}>
             <SelectItem value="all">Todas las carreras</SelectItem>
             {filterItems(carreras, carreraSearch).map((carrera) => (
               <SelectItem key={carrera.id} value={carrera.id}>
                 {carrera.nombre}
               </SelectItem>
             ))}
-          </SelectContent>
+          </SearchableSelectContent>
         </Select>
       </div>
 
@@ -162,14 +157,14 @@ export function DocentesFilters() {
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Asignatura" />
           </SelectTrigger>
-          <SelectContent showSearch onFilterChange={setAsignaturaSearch}>
+          <SearchableSelectContent onFilterChange={setAsignaturaSearch}>
             <SelectItem value="all">Todas las asignaturas</SelectItem>
             {filterItems(asignaturas, asignaturaSearch).map((asignatura) => (
               <SelectItem key={asignatura.id} value={asignatura.id}>
                 {asignatura.nombre}
               </SelectItem>
             ))}
-          </SelectContent>
+          </SearchableSelectContent>
         </Select>
       </div>
     </div>

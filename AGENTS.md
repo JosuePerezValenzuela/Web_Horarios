@@ -46,6 +46,53 @@ This version has breaking changes — APIs, conventions, and file structure may 
   lib/                 # Utils (cn, etc.)
   ```
 
+## Current Component Inventory (IMPORTANT)
+
+This is the CURRENT state of the codebase. Prefer these components/patterns before creating new ones.
+
+### `components/ui/` — Global base components
+
+- `button.tsx`
+  - Uses **CVA** variants: `default`, `outline`, `secondary`, `ghost`, `destructive`, `link`
+  - Sizes: `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`, `icon-sm`, `icon-lg`
+  - Supports `asChild`
+- `card.tsx`
+  - Provides `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`
+  - Uses large rounded surfaces and internal spacing variants via `size`
+- `input.tsx`
+  - Global text input with rounded-pill aesthetic and theme-based focus/invalid states
+- `label.tsx`
+  - Use for form labeling before creating custom text wrappers
+- `select.tsx`
+  - **Base select only**
+  - Provides `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`, `SelectValue`
+  - Use this for **simple selection without search**
+- `searchable-select-content.tsx`
+  - Specialized dropdown content for searchable selects
+  - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing
+  - Use this when a `Select` needs in-panel filtering
+- `table.tsx`
+  - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`
+  - Also includes `TableRowEven` and `TableRowOdd` helpers for alternating row backgrounds
+
+### `components/organisms/` — Existing layout-level components
+
+- `AppLayout.tsx`
+  - Protected layout shell using `TopHeader` + fixed `Sidebar`
+  - Main content scrolls independently; sidebar collapse comes from `useUIStore`
+- `Sidebar.tsx`
+  - Existing navigation shell; reuse before inventing alternate side navigation patterns
+- `TopHeader.tsx`
+  - Existing top bar/breadcrumb surface for app pages
+
+### Atomic folders status
+
+- `components/atoms/` is currently **empty**
+- `components/molecules/` is currently **empty**
+- `components/templates/` is currently **empty**
+
+Do not document or generate fictional atoms/molecules/templates as if they already exist. If you create them later, update this file.
+
 ## Design System Rules
 
 ### 1. Responsive First
