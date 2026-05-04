@@ -101,9 +101,82 @@ class ApiClient {
 
 export const apiClient = new ApiClient()
 
+export interface BuscarAmbienteRequest {
+  dia: number
+  hora_inicio: string
+  hora_fin: string
+  fecha_inicio?: string
+  fecha_fin?: string
+  persona_grupo_id?: number
+  capacidad_min?: number
+  mismo_piso?: number
+  facultad_ids?: number[]
+  bloque_ids?: number[]
+  tipo_ambiente_ids?: number[]
+  page: number
+  take?: number
+}
+
+export interface BuscarAmbienteResponse {
+  success: boolean
+  message?: string
+  data?: {
+    ambientes: Array<{
+      id: number
+      nombre: string
+      capacidad: number
+      edificio: { id: number; nombre: string }
+      tipo_ambiente: { id: number; nombre: string }
+      tiene_solapamiento_propio: boolean
+    }>
+    total: number
+    page: number
+    take: number
+  }
+}
+
+export interface AsignarHorarioRequest {
+  persona_grupo_id: number
+  aula_id: number
+  dia: number
+  hora_inicio: string
+  hora_fin: string
+  fecha_inicio: string
+  fecha_fin: string
+}
+
+export interface AsignarHorarioResponse {
+  success: boolean
+  message?: string
+  data?: {
+    id: number
+    persona_grupo_id: number
+    aula_id: number
+    dia: number
+    hora_inicio: string
+    hora_fin: string
+    fecha_inicio: string
+    fecha_fin: string
+  }
+}
+
 // Auth-specific methods
 export const authApi = {
   login: (credentials: LoginRequest): Promise<LoginResponse> => {
     return apiClient.post<LoginResponse>("/auth/login", credentials)
+  },
+}
+
+// Horarios methods
+export const horariosApi = {
+  buscarAmbientes: (payload: BuscarAmbienteRequest): Promise<BuscarAmbienteResponse> => {
+    return apiClient.post<BuscarAmbienteResponse>(
+      "/horario-clases/asignar/buscar-ambientes",
+      payload
+    )
+  },
+
+  asignar: (payload: AsignarHorarioRequest): Promise<AsignarHorarioResponse> => {
+    return apiClient.post<AsignarHorarioResponse>("/horario-clases/asignar", payload)
   },
 }
