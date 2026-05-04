@@ -123,10 +123,15 @@ export interface BuscarAmbienteResponse {
   data?: {
     ambientes: Array<{
       id: number
+      codigo: string
       nombre: string
+      tipo?: string
       capacidad: number
-      edificio: { id: number; nombre: string }
-      tipo_ambiente: { id: number; nombre: string }
+      edificio_id?: number
+      edificio_nombre?: string
+      edificio_bloque?: string
+      facultad_id?: number
+      facultad_nombre?: string
       tiene_solapamiento_propio: boolean
     }>
     total: number
