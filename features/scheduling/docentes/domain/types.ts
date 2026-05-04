@@ -176,3 +176,102 @@ export interface NormalizedDocenteHorarios {
   groups: GroupSummary[]
   timeRange: TimeRange
 }
+
+// ============================================
+// INFRA System Types (Recursos fisicos)
+// API abierta - respuesta real con "items" y "meta"
+// ============================================
+
+export interface InfraFacultad {
+  id: number
+  codigo: string
+  nombre: string
+  nombre_corto?: string | null
+  campus_nombre?: string | null
+  activo: boolean
+  lat?: number
+  lng?: number
+  campus_id?: number
+  created_at?: string
+  creado_en?: string
+}
+
+export interface InfraBloque {
+  id: number
+  codigo: string
+  nombre: string
+  nombre_corto?: string | null
+  pisos?: number
+  activo: boolean
+  lat?: number
+  lng?: number
+  facultad_nombre?: string
+  tipo_bloque_nombre?: string
+  facultadId?: number
+}
+
+export interface InfraTipoAmbiente {
+  id: number
+  nombre: string
+  descripcion?: string | null
+  descripcion_corta?: string | null
+  activo: boolean
+  actualizado_en?: string
+  creado_en?: string
+}
+
+export interface InfraAmbiente {
+  id: number
+  codigo: string
+  nombre: string
+  capacidad: number
+  edificio?: {
+    id: number
+    nombre: string
+  }
+  edificio_nombre?: string
+  edificio_bloque?: string
+  edificio_id?: number
+  tipo_ambiente?: {
+    id: number
+    nombre: string
+  }
+  tipo?: string
+  facultad_nombre?: string
+  facultad_id?: number
+  tiene_solapamiento_propio?: boolean
+}
+
+// ============================================
+// Asignar Horario Modal Types
+// ============================================
+
+export interface GroupInfo {
+  groupKey: string
+  materia: string
+  grupo: string
+  carrerasLabel: string
+}
+
+export interface HorarioFormData {
+  fechaInicio: Date
+  fechaFin: Date
+  dia: number // 1=Lunes, 6=Sabado
+  horaInicio: string // "HH:mm" 24h
+  horaFin: string // "HH:mm" 24h
+  facultades: InfraFacultad[]
+  bloques: InfraBloque[]
+  tiposAmbiente: InfraTipoAmbiente[]
+  estudiantes: number | null
+}
+
+export interface AsignarHorarioPayload {
+  grupoId: string
+  fechaInicio: string
+  fechaFin: string
+  dia: number
+  horaInicio: string
+  horaFin: string
+  ambienteId: number
+  estudiantes: number | null
+}

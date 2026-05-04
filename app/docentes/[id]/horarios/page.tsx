@@ -6,6 +6,8 @@ import { useParams, useRouter } from "next/navigation"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useDocenteHorariosStore } from "@/features/scheduling/docentes/application/docenteHorariosStore"
+import { useAsignarHorarioStore } from "@/features/scheduling/docentes/application/asignarHorarioStore"
+import type { GroupSummary } from "@/features/scheduling/docentes/domain/types"
 import { TeacherSchedulePage } from "@/features/scheduling/docentes/ui/TeacherSchedulePage"
 
 export default function DocenteHorariosRoutePage() {
@@ -27,6 +29,8 @@ export default function DocenteHorariosRoutePage() {
     clear,
   } = useDocenteHorariosStore()
 
+  const { openModal } = useAsignarHorarioStore()
+
   useEffect(() => {
     if (!docenteId) return
     fetchByDocenteId(docenteId)
@@ -35,6 +39,15 @@ export default function DocenteHorariosRoutePage() {
       clear()
     }
   }, [clear, docenteId, fetchByDocenteId])
+
+  const handleAssignClick = (group: GroupSummary) => {
+    openModal({
+      groupKey: group.groupKey,
+      materia: group.materia,
+      grupo: group.grupo,
+      carrerasLabel: group.carrerasLabel,
+    })
+  }
 
   return (
     <ProtectedRoute>
@@ -54,6 +67,8 @@ export default function DocenteHorariosRoutePage() {
           onRetry={() => fetchByDocenteId(docenteId)}
           onBack={() => router.push("/docentes")}
           onPeriodChange={setPeriod}
+          docenteId={docenteId}
+          onAssignClick={handleAssignClick}
         />
       </AppLayout>
     </ProtectedRoute>

@@ -12,6 +12,7 @@ import type {
 } from "../domain/types"
 import { GroupSummaryCard } from "./GroupSummaryCard"
 import { WeeklyScheduleGrid } from "./WeeklyScheduleGrid"
+import { AsignarHorarioModal } from "./AsignarHorarioModal"
 
 interface TeacherSchedulePageProps {
   docente: DocenteScheduleMeta | null
@@ -25,6 +26,8 @@ interface TeacherSchedulePageProps {
   onRetry: () => void
   onBack: () => void
   onPeriodChange: (period: number) => void
+  docenteId?: string
+  onAssignClick?: (group: GroupSummary) => void
 }
 
 export function TeacherSchedulePage({
@@ -39,8 +42,16 @@ export function TeacherSchedulePage({
   onRetry,
   onBack,
   onPeriodChange,
+  docenteId,
+  onAssignClick,
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
+
+  const handleAssignClick = (group: GroupSummary) => {
+    if (onAssignClick) {
+      onAssignClick(group)
+    }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
@@ -106,7 +117,13 @@ export function TeacherSchedulePage({
                   />
                 ))
               ) : groups.length > 0 ? (
-                groups.map((group) => <GroupSummaryCard key={group.groupKey} group={group} />)
+                groups.map((group) => (
+                  <GroupSummaryCard
+                    key={group.groupKey}
+                    group={group}
+                    onAssignClick={onAssignClick ? handleAssignClick : undefined}
+                  />
+                ))
               ) : (
                 <p className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
                   Sin grupos disponibles para este docente.
@@ -133,6 +150,8 @@ export function TeacherSchedulePage({
           )}
         </main>
       </div>
+
+      {docenteId && onAssignClick && <AsignarHorarioModal />}
     </div>
   )
 }

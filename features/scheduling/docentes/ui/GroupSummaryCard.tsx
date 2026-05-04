@@ -6,9 +6,10 @@ import { cn } from "@/lib/utils"
 
 interface GroupSummaryCardProps {
   group: GroupSummary
+  onAssignClick?: (group: GroupSummary) => void
 }
 
-export function GroupSummaryCard({ group }: GroupSummaryCardProps) {
+export function GroupSummaryCard({ group, onAssignClick }: GroupSummaryCardProps) {
   const token = resolveGroupColorToken(group.colorIndex)
   const carreras = group.carrerasLabel
     .split(",")
@@ -16,14 +17,24 @@ export function GroupSummaryCard({ group }: GroupSummaryCardProps) {
     .filter(Boolean)
   const estadoLabel = `${group.estado.replace("Horarios", "horarios")} - ${group.countHorarios}`
 
+  const handleClick = (e: React.MouseEvent) => {
+    if (onAssignClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      onAssignClick(group)
+    }
+  }
+
   return (
     <Card
       size="sm"
       className={cn(
-        "gap-0.5 rounded-3xl border shadow-sm",
-        group.countHorarios === 0 && "opacity-90"
+        "gap-0.5 rounded-3xl border shadow-sm transition-colors hover:border-primary/50",
+        group.countHorarios === 0 && "opacity-90",
+        onAssignClick && "cursor-pointer hover:bg-muted/30"
       )}
       style={token.cardStyle}
+      onClick={onAssignClick ? handleClick : undefined}
     >
       <CardHeader className="px-3 pt-2 pb-1">
         <div className="flex items-start justify-between gap-2">
