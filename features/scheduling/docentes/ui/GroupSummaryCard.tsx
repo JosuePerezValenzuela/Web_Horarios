@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { ChevronRight, PlusCircle } from "lucide-react"
 
 import type { GroupSummary } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
@@ -29,24 +30,32 @@ export function GroupSummaryCard({ group, onAssignClick }: GroupSummaryCardProps
     <Card
       size="sm"
       className={cn(
-        "gap-0.5 rounded-3xl border shadow-sm transition-colors hover:border-primary/50",
+        "gap-0.5 rounded-3xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
         group.countHorarios === 0 && "opacity-90",
-        onAssignClick && "cursor-pointer hover:bg-muted/30"
+        onAssignClick && "cursor-pointer hover:bg-primary/5"
       )}
       style={token.cardStyle}
       onClick={onAssignClick ? handleClick : undefined}
     >
       <CardHeader className="px-3 pt-2 pb-1">
         <div className="flex items-start justify-between gap-2">
-          <CardTitle className="line-clamp-2 text-[13px] leading-tight">{group.materia}</CardTitle>
-          <span
-            className={cn(
-              "inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none"
-            )}
-            style={token.badgeStyle}
-          >
-            {estadoLabel}
-          </span>
+          <div className="flex min-w-0 items-start gap-2">
+            {onAssignClick ? <PlusCircle className="mt-0.5 size-3.5 shrink-0 text-primary" /> : null}
+            <CardTitle className="line-clamp-2 text-[13px] leading-tight">{group.materia}</CardTitle>
+          </div>
+          <div className="flex shrink-0 items-center gap-1">
+            <span
+              className={cn(
+                "inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none"
+              )}
+              style={token.badgeStyle}
+            >
+              {estadoLabel}
+            </span>
+            {onAssignClick ? (
+              <ChevronRight className="size-4 text-primary/80 transition-transform group-hover/card:translate-x-0.5" />
+            ) : null}
+          </div>
         </div>
       </CardHeader>
 
