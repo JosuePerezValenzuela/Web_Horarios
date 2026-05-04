@@ -90,6 +90,7 @@ function extractSchedules(payload: DocenteHorariosApiResponse): DocenteHorarioAp
 
     return toArray(group.horarios).map((schedule) => ({
       ...schedule,
+      persona_grupo_id: schedule.persona_grupo_id ?? group.persona_grupo_id,
       grupo_id: schedule.grupo_id ?? schedule.grupoId ?? group.id ?? group.groupKey ?? groupKey,
       grupoId: schedule.grupoId ?? schedule.grupo_id ?? group.id ?? group.groupKey ?? groupKey,
       grupo: schedule.grupo ?? schedule.grupoNombre ?? group.grupo,
@@ -239,10 +240,18 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     "Sin grupo"
   )
   const groupKey = resolveGroupKey(schedule)
+  const personaGrupoId = toNumber(schedule.persona_grupo_id)
+  const ambienteId =
+    toNumber(schedule.aula_id) ??
+    toNumber(schedule.ambiente_id) ??
+    toNumber(schedule.ambienteId) ??
+    (typeof schedule.ambiente === "object" ? toNumber(schedule.ambiente?.id) : null)
 
   return {
     scheduleId: toStringValue(schedule.id, `${groupKey}-${day}-${startMin}-${endMin}`),
     groupKey,
+    persona_grupo_id: personaGrupoId ?? 0,
+    ambienteId,
     colorIndex: 0,
     day,
     startMin,
@@ -274,6 +283,7 @@ function createGroupSummaryFromSchedules(schedules: NormalizedSchedule[]): Group
 
     map.set(schedule.groupKey, {
       groupKey: schedule.groupKey,
+      persona_grupo_id: schedule.persona_grupo_id,
       materia: schedule.materia,
       grupo: schedule.grupo,
       carrerasLabel: schedule.carreras.join(", ") || "Sin carreras",
@@ -305,6 +315,7 @@ function mergeGroupsWithApi(
 
     map.set(groupKey, {
       groupKey,
+      persona_grupo_id: toNumber(group.persona_grupo_id) ?? existing?.persona_grupo_id ?? 0,
       materia: toStringValue(group.materia, existing?.materia ?? "Sin materia"),
       grupo: toStringValue(group.grupo, existing?.grupo ?? "Sin grupo"),
       carrerasLabel:

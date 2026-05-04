@@ -42,6 +42,7 @@ export default function DocenteHorariosRoutePage() {
 
   const handleAssignClick = (group: GroupSummary) => {
     openModal({
+      persona_grupo_id: group.persona_grupo_id,
       groupKey: group.groupKey,
       materia: group.materia,
       grupo: group.grupo,
@@ -69,6 +70,7 @@ export default function DocenteHorariosRoutePage() {
           onPeriodChange={setPeriod}
           docenteId={docenteId}
           onAssignClick={handleAssignClick}
+          onAssigned={() => fetchByDocenteId(docenteId)}
         />
       </AppLayout>
     </ProtectedRoute>

@@ -28,6 +28,7 @@ interface TeacherSchedulePageProps {
   onPeriodChange: (period: number) => void
   docenteId?: string
   onAssignClick?: (group: GroupSummary) => void
+  onAssigned?: () => void | Promise<void>
 }
 
 export function TeacherSchedulePage({
@@ -44,6 +45,7 @@ export function TeacherSchedulePage({
   onPeriodChange,
   docenteId,
   onAssignClick,
+  onAssigned,
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
 
@@ -151,7 +153,7 @@ export function TeacherSchedulePage({
         </main>
       </div>
 
-      {docenteId && onAssignClick && <AsignarHorarioModal />}
+      {docenteId && onAssignClick && <AsignarHorarioModal onAssigned={onAssigned} />}
     </div>
   )
 }

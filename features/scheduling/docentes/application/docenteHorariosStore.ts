@@ -1,6 +1,6 @@
 import { create } from "zustand"
 
-import { getDocenteHorariosById } from "./api"
+import { getDocenteHorariosById, hydrateSchedulesWithAmbienteDetails } from "./api"
 import { buildRows, normalizeDocenteHorarios, resolveDefaultPeriod } from "./normalizers"
 import type {
   GroupSummary,
@@ -51,11 +51,12 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
     try {
       const response = await getDocenteHorariosById(id)
       const normalized = normalizeDocenteHorarios(response)
-      const period = resolveDefaultPeriod(normalized.schedules)
+      const hydratedSchedules = await hydrateSchedulesWithAmbienteDetails(normalized.schedules)
+      const period = resolveDefaultPeriod(hydratedSchedules)
 
       set({
         docente: normalized.docente,
-        schedules: normalized.schedules,
+        schedules: hydratedSchedules,
         groups: normalized.groups,
         period,
         timeRange: normalized.timeRange,

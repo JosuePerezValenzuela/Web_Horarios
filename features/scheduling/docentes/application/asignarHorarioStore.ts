@@ -141,7 +141,7 @@ export const useAsignarHorarioStore = create<AsignarHorarioState>()((set, get) =
         hora_fin: horaFin,
         fecha_inicio: dateRange?.from ? dateRange.from.toISOString().split("T")[0] : undefined,
         fecha_fin: dateRange?.to ? dateRange.to.toISOString().split("T")[0] : undefined,
-        persona_grupo_id: selectedGroup?.groupKey ? parseInt(selectedGroup.groupKey) : undefined,
+        persona_grupo_id: selectedGroup?.persona_grupo_id,
         mismo_piso: 0,
         capacidad_min: estudiantes ?? undefined,
         Facultad_ids:

@@ -96,7 +96,11 @@ function DatePickerRange() {
   )
 }
 
-export function AsignarHorarioModal() {
+interface AsignarHorarioModalProps {
+  onAssigned?: () => void | Promise<void>
+}
+
+export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
   const {
     isOpen,
     selectedGroup,
@@ -213,7 +217,7 @@ export function AsignarHorarioModal() {
     setSubmitting(true)
     try {
       const payload = {
-        persona_grupo_id: parseInt(selectedGroup.groupKey),
+        persona_grupo_id: selectedGroup.persona_grupo_id,
         aula_id: ambiente.id,
         dia: Number(dia) - 1,
         hora_inicio: horaInicio,
@@ -225,6 +229,7 @@ export function AsignarHorarioModal() {
       const response = await horariosApi.asignar(payload)
       if (response.success) {
         closeModal()
+        await onAssigned?.()
       } else {
         console.error("Error:", response.message)
         alert(response.message || "Error al asignar horario")
@@ -436,9 +441,7 @@ export function AsignarHorarioModal() {
                             <TableCell className="text-xs">{amb.facultad_nombre || "-"}</TableCell>
                             <TableCell className="text-xs">{amb.edificio_nombre || "-"}</TableCell>
                             <TableCell className="text-xs">{amb.nombre}</TableCell>
-                            <TableCell className="text-xs">
-                              {amb.tipo || amb.tipo_ambiente?.nombre}
-                            </TableCell>
+                            <TableCell className="text-xs">{amb.tipo || "-"}</TableCell>
                             <TableCell className="text-xs whitespace-nowrap">
                               {amb.capacidad}
                             </TableCell>

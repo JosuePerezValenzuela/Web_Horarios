@@ -67,6 +67,10 @@ export interface DocenteHorarioApiAmbienteRef {
 
 export interface DocenteHorarioApiSchedule {
   id?: number | string | null
+  persona_grupo_id?: number | string | null
+  aula_id?: number | string | null
+  ambiente_id?: number | string | null
+  ambienteId?: number | string | null
   dia?: number | string | null
   diaSemana?: number | string | null
   dia_semana?: number | string | null
@@ -100,6 +104,7 @@ export interface DocenteHorarioApiSchedule {
 
 export interface DocenteHorarioApiGroup {
   id?: number | string | null
+  persona_grupo_id?: number | string | null
   groupKey?: string | null
   grupo?: string | null
   materia?: string | null
@@ -145,6 +150,8 @@ export interface TimeRow {
 export interface NormalizedSchedule {
   scheduleId: string
   groupKey: string
+  persona_grupo_id: number
+  ambienteId: number | null
   colorIndex: number
   day: 1 | 2 | 3 | 4 | 5 | 6
   startMin: number
@@ -161,6 +168,7 @@ export interface NormalizedSchedule {
 }
 
 export interface GroupSummary {
+  persona_grupo_id: number
   groupKey: string
   materia: string
   grupo: string
@@ -232,10 +240,6 @@ export interface InfraAmbiente {
   edificio_nombre?: string
   edificio_bloque?: string
   edificio_id?: number
-  tipo_ambiente?: {
-    id: number
-    nombre: string
-  }
   tipo?: string
   facultad_nombre?: string
   facultad_id?: number
@@ -247,6 +251,7 @@ export interface InfraAmbiente {
 // ============================================
 
 export interface GroupInfo {
+  persona_grupo_id: number
   groupKey: string
   materia: string
   grupo: string
