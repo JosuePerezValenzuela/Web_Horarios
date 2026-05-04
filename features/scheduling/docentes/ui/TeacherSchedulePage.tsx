@@ -57,11 +57,13 @@ export function TeacherSchedulePage({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
-      <header className="rounded-3xl border border-border bg-card p-4 md:p-5">
+      <header className="rounded-3xl border border-border bg-card p-2 md:p-3">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-1.5">
-            <p className="text-xs font-semibold text-muted-foreground">Vista semanal del docente</p>
-            <p className="text-xs font-semibold text-muted-foreground">
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
+            <h1 className="shrink-0 text-base font-semibold text-foreground md:text-lg">
+              Vista semanal del docente
+            </h1>
+            <p className="min-w-0 text-xs text-muted-foreground md:text-sm">
               {docente?.nombres ?? "Cargando..."} · CI: {docente?.documento ?? "--"} · Código:{" "}
               {docente?.codigo ?? "--"}
             </p>
@@ -102,7 +104,6 @@ export function TeacherSchedulePage({
               aria-label="Periodo de segmentacion en minutos"
               className="h-9"
             />
-            <p className="text-[11px] text-muted-foreground"> Valor editable.</p>
           </div>
 
           <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
