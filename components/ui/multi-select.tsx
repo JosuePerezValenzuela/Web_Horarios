@@ -114,7 +114,10 @@ export function MultiSelect({
               </span>
             ) : null}
             <ChevronDownIcon
-              className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                open && "rotate-180"
+              )}
             />
           </div>
         </button>

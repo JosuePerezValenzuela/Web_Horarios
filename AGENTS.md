@@ -31,9 +31,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
     templates/         # Page layouts
     ui/                # shadcn/ui base components (GLOBAL)
   features/
-    scheduling/        # Feature-based modules
+    scheduling/        # Feature-based modules (This is the example, it could be more or new modules)
       domain/          # Types, interfaces, contracts
-      application/    # Hooks, services, stores
+      application/     # Hooks, services, stores
       ui/              # Feature-specific components (LOCAL)
   shared/
     hooks/             # Custom hooks
@@ -56,13 +56,34 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
   - Uses **CVA** variants: `default`, `outline`, `secondary`, `ghost`, `destructive`, `link`
   - Sizes: `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`, `icon-sm`, `icon-lg`
   - Supports `asChild`
+  - Use for: primary/secondary actions, toolbar buttons, dialog actions, icon buttons
+- `badge.tsx`
+  - Small status/count surface
+  - Use for: counters, statuses, small semantic labels, selected counts
 - `card.tsx`
   - Provides `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`
   - Uses large rounded surfaces and internal spacing variants via `size`
+  - Use for: grouped information, summary cards, clickable dashboard/list items
 - `input.tsx`
   - Global text input with rounded-pill aesthetic and theme-based focus/invalid states
+  - Use for: text, number, time and other native input types when a specialized component does not exist
 - `label.tsx`
   - Use for form labeling before creating custom text wrappers
+- `checkbox.tsx`
+  - Base checkbox control
+  - Use for: boolean selection inside custom lists, forms, and multi-selection UIs
+- `dialog.tsx`
+  - Global modal/dialog primitive wrappers
+  - Use for: modal flows, confirmations, forms, and detail overlays that block the page
+- `popover.tsx`
+  - Floating anchored surface wrapper
+  - Use for: lightweight anchored overlays like pickers, dropdown helpers, and custom floating panels
+- `calendar.tsx`
+  - Global calendar/date selection UI
+  - Use for: single-date or range selection when the interaction is calendar-based
+- `date-picker-range.tsx`
+  - Reusable date range picker built on `Calendar` + `Popover`
+  - Use for: any date range selection flow across modules before building local alternatives
 - `select.tsx`
   - **Base select only**
   - Provides `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`, `SelectValue`
@@ -70,10 +91,14 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 - `searchable-select-content.tsx`
   - Specialized dropdown content for searchable selects
   - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing
-  - Use this when a `Select` needs in-panel filtering
+  - Use this when a `Select` needs in-panel filtering but selection remains **single-select**
+- `multi-select.tsx`
+  - Searchable multi-selection dropdown with internal scroll, optional filter, and selected-count badge
+  - Use for: reusable **multi-select** cases (e.g. bloques, tipos, tags) where multiple values are required
 - `table.tsx`
   - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`
   - Also includes `TableRowEven` and `TableRowOdd` helpers for alternating row backgrounds
+  - Use for: structured tabular data; prefer internal scroll containers over changing table semantics
 
 ### `components/organisms/` — Existing layout-level components
 
@@ -105,21 +130,6 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 - NEVER use custom colors like `surface-container-*`, `stone-*`, `zinc-*`, etc.
 - NEVER use `outline-variant` (it doesn't exist in theme)
 
-**Valid theme colors:**
-```css
---background      /* Page background */
---foreground     /* Text color */
---primary        /* Primary actions */
---secondary      /* Secondary elements */
---muted          /* Subtle backgrounds */
---accent         /* Accent highlights */
---border         /* Borders and dividers */
---destructive   /* Error/danger actions */
---card          /* Card backgrounds */
---popover       /* Dropdown backgrounds */
---ring          /* Focus rings */
-```
-
 **Usage examples:**
 - ✅ `bg-background`, `text-foreground`, `border-border`
 - ✅ `bg-primary`, `hover:bg-muted`, `bg-card`
@@ -130,11 +140,17 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 - **`features/*/ui/`** = Feature-specific components (LOCAL, single feature)
 - **Rule**: If it's reusable across features, move to `components/ui/`
 
-### 4. Global vs Local
-| Location | Scope | Examples |
-|---------|-------|---------|
-| `components/ui/` | Global | Table, Select, Button, Input, Card |
-| `features/*/ui/` | Local only | DocentesTable, DocentesFilters |
+### 4. Before Creating New Components
+- Before creating a new component, **always verify first** if there is already a suitable base in `components/ui/` or if it can be built by composing existing shadcn/ui primitives already configured in this project or install using npx.
+- Prefer **extending or composing** the current shadcn/ui setup instead of creating parallel custom primitives.
+- Only create a brand-new component when the existing global base components do not cover the interaction or visual requirement.
+
+### 5. API Service Boundaries
+- Before consuming or creating a new API service, verify if the request belongs to one of the existing global clients in `shared/services/api/`.
+- Current global API clients:
+  - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`)
+  - `shared/services/api/infraClient.ts` → infrastructure/physical resources API (`NEXT_PUBLIC_INFRA_URL`)
+- Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
 ## Code Style
 
@@ -144,43 +160,36 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 - **Line ending**: LF
 - **Print width**: 100 characters
 
-## Quality Tools
-
-- **Linting**: ESLint + Prettier plugin
-- **Type checking**: TypeScript strict
-- **Formatting**: Prettier
-
 ## Formatting Workflow (IMPORTANT)
 
 When writing code, agents should follow this workflow:
 
 1. **Write the files** - Implement the code normally
 2. **DO NOT run format after each file** - This causes unnecessary file changes
-3. **At the end of each implementation session**, run:
+3. **At the end of each implementation session**, format with Prettier first
    ```bash
-   npm run lint -- --fix
+   npx prettier --write <modified-files>
    ```
-4. **Verify with**: `npm run lint` - Ensure 0 errors (warnings are ok)
-
-Why? Because when an agent writes a file directly to the filesystem (bypassing VS Code). Running lint --fix at the end ensures consistent formatting across all modified files.
+4. **Then run the linter** on the affected files / project
+   ```bash
+   npm run lint
+   ```
+5. **Then run TypeScript check** focused on modified files when feasible; otherwise run project-level typecheck
+   ```bash
+   npx tsc --noEmit
+   ```
 
 ## Common Mistakes to Avoid
 
 1. **Using non-theme colors** - Creates inconsistency and breaks dark mode
 2. **Duplicating global components** - If it exists in `components/ui/`, don't recreate it
-3. **Skipping lint** - Always verify with `npm run lint` before finishing
+3. **Skipping verification** - Always run Prettier, lint, and TypeScript verification before finishing
 4. **Fixed positioning for layout** - Use flexbox or grid for responsive layouts
 5. **Forgetting responsive prefixes** - Mobile first, then enhance with `sm:`, `md:`, `lg:`
 
 ## Skill Registry
 
 Sub-agents and workflows should reference `.atl/skill-registry.md` for available skills and project-specific patterns.
-
-## API
-
-- **Base URL**: `NEXT_PUBLIC_API_URL` (env var, defaults to http://localhost:3000)
-- **Protocol**: REST
-- **Authentication**: JWT (future: KeyCloak SSO)
 
 ## Testing
 
