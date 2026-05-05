@@ -1,8 +1,11 @@
 "use client"
 
 import * as React from "react"
+import { SearchIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { ChevronDownIcon } from "lucide-react"
+import { CheckIcon, ChevronDownIcon } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export interface MultiSelectOption {
   value: string | number
@@ -16,6 +19,9 @@ interface MultiSelectProps {
   placeholder?: string
   className?: string
   disabled?: boolean
+  searchable?: boolean
+  searchPlaceholder?: string
+  maxVisibleItems?: number
 }
 
 export function MultiSelect({
@@ -25,12 +31,22 @@ export function MultiSelect({
   placeholder = "Seleccionar",
   className,
   disabled = false,
+  searchable = false,
+  searchPlaceholder = "Buscar...",
+  maxVisibleItems = 6,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
-  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [filterValue, setFilterValue] = React.useState("")
+  const searchInputRef = React.useRef<HTMLInputElement>(null)
 
   // Ordenar: primero seleccionados, luego no seleccionados, todo alfabético
-  const sortedOptions = [...options].sort((a, b) => {
+  const normalizedFilter = filterValue.trim().toLowerCase()
+
+  const filteredOptions = options.filter((option) =>
+    normalizedFilter ? option.label.toLowerCase().includes(normalizedFilter) : true
+  )
+
+  const sortedOptions = [...filteredOptions].sort((a, b) => {
     const aSelected = value.includes(a.value)
     const bSelected = value.includes(b.value)
     if (aSelected && !bSelected) return -1
@@ -56,67 +72,111 @@ export function MultiSelect({
     }
   }
 
-  // Cerrar al hacer click fuera
   React.useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setOpen(false)
-      }
+    if (!open || !searchable) return
+
+    const focusInput = () => {
+      searchInputRef.current?.focus({ preventScroll: true })
     }
-    if (open) {
-      document.addEventListener("mousedown", handleClickOutside)
-    }
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [open])
+
+    window.requestAnimationFrame(() => {
+      focusInput()
+      window.setTimeout(focusInput, 0)
+    })
+  }, [open, searchable])
+
+  const viewportMaxHeight = Math.max(132, maxVisibleItems * 40)
 
   return (
-    <div ref={containerRef} className={cn("relative", className)}>
-      <button
-        type="button"
-        className={cn(
-          "flex h-9 w-full items-center justify-between rounded-lg border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed",
-          open && "ring-2 ring-ring ring-offset-2"
-        )}
-        disabled={disabled}
-        onClick={() => !disabled && setOpen(!open)}
-      >
-        <span className="truncate">{displayText}</span>
-        <ChevronDownIcon
-          className={cn("h-4 w-4 opacity-50 transition-transform", open && "rotate-180")}
-        />
-      </button>
+    <Popover
+      open={open}
+      onOpenChange={(nextOpen) => {
+        setOpen(nextOpen)
+        if (!nextOpen) setFilterValue("")
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow,border-color,background-color] outline-none hover:border-ring/40 hover:bg-accent/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0",
+            !value.length && "text-muted-foreground",
+            open && "border-ring ring-3 ring-ring/20",
+            className
+          )}
+          disabled={disabled}
+        >
+          <span className="truncate">{displayText}</span>
+          <div className="flex items-center gap-2">
+            {value.length > 0 ? (
+              <span className="inline-flex min-w-5 items-center justify-center rounded-full border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium leading-none text-foreground">
+                {value.length}
+              </span>
+            ) : null}
+            <ChevronDownIcon
+              className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")}
+            />
+          </div>
+        </button>
+      </PopoverTrigger>
 
-      {open && (
-        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border bg-background p-1 shadow-md">
-          {sortedOptions.map((option) => (
-            <label
-              key={option.value}
-              className={cn(
-                "flex cursor-pointer items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground",
-                value.includes(option.value) && "bg-accent"
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={value.includes(option.value)}
-                onChange={(e) => handleCheckedChange(option.value, e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[var(--radix-popover-trigger-width)] min-w-[var(--radix-popover-trigger-width)] overflow-hidden rounded-2xl border border-border bg-popover p-0 text-popover-foreground shadow-lg"
+      >
+        {searchable ? (
+          <div className="border-b border-border bg-muted/30 p-1.5">
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                type="text"
+                value={filterValue}
+                onChange={(event) => setFilterValue(event.target.value)}
+                placeholder={searchPlaceholder}
+                autoComplete="off"
+                className="h-8 rounded-xl border-border bg-background pr-3 pl-9 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/20"
+                onKeyDown={(event) => event.stopPropagation()}
               />
-              <span className="flex-1 truncate">{option.label}</span>
-              {!value.includes(option.value) && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setOpen(false)
-                  }}
-                  className=" ml-auto text-muted-foreground hover:text-foreground"
+            </div>
+          </div>
+        ) : null}
+
+        <div
+          className="overflow-y-auto overscroll-contain p-1"
+          style={{ maxHeight: viewportMaxHeight }}
+          onWheelCapture={(event) => event.stopPropagation()}
+          onTouchMoveCapture={(event) => event.stopPropagation()}
+        >
+          {sortedOptions.length > 0 ? (
+            sortedOptions.map((option) => (
+              <label
+                key={option.value}
+                className={cn(
+                  "relative flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 pr-8 text-sm transition-colors hover:bg-accent hover:text-accent-foreground",
+                  value.includes(option.value) && "bg-accent/60 font-medium"
+                )}
+              >
+                <input
+                  type="checkbox"
+                  checked={value.includes(option.value)}
+                  onChange={(e) => handleCheckedChange(option.value, e.target.checked)}
+                  className="size-4 rounded border-border text-primary focus:ring-primary"
                 />
-              )}
-            </label>
-          ))}
+                <span className="flex-1 truncate">{option.label}</span>
+                {value.includes(option.value) ? (
+                  <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+                    <CheckIcon className="size-4" />
+                  </span>
+                ) : null}
+              </label>
+            ))
+          ) : (
+            <div className="px-3 py-4 text-sm text-muted-foreground">Sin resultados</div>
+          )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   )
 }
