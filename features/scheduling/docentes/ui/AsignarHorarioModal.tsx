@@ -1,13 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon } from "lucide-react"
+import type { DateRange } from "react-day-picker"
 
 import { useAsignarHorarioStore } from "../application/asignarHorarioStore"
 import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { DatePickerRange } from "@/components/ui/date-picker-range"
 import {
   Select,
   SelectContent,
@@ -15,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import {
   Dialog,
   DialogContent,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import {
   Table,
   TableBody,
@@ -57,45 +56,6 @@ function formatTimeDiff(start: string, end: string): string {
   return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`
 }
 
-function DatePickerRange() {
-  const { dateRange, setDateRange } = useAsignarHorarioStore()
-
-  const displayText = dateRange?.from
-    ? dateRange.to
-      ? `${format(dateRange.from, "dd MMM", { locale: es })} - ${format(dateRange.to, "dd MMM yyyy", { locale: es })}`
-      : format(dateRange.from, "dd MMM yyyy", { locale: es })
-    : "Seleccionar rango"
-
-  const handleSelect = (range: { from?: Date; to?: Date | undefined } | undefined) => {
-    // Only set if we have at least the start date
-    if (range?.from) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setDateRange(range as any)
-    }
-  }
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" className="h-9 w-full justify-start text-left font-normal">
-          <CalendarIcon className="mr-2 size-4" />
-          {displayText}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="range"
-          defaultMonth={dateRange?.from}
-          selected={dateRange}
-          onSelect={handleSelect}
-          numberOfMonths={2}
-          locale={es}
-        />
-      </PopoverContent>
-    </Popover>
-  )
-}
-
 interface AsignarHorarioModalProps {
   onAssigned?: () => void | Promise<void>
 }
@@ -124,18 +84,27 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
     setSelectedFacultades,
     setSelectedBloques,
     setSelectedTipos,
+    setDateRange,
     fetchAmbientes,
   } = useAsignarHorarioStore()
 
   const [submitting, setSubmitting] = useState(false)
+  const [facultadSearch, setFacultadSearch] = useState("")
   const [allBloques, setAllBloques] = useState<
     Array<{ id: number; nombre: string; codigo?: string; facultadId?: number }>
   >([])
+
+  const filteredFacultades = facultades.filter((facultad) =>
+    facultadSearch.trim()
+      ? facultad.nombre.toLowerCase().includes(facultadSearch.trim().toLowerCase())
+      : true
+  )
 
   // Fetch bloques when facultades change - agregar a la lista existente
   useEffect(() => {
     if (selectedFacultades.length === 0) {
       setAllBloques([])
+      setSelectedBloques([])
       return
     }
 
@@ -256,16 +225,15 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
       <DialogContent className="max-h-[90vh] flex flex-col p-0 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
         <DialogHeader className="px-4 pt-4 pb-2 shrink-0 sm:px-6 sm:pt-6 sm:pb-2">
-          <DialogTitle className="text-lg sm:text-xl">Asignar Horario</DialogTitle>
-          <DialogDescription className="text-sm">
-            {selectedGroup && <span className="font-medium">{selectedGroup.materia}</span>}
-            {selectedGroup && (
-              <>
-                {" "}
-                · Grupo {selectedGroup.grupo} · {selectedGroup.carrerasLabel}
-              </>
-            )}
-          </DialogDescription>
+          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
+            <DialogTitle className="shrink-0 text-base font-semibold text-foreground sm:text-lg">
+              Asignar Horario
+            </DialogTitle>
+            <DialogDescription className="min-w-0 text-xs text-muted-foreground sm:text-sm">
+              {selectedGroup && <span className="font-medium">{selectedGroup.materia}</span>}
+              {selectedGroup && <> · Grupo {selectedGroup.grupo}</>}
+            </DialogDescription>
+          </div>
         </DialogHeader>
 
         <div className="flex flex-col overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
@@ -277,7 +245,15 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
               <div className="col-span-2">
                 <Label className="text-xs">Rango de fechas</Label>
                 <div className="mt-1">
-                  <DatePickerRange />
+                  <DatePickerRange
+                    value={dateRange as DateRange | undefined}
+                    onChange={(range) => {
+                      if (range?.from) {
+                        setDateRange(range)
+                      }
+                    }}
+                    locale={es}
+                  />
                 </div>
               </div>
 
@@ -323,26 +299,40 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
           </section>
 
           {/* Block 2: Filters + Table */}
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
             {/* Left: Filters */}
-            <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-4 sm:space-y-5">
               {/* Facultad */}
               <div>
-                <Label className="text-xs font-medium">Facultad *</Label>
-                <MultiSelect
-                  options={facultades.map((f) => ({
-                    value: f.id,
-                    label: f.nombre,
-                  }))}
-                  value={selectedFacultades.map((f) => f.id)}
-                  onValueChange={(ids) => {
-                    const selected = facultades.filter((f) => ids.includes(f.id))
-                    setSelectedFacultades(selected)
-                    // Bloques se recargan automáticamente por el useEffect
+                <Label className="text-xs font-medium">Facultad</Label>
+                <Select
+                  value={selectedFacultades[0]?.id?.toString() ?? "none"}
+                  onValueChange={(value) => {
+                    if (value === "none") {
+                      setSelectedFacultades([])
+                      setSelectedBloques([])
+                      setAllBloques([])
+                      return
+                    }
+
+                    const selected = facultades.find((f) => f.id.toString() === value)
+                    setSelectedBloques([])
+                    setAllBloques([])
+                    setSelectedFacultades(selected ? [selected] : [])
                   }}
-                  placeholder="Todas las facultades *"
-                  className="mt-1"
-                />
+                >
+                  <SelectTrigger className="mt-1 h-9 w-full">
+                    <SelectValue placeholder="Seleccione facultad" />
+                  </SelectTrigger>
+                  <SearchableSelectContent onFilterChange={setFacultadSearch}>
+                    <SelectItem value="none">Seleccione facultad</SelectItem>
+                    {filteredFacultades.map((facultad) => (
+                      <SelectItem key={facultad.id} value={facultad.id.toString()}>
+                        {facultad.nombre}
+                      </SelectItem>
+                    ))}
+                  </SearchableSelectContent>
+                </Select>
               </div>
 
               {/* Bloque */}
@@ -368,6 +358,8 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
                         ? "Cargando bloques..."
                         : "Todos los bloques"
                   }
+                  searchable
+                  maxVisibleItems={3}
                   className="mt-1"
                   disabled={selectedFacultades.length === 0}
                 />
@@ -387,6 +379,8 @@ export function AsignarHorarioModal({ onAssigned }: AsignarHorarioModalProps) {
                     setSelectedTipos(selected)
                   }}
                   placeholder="Todos los tipos"
+                  searchable
+                  maxVisibleItems={3}
                   className="mt-1"
                 />
               </div>
