@@ -1,6 +1,4 @@
-import { useMemo, useState } from "react"
-import { ChevronDown, ChevronUp } from "lucide-react"
-
+import { useEffect, useMemo, useState } from "react"
 import type { NormalizedSchedule, TimeRange, TimeRow } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
 import { ScheduleBlock } from "./ScheduleBlock"
@@ -15,8 +13,19 @@ const DAYS = [
 ] as const
 
 const PX_PER_MINUTE = 0.95
-const EXPANDED_STACK_ITEM_HEIGHT = 78
+const DEFAULT_OVERLAP_ROTATION_INTERVAL_MS = 5000
+const SINGLE_SCHEDULE_MIN_HEIGHT = 88
+const COLLAPSED_STACK_MIN_HEIGHT = 52
+const COLLAPSED_STACK_FAKE_LAYER_COUNT = 2
+const COLLAPSED_STACK_RIGHT_OFFSET = 7
+const COLLAPSED_STACK_TOP_OFFSET = 4
+const COLLAPSED_STACK_BOTTOM_OFFSET = 0
+const COLLAPSED_STACK_FRONT_TOP = 16
+const COLLAPSED_STACK_FRONT_RIGHT = 12
+const COLLAPSED_STACK_FRONT_BOTTOM = 0
+const EXPANDED_STACK_ITEM_HEIGHT = 88
 const EXPANDED_STACK_GAP = 8
+const EXPANDED_STACK_VERTICAL_PADDING = 8
 
 interface OverlapCluster {
   id: string
@@ -24,6 +33,20 @@ interface OverlapCluster {
   startMin: number
   endMin: number
   schedules: NormalizedSchedule[]
+}
+
+interface TimelineBand {
+  id: string
+  startMin: number
+  endMin: number
+  density: number
+}
+
+interface TimelineSegment {
+  startMin: number
+  endMin: number
+  density: number
+  height: number
 }
 
 function buildOverlapClusters(schedules: NormalizedSchedule[]): OverlapCluster[] {
@@ -87,59 +110,327 @@ function buildOverlapClusters(schedules: NormalizedSchedule[]): OverlapCluster[]
   return clusters.sort((a, b) => a.startMin - b.startMin || a.day - b.day)
 }
 
+function getCollapsedClusterHeight(cluster: OverlapCluster) {
+  return Math.max((cluster.endMin - cluster.startMin) * PX_PER_MINUTE, COLLAPSED_STACK_MIN_HEIGHT)
+}
+
+function getExpandedClusterHeight(cluster: OverlapCluster) {
+  return (
+    EXPANDED_STACK_VERTICAL_PADDING * 2 +
+    cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
+    Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
+  )
+}
+
+function getSingleScheduleHeight(schedule: NormalizedSchedule) {
+  return Math.max(schedule.durationMin * PX_PER_MINUTE, SINGLE_SCHEDULE_MIN_HEIGHT)
+}
+
+interface SubSegment {
+  segment: TimelineSegment
+  scheduleStartMin: number
+  scheduleEndMin: number
+  overlapRatio: number
+  relativeTop: number
+}
+
+function getSubSegmentsForSchedule(
+  schedule: NormalizedSchedule,
+  segments: TimelineSegment[]
+): SubSegment[] {
+  const subSegments: SubSegment[] = []
+
+  segments.forEach((segment) => {
+    const segStart = segment.startMin
+    const segEnd = segment.endMin
+    const schedStart = schedule.startMin
+    const schedEnd = schedule.endMin
+
+    const overlapStart = Math.max(segStart, schedStart)
+    const overlapEnd = Math.min(segEnd, schedEnd)
+
+    if (overlapEnd <= overlapStart) {
+      return
+    }
+
+    const overlapDuration = overlapEnd - overlapStart
+    const segmentDuration = segEnd - segStart
+
+    const overlapRatio = segmentDuration > 0 ? overlapDuration / segmentDuration : 0
+
+    const relativeTop = schedStart - segStart
+    const relativeBottom = segEnd - schedEnd
+
+    subSegments.push({
+      segment,
+      scheduleStartMin: overlapStart,
+      scheduleEndMin: overlapEnd,
+      overlapRatio: Math.min(overlapRatio, 1),
+      relativeTop: Math.max(relativeTop, 0),
+    })
+  })
+
+  return subSegments
+}
+
+function buildTimelineBands(
+  clusters: OverlapCluster[],
+  expandedClusters: Record<string, boolean>,
+  schedules: NormalizedSchedule[],
+  clusteredScheduleIds: Set<string>
+): TimelineBand[] {
+  const clusterBands = clusters.map((cluster) => {
+    const duration = Math.max(cluster.endMin - cluster.startMin, 1)
+    const requiredHeight = expandedClusters[cluster.id]
+      ? getExpandedClusterHeight(cluster)
+      : getCollapsedClusterHeight(cluster)
+
+    return {
+      id: cluster.id,
+      startMin: cluster.startMin,
+      endMin: cluster.endMin,
+      density: Math.max(requiredHeight / duration, PX_PER_MINUTE),
+    }
+  })
+
+  const singleScheduleBands = schedules
+    .filter((schedule) => !clusteredScheduleIds.has(schedule.scheduleId))
+    .map((schedule) => ({
+      id: schedule.scheduleId,
+      startMin: schedule.startMin,
+      endMin: schedule.endMin,
+      density: Math.max(
+        getSingleScheduleHeight(schedule) / Math.max(schedule.durationMin, 1),
+        PX_PER_MINUTE
+      ),
+    }))
+
+  return [...clusterBands, ...singleScheduleBands]
+}
+
+function buildTimelineSegments(bands: TimelineBand[], timeRange: TimeRange): TimelineSegment[] {
+  const boundaries = Array.from(
+    new Set([
+      timeRange.startMin,
+      timeRange.endMin,
+      ...bands.flatMap((band) => [band.startMin, band.endMin]),
+    ])
+  ).sort((a, b) => a - b)
+
+  if (boundaries.length < 2) {
+    return []
+  }
+
+  const segments: TimelineSegment[] = []
+
+  for (let index = 0; index < boundaries.length - 1; index += 1) {
+    const startMin = boundaries[index]
+    const endMin = boundaries[index + 1]
+    const duration = endMin - startMin
+
+    if (duration <= 0) continue
+
+    const activeBands = bands.filter((band) => band.startMin < endMin && band.endMin > startMin)
+    const density = activeBands.reduce(
+      (maxDensity, band) => Math.max(maxDensity, band.density),
+      PX_PER_MINUTE
+    )
+
+    segments.push({
+      startMin,
+      endMin,
+      density,
+      height: duration * density,
+    })
+  }
+
+  return segments
+}
+
 interface WeeklyScheduleGridProps {
   schedules: NormalizedSchedule[]
   rows: TimeRow[]
   timeRange: TimeRange
+  overlapRotationIntervalMs?: number
 }
 
-export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklyScheduleGridProps) {
+interface ScheduleSegmentRendererProps {
+  schedule: NormalizedSchedule
+  segments: TimelineSegment[]
+  isCompact?: boolean
+  isExpanded?: boolean
+  showTail?: boolean
+  rotationTick?: number
+}
+
+function ScheduleSegmentRenderer({
+  schedule,
+  segments,
+  isCompact = false,
+  isExpanded = false,
+  showTail = false,
+  rotationTick = 0,
+}: ScheduleSegmentRendererProps) {
+  const subSegments = useMemo(
+    () => getSubSegmentsForSchedule(schedule, segments),
+    [schedule, segments]
+  )
+
+  const token = resolveGroupColorToken(schedule.colorIndex)
+
+  if (subSegments.length === 0) {
+    return null
+  }
+
+  const totalSegmentHeight = subSegments.reduce((acc, sub) => acc + sub.segment.height, 0)
+
+  return (
+    <div
+      className="relative flex w-full items-center justify-center p-1"
+      style={{ height: isCompact || !isExpanded ? `${totalSegmentHeight}px` : undefined }}
+    >
+      <div
+        key={`${schedule.scheduleId}-${rotationTick}`}
+        className={
+          isExpanded
+            ? "max-w-full overflow-hidden rounded-lg"
+            : isCompact
+              ? "animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 w-full max-w-full overflow-hidden rounded-lg duration-500"
+              : "w-full overflow-hidden rounded-lg"
+        }
+        style={isExpanded ? { height: "88px" } : undefined}
+      >
+        <ScheduleBlock schedule={schedule} compact={isCompact} className="h-full" />
+      </div>
+    </div>
+  )
+}
+
+export function WeeklyScheduleGrid({
+  schedules,
+  rows,
+  timeRange,
+  overlapRotationIntervalMs = DEFAULT_OVERLAP_ROTATION_INTERVAL_MS,
+}: WeeklyScheduleGridProps) {
   const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({})
+  const [hoveredClusters, setHoveredClusters] = useState<Record<string, boolean>>({})
+  const [visibleScheduleIndexByCluster, setVisibleScheduleIndexByCluster] = useState<
+    Record<string, number>
+  >({})
+  const [rotationTickByCluster, setRotationTickByCluster] = useState<Record<string, number>>({})
 
   const overlapClusters = useMemo(() => buildOverlapClusters(schedules), [schedules])
   const clusteredScheduleIds = useMemo(
-    () => new Set(overlapClusters.flatMap((cluster) => cluster.schedules.map((schedule) => schedule.scheduleId))),
+    () =>
+      new Set(
+        overlapClusters.flatMap((cluster) =>
+          cluster.schedules.map((schedule) => schedule.scheduleId)
+        )
+      ),
     [overlapClusters]
   )
 
-  const extraOffsetForMinute = (minute: number) => {
-    return overlapClusters.reduce((acc, cluster) => {
-      if (!expandedClusters[cluster.id]) return acc
-      if (cluster.endMin > minute) return acc
+  const timelineBands = useMemo(
+    () => buildTimelineBands(overlapClusters, expandedClusters, schedules, clusteredScheduleIds),
+    [clusteredScheduleIds, expandedClusters, overlapClusters, schedules]
+  )
 
-      const extraHeight =
-        cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
-        Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
+  const timelineSegments = useMemo(
+    () => buildTimelineSegments(timelineBands, timeRange),
+    [timeRange, timelineBands]
+  )
 
-      return acc + extraHeight
+  useEffect(() => {
+    if (overlapRotationIntervalMs <= 0 || overlapClusters.length === 0) {
+      return undefined
+    }
+
+    const timer = window.setInterval(() => {
+      setVisibleScheduleIndexByCluster((current) => {
+        let changed = false
+        const next = { ...current }
+        const rotatedClusterIds: string[] = []
+
+        overlapClusters.forEach((cluster) => {
+          if (cluster.schedules.length <= 1) return
+
+          if (hoveredClusters[cluster.id]) {
+            return
+          }
+
+          next[cluster.id] = ((current[cluster.id] ?? 0) + 1) % cluster.schedules.length
+          changed = true
+          rotatedClusterIds.push(cluster.id)
+        })
+
+        if (rotatedClusterIds.length > 0) {
+          setRotationTickByCluster((currentTicks) => {
+            const nextTicks = { ...currentTicks }
+            rotatedClusterIds.forEach((clusterId) => {
+              nextTicks[clusterId] = (currentTicks[clusterId] ?? 0) + 1
+            })
+            return nextTicks
+          })
+        }
+
+        return changed ? next : current
+      })
+    }, overlapRotationIntervalMs)
+
+    return () => window.clearInterval(timer)
+  }, [hoveredClusters, overlapClusters, overlapRotationIntervalMs])
+
+  const getMinutePosition = (minute: number) => {
+    const basePosition = (minute - timeRange.startMin) * PX_PER_MINUTE
+
+    const adaptiveOffset = timelineSegments.reduce((offset, segment) => {
+      if (minute >= segment.endMin) {
+        return offset + segment.height - (segment.endMin - segment.startMin) * PX_PER_MINUTE
+      }
+
+      if (minute > segment.startMin) {
+        return (
+          offset +
+          (minute - segment.startMin) * segment.density -
+          (minute - segment.startMin) * PX_PER_MINUTE
+        )
+      }
+
+      return offset
     }, 0)
+
+    return basePosition + adaptiveOffset
   }
 
-  const totalMinutes = Math.max(timeRange.endMin - timeRange.startMin, 60)
-  const expandedExtraHeight = overlapClusters.reduce((acc, cluster) => {
-    if (!expandedClusters[cluster.id]) return acc
-    return (
-      acc +
-      cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
-      Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
-    )
-  }, 0)
-  const contentHeight = Math.max(totalMinutes * PX_PER_MINUTE + expandedExtraHeight, 220)
+  const contentHeight = Math.max(
+    timelineSegments.reduce((acc, segment) => acc + segment.height, 0),
+    220
+  )
 
   const schedulesByDay = DAYS.reduce<Record<number, NormalizedSchedule[]>>((acc, day) => {
     acc[day.value] = schedules.filter((schedule) => schedule.day === day.value)
     return acc
   }, {})
 
-  const clustersByDay = DAYS.reduce<Record<number, OverlapCluster[]>>((acc, day) => {
-    acc[day.value] = overlapClusters.filter((cluster) => cluster.day === day.value)
-    return acc
-  }, {} as Record<number, OverlapCluster[]>)
+  const clustersByDay = DAYS.reduce<Record<number, OverlapCluster[]>>(
+    (acc, day) => {
+      acc[day.value] = overlapClusters.filter((cluster) => cluster.day === day.value)
+      return acc
+    },
+    {} as Record<number, OverlapCluster[]>
+  )
 
   const toggleCluster = (clusterId: string) => {
     setExpandedClusters((current) => ({
       ...current,
       [clusterId]: !current[clusterId],
+    }))
+  }
+
+  const setClusterHovered = (clusterId: string, isHovered: boolean) => {
+    setHoveredClusters((current) => ({
+      ...current,
+      [clusterId]: isHovered,
     }))
   }
 
@@ -166,12 +457,10 @@ export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklySchedul
               {rows.map((row) => (
                 <div
                   key={row.key}
-                  className="absolute inset-x-0 border-t-2 border-border/70"
-                  style={{
-                    top: `${(row.startMin - timeRange.startMin) * PX_PER_MINUTE + extraOffsetForMinute(row.startMin)}px`,
-                  }}
+                  className="absolute inset-x-0 border-t border-border/70"
+                  style={{ top: `${getMinutePosition(row.startMin)}px` }}
                 >
-                  <span className="absolute -top-2 left-1.5 rounded-md border border-border/45 bg-background/70 px-1.5 py-0.5 text-[10px] font-medium text-foreground/80 shadow-sm backdrop-blur-[0.5px]">
+                  <span className="absolute -top-2 left-1.5 rounded-md border border-border/45 bg-background/78 px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 shadow-sm backdrop-blur-[0.5px]">
                     {row.label}
                   </span>
                 </div>
@@ -187,58 +476,63 @@ export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklySchedul
                 >
                   {clustersByDay[day.value].map((cluster) => {
                     const isExpanded = Boolean(expandedClusters[cluster.id])
-                    const top =
-                      (cluster.startMin - timeRange.startMin) * PX_PER_MINUTE +
-                      extraOffsetForMinute(cluster.startMin)
-                    const baseHeight = Math.max(
-                      (cluster.endMin - cluster.startMin) * PX_PER_MINUTE,
-                      44
+                    const top = getMinutePosition(cluster.startMin)
+                    const slotHeight = Math.max(
+                      getMinutePosition(cluster.endMin) - top,
+                      isExpanded
+                        ? getExpandedClusterHeight(cluster)
+                        : getCollapsedClusterHeight(cluster)
                     )
-                    const extraHeight = isExpanded
-                      ? cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
-                        Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
-                      : 0
-                    const colors = cluster.schedules
-                      .map((item) => item.colorIndex)
-                      .filter((value, index, array) => array.indexOf(value) === index)
-                    const colorTokens = colors.map((colorIndex) => resolveGroupColorToken(colorIndex))
+                    const visibleScheduleIndex =
+                      (visibleScheduleIndexByCluster[cluster.id] ?? 0) % cluster.schedules.length
+                    const visibleSchedule = cluster.schedules[visibleScheduleIndex]
+                    const rotationTick = rotationTickByCluster[cluster.id] ?? 0
+                    const visibleScheduleToken = resolveGroupColorToken(visibleSchedule.colorIndex)
+                    const stackPreviewTokens = Array.from(
+                      {
+                        length: Math.min(
+                          cluster.schedules.length - 1,
+                          COLLAPSED_STACK_FAKE_LAYER_COUNT
+                        ),
+                      },
+                      (_, index) => {
+                        const previewSchedule =
+                          cluster.schedules[
+                            (visibleScheduleIndex + index + 1) % cluster.schedules.length
+                          ]
+
+                        return resolveGroupColorToken(previewSchedule.colorIndex)
+                      }
+                    )
 
                     return (
                       <div
                         key={cluster.id}
-                        className="absolute inset-x-0 z-10 px-1"
-                        style={{
-                          top: `${top}px`,
-                          height: `${baseHeight + extraHeight}px`,
-                        }}
+                        className="absolute inset-0 z-10 p-1"
+                        style={{ top: `${top}px`, height: `${slotHeight}px` }}
                       >
                         {isExpanded ? (
-                          <div className="relative overflow-hidden rounded-xl border border-border/60 bg-background/92 shadow-sm">
-                            <div className="flex h-1.5 w-full overflow-hidden">
-                              {colorTokens.map((token, index) => (
-                                <span
-                                  key={`${cluster.id}-expanded-color-${index + 1}`}
-                                  className="h-full flex-1"
-                                  style={{ backgroundColor: token.badgeStyle.backgroundColor }}
-                                />
-                              ))}
+                          <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl">
+                            <div className="absolute right-2 top-1.5 z-30">
+                              <button
+                                type="button"
+                                onClick={() => toggleCluster(cluster.id)}
+                                className="rounded-full bg-background/35 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/50 backdrop-blur-sm transition hover:bg-background/55 hover:text-foreground/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                aria-label={`Colapsar ${cluster.schedules.length} horarios superpuestos`}
+                              >
+                                Cerrar
+                              </button>
                             </div>
-                            <button
-                              type="button"
-                              onClick={() => toggleCluster(cluster.id)}
-                              className="absolute top-2 right-2 z-10 inline-flex size-6 items-center justify-center rounded-md border border-border/35 bg-background/55 text-foreground/55 shadow-sm transition hover:bg-background/80 hover:text-foreground/75"
-                              aria-label="Colapsar solapamiento"
-                            >
-                              <ChevronUp className="size-3.5" />
-                            </button>
-                            <div className="space-y-2 p-2 pt-2">
+
+                            <div className="flex w-full flex-col items-center justify-center gap-2">
                               {cluster.schedules.map((schedule) => (
-                                <div
+                                <ScheduleSegmentRenderer
                                   key={schedule.scheduleId}
-                                  className="h-[78px] overflow-hidden"
-                                >
-                                  <ScheduleBlock schedule={schedule} />
-                                </div>
+                                  schedule={schedule}
+                                  segments={timelineSegments}
+                                  isCompact={false}
+                                  isExpanded={true}
+                                />
                               ))}
                             </div>
                           </div>
@@ -246,22 +540,37 @@ export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklySchedul
                           <button
                             type="button"
                             onClick={() => toggleCluster(cluster.id)}
-                            className="relative flex h-full w-full overflow-hidden rounded-xl border border-border/60 bg-background/92 text-left shadow-sm transition hover:scale-[1.01] hover:border-primary/50"
+                            onMouseEnter={() => setClusterHovered(cluster.id, true)}
+                            onMouseLeave={() => setClusterHovered(cluster.id, false)}
+                            className="relative flex w-full items-center justify-center overflow-hidden rounded-lg p-1 text-left transition duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                            aria-label={`Expandir ${cluster.schedules.length} horarios superpuestos`}
                           >
-                            <div className="absolute inset-x-0 top-0 flex h-1.5 overflow-hidden">
-                              {colorTokens.map((token, index) => (
-                                <span
-                                  key={`${cluster.id}-collapsed-color-${index + 1}`}
-                                  className="h-full flex-1"
-                                  style={{ backgroundColor: token.badgeStyle.backgroundColor }}
-                                />
-                              ))}
+                            {stackPreviewTokens.map((token, index) => (
+                              <div
+                                key={`${cluster.id}-fake-layer-${index + 1}`}
+                                className="pointer-events-none absolute rounded-lg border shadow-sm"
+                                style={{
+                                  ...token.blockStyle,
+                                  opacity: 0.6 - index * 0.12,
+                                  top: `${index * COLLAPSED_STACK_TOP_OFFSET + 4}px`,
+                                  right: `${(index + 1) * COLLAPSED_STACK_RIGHT_OFFSET + 4}px`,
+                                  bottom: "4px",
+                                  left: "4px",
+                                }}
+                              />
+                            ))}
+
+                            <div className="pointer-events-none absolute right-2 top-1.5 z-20 rounded-full bg-background/30 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/45 backdrop-blur-sm">
+                              Ver
                             </div>
-                            <div className="flex h-full w-full items-center justify-between px-3 py-2 pt-3">
-                              <span className="text-[11px] font-semibold text-foreground">
-                                {cluster.schedules.length} horarios superpuestos
-                              </span>
-                              <ChevronDown className="size-3.5 shrink-0 text-foreground/70" />
+
+                            <div className="relative z-10 w-full">
+                              <ScheduleSegmentRenderer
+                                schedule={visibleSchedule}
+                                segments={timelineSegments}
+                                isCompact={true}
+                                rotationTick={rotationTick}
+                              />
                             </div>
                           </button>
                         )}
@@ -274,11 +583,10 @@ export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklySchedul
                       return null
                     }
 
-                    const top = (schedule.startMin - timeRange.startMin) * PX_PER_MINUTE
-                    const adjustedTop = top + extraOffsetForMinute(schedule.startMin)
-                    const height = Math.max(
-                      (schedule.endMin - schedule.startMin) * PX_PER_MINUTE,
-                      14
+                    const adjustedTop = getMinutePosition(schedule.startMin)
+                    const slotHeight = Math.max(
+                      getMinutePosition(schedule.endMin) - adjustedTop,
+                      getSingleScheduleHeight(schedule)
                     )
                     const width = 100 / schedule.laneCount
                     const left = schedule.laneIndex * width
@@ -286,15 +594,19 @@ export function WeeklyScheduleGrid({ schedules, rows, timeRange }: WeeklySchedul
                     return (
                       <div
                         key={schedule.scheduleId}
-                        className="absolute z-10 overflow-hidden p-0.5"
+                        className="absolute z-10 overflow-visible"
                         style={{
                           top: `${adjustedTop}px`,
-                          height: `${Math.max(height, 14)}px`,
                           left: `${left}%`,
                           width: `${width}%`,
                         }}
                       >
-                        <ScheduleBlock schedule={schedule} />
+                        <ScheduleSegmentRenderer
+                          schedule={schedule}
+                          segments={timelineSegments}
+                          isCompact={false}
+                          isExpanded={false}
+                        />
                       </div>
                     )
                   })}

@@ -19,6 +19,7 @@ interface TeacherSchedulePageProps {
   groups: GroupSummary[]
   schedules: NormalizedSchedule[]
   period: number
+  overlapRotationIntervalMs?: number
   rows: TimeRow[]
   timeRange: TimeRange
   loading: boolean
@@ -36,6 +37,7 @@ export function TeacherSchedulePage({
   groups,
   schedules,
   period,
+  overlapRotationIntervalMs,
   rows,
   timeRange,
   loading,
@@ -141,7 +143,12 @@ export function TeacherSchedulePage({
             <div className="h-[420px] animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
             <div className="min-h-0 flex-1">
-              <WeeklyScheduleGrid schedules={schedules} rows={rows} timeRange={timeRange} />
+              <WeeklyScheduleGrid
+                schedules={schedules}
+                rows={rows}
+                timeRange={timeRange}
+                overlapRotationIntervalMs={overlapRotationIntervalMs}
+              />
             </div>
           ) : (
             <section className="rounded-3xl border border-border bg-muted/40 p-8 text-center">
