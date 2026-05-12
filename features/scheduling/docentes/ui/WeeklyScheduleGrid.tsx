@@ -539,7 +539,7 @@ export function WeeklyScheduleGrid({
                           style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
                         >
                           {isExpanded ? (
-                            <div className="relative h-full w-full rounded-2xl border border-border/60 bg-background/45 p-2">
+                            <div className="relative h-full w-full rounded-2xl border-2 border-border/85 bg-background/45 p-2 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]">
                               <div className="absolute inset-x-2 top-2 z-30 flex items-center justify-between gap-2">
                                 <div className="text-[10px] font-medium text-foreground/70">
                                   {cluster.schedules.length} horarios
