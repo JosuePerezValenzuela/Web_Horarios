@@ -6,11 +6,34 @@ import { resolveGroupColorToken } from "./groupColorTokens"
 interface ScheduleBlockProps {
   schedule: NormalizedSchedule
   compact?: boolean
+  mode?: "full" | "peek"
   className?: string
 }
 
-export function ScheduleBlock({ schedule, compact = false, className }: ScheduleBlockProps) {
+export function ScheduleBlock({
+  schedule,
+  compact = false,
+  mode = "full",
+  className,
+}: ScheduleBlockProps) {
   const token = resolveGroupColorToken(schedule.colorIndex)
+
+  if (mode === "peek") {
+    return (
+      <article
+        className={cn(
+          "flex h-full w-full items-center overflow-hidden rounded-lg border px-3 py-2 shadow-sm backdrop-blur-[1px]",
+          "focus-within:ring-2 focus-within:ring-ring",
+          className
+        )}
+        style={token.blockStyle}
+      >
+        <p className="truncate text-[10px] font-semibold leading-none text-foreground/95">
+          {schedule.materia}
+        </p>
+      </article>
+    )
+  }
 
   return (
     <article
