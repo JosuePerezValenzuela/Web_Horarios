@@ -535,7 +535,7 @@ export function WeeklyScheduleGrid({
                         style={{ top: `${slotTop}px`, height: `${slotHeight}px` }}
                       >
                         <div
-                          className="absolute inset-x-0 overflow-visible"
+                          className="absolute inset-x-0 overflow-visible p-1"
                           style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
                         >
                           {isExpanded ? (
@@ -668,7 +668,7 @@ export function WeeklyScheduleGrid({
                         }}
                       >
                         <div
-                          className="absolute inset-x-1 overflow-visible"
+                          className="absolute inset-x-1 overflow-visible p-1"
                           style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
                         >
                           <ScheduleBlock
