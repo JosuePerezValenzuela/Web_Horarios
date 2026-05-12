@@ -136,6 +136,14 @@ function getSingleScheduleHeight(schedule: NormalizedSchedule) {
   return Math.max(schedule.durationMin * PX_PER_MINUTE, SINGLE_SCHEDULE_MIN_HEIGHT)
 }
 
+function getTemporalMidpointPosition(
+  startMin: number,
+  endMin: number,
+  getMinutePosition: (minute: number) => number
+) {
+  return getMinutePosition(startMin + (endMin - startMin) / 2)
+}
+
 interface SubSegment {
   segment: TimelineSegment
   scheduleStartMin: number
@@ -480,13 +488,24 @@ export function WeeklyScheduleGrid({
                 >
                   {clustersByDay[day.value].map((cluster) => {
                     const isExpanded = Boolean(expandedClusters[cluster.id])
-                    const top = getMinutePosition(cluster.startMin)
-                    const slotHeight = Math.max(
-                      getMinutePosition(cluster.endMin) - top,
-                      isExpanded
-                        ? getExpandedClusterHeight(cluster)
-                        : getCollapsedClusterHeight(cluster)
+                    const temporalTop = getMinutePosition(cluster.startMin)
+                    const temporalBottom = getMinutePosition(cluster.endMin)
+                    const temporalSpanHeight = temporalBottom - temporalTop
+                    const visualHeight = isExpanded
+                      ? getExpandedClusterHeight(cluster)
+                      : getCollapsedClusterHeight(cluster)
+                    const shouldCenter = temporalSpanHeight > visualHeight
+                    const temporalMidpoint = getTemporalMidpointPosition(
+                      cluster.startMin,
+                      cluster.endMin,
+                      getMinutePosition
                     )
+                    const visualTop = shouldCenter
+                      ? temporalMidpoint - visualHeight / 2
+                      : temporalTop
+                    const slotTop = Math.min(temporalTop, visualTop)
+                    const slotHeight = Math.max(temporalBottom, visualTop + visualHeight) - slotTop
+                    const visualOffset = visualTop - slotTop
                     const visibleScheduleIndex =
                       (visibleScheduleIndexByCluster[cluster.id] ?? 0) % cluster.schedules.length
                     const visibleSchedule = cluster.schedules[visibleScheduleIndex]
@@ -510,95 +529,100 @@ export function WeeklyScheduleGrid({
                     return (
                       <div
                         key={cluster.id}
-                        className="absolute inset-0 z-10 overflow-visible p-1"
-                        style={{ top: `${top}px`, height: `${slotHeight}px` }}
+                        className="absolute inset-x-1 z-10 overflow-visible"
+                        style={{ top: `${slotTop}px`, height: `${slotHeight}px` }}
                       >
-                        {isExpanded ? (
-                          <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl">
-                            <div className="absolute right-2 top-1.5 z-30">
-                              <button
-                                type="button"
-                                onClick={() => toggleCluster(cluster.id)}
-                                className="rounded-full bg-background/35 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/50 backdrop-blur-sm transition hover:bg-background/55 hover:text-foreground/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                                aria-label={`Colapsar ${cluster.schedules.length} horarios superpuestos`}
-                              >
-                                Cerrar
-                              </button>
-                            </div>
-
-                            <div className="flex w-full flex-col items-center justify-center gap-2">
-                              {cluster.schedules.map((schedule) => (
-                                <ScheduleSegmentRenderer
-                                  key={schedule.scheduleId}
-                                  schedule={schedule}
-                                  segments={timelineSegments}
-                                  isCompact={false}
-                                  isExpanded={true}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => toggleCluster(cluster.id)}
-                            onMouseEnter={() => setClusterHovered(cluster.id, true)}
-                            onMouseLeave={() => setClusterHovered(cluster.id, false)}
-                            className="group relative flex h-full w-full items-start justify-start overflow-visible rounded-lg p-0 text-left transition duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                            aria-label={`Expandir ${cluster.schedules.length} horarios superpuestos`}
-                          >
-                            {stackPreviewSchedules
-                              .slice()
-                              .reverse()
-                              .map((previewSchedule, index) => (
-                                <div
-                                  key={`${cluster.id}-preview-${previewSchedule.scheduleId}`}
-                                  className="pointer-events-none absolute z-0 overflow-hidden rounded-lg shadow-[0_16px_26px_-20px_rgba(15,23,42,0.55)] transition-transform duration-300 group-hover:-translate-y-0.5"
-                                  style={{
-                                    top: `${index * COLLAPSED_STACK_PREVIEW_TOP_OFFSET}px`,
-                                    left: `${(index + 1) * COLLAPSED_STACK_PREVIEW_SIDE_OFFSET}px`,
-                                    right: `${(index + 1) * COLLAPSED_STACK_PREVIEW_SIDE_OFFSET}px`,
-                                    height: `${COLLAPSED_STACK_PREVIEW_HEIGHT}px`,
-                                    opacity: 0.92 - index * 0.18,
-                                    transform: `scale(${1 - index * 0.03})`,
-                                  }}
+                        <div
+                          className="absolute inset-x-0 overflow-visible"
+                          style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
+                        >
+                          {isExpanded ? (
+                            <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl">
+                              <div className="absolute right-2 top-1.5 z-30">
+                                <button
+                                  type="button"
+                                  onClick={() => toggleCluster(cluster.id)}
+                                  className="rounded-full bg-background/35 px-2 py-0.5 text-[9px] font-medium uppercase tracking-wide text-foreground/50 backdrop-blur-sm transition hover:bg-background/55 hover:text-foreground/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                  aria-label={`Colapsar ${cluster.schedules.length} horarios superpuestos`}
                                 >
-                                  <ScheduleBlock
-                                    schedule={previewSchedule}
-                                    mode="peek"
-                                    className="h-full border-border/55 shadow-none"
+                                  Cerrar
+                                </button>
+                              </div>
+
+                              <div className="flex w-full flex-col items-center justify-center gap-2">
+                                {cluster.schedules.map((schedule) => (
+                                  <ScheduleSegmentRenderer
+                                    key={schedule.scheduleId}
+                                    schedule={schedule}
+                                    segments={timelineSegments}
+                                    isCompact={false}
+                                    isExpanded={true}
                                   />
-                                </div>
-                              ))}
-
-                            <div className="pointer-events-none absolute right-2 top-2 z-30 flex items-center gap-1 rounded-full border border-border/20 bg-background/18 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/45 shadow-sm backdrop-blur-[1px]">
-                              <span>
-                                {visibleScheduleIndex + 1}/{cluster.schedules.length}
-                              </span>
-                            </div>
-
-                            <div
-                              className="absolute z-20 overflow-visible rounded-lg"
-                              style={{
-                                top: `${COLLAPSED_STACK_FRONT_TOP_OFFSET}px`,
-                                right: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
-                                left: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
-                                height: `${frontCardHeight}px`,
-                              }}
-                            >
-                              <div
-                                key={`${visibleSchedule.scheduleId}-${rotationTick}`}
-                                className="h-full animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
-                              >
-                                <ScheduleBlock
-                                  schedule={visibleSchedule}
-                                  compact={false}
-                                  className="h-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
-                                />
+                                ))}
                               </div>
                             </div>
-                          </button>
-                        )}
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => toggleCluster(cluster.id)}
+                              onMouseEnter={() => setClusterHovered(cluster.id, true)}
+                              onMouseLeave={() => setClusterHovered(cluster.id, false)}
+                              className="group relative flex h-full w-full items-start justify-start overflow-visible rounded-lg p-0 text-left transition duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                              aria-label={`Expandir ${cluster.schedules.length} horarios superpuestos`}
+                            >
+                              {stackPreviewSchedules
+                                .slice()
+                                .reverse()
+                                .map((previewSchedule, index) => (
+                                  <div
+                                    key={`${cluster.id}-preview-${previewSchedule.scheduleId}`}
+                                    className="pointer-events-none absolute z-0 overflow-hidden rounded-lg shadow-[0_16px_26px_-20px_rgba(15,23,42,0.55)] transition-transform duration-300 group-hover:-translate-y-0.5"
+                                    style={{
+                                      top: `${index * COLLAPSED_STACK_PREVIEW_TOP_OFFSET}px`,
+                                      left: `${(index + 1) * COLLAPSED_STACK_PREVIEW_SIDE_OFFSET}px`,
+                                      right: `${(index + 1) * COLLAPSED_STACK_PREVIEW_SIDE_OFFSET}px`,
+                                      height: `${COLLAPSED_STACK_PREVIEW_HEIGHT}px`,
+                                      opacity: 0.92 - index * 0.18,
+                                      transform: `scale(${1 - index * 0.03})`,
+                                    }}
+                                  >
+                                    <ScheduleBlock
+                                      schedule={previewSchedule}
+                                      mode="peek"
+                                      className="h-full border-border/55 shadow-none"
+                                    />
+                                  </div>
+                                ))}
+
+                              <div className="pointer-events-none absolute right-2 top-2 z-30 flex items-center gap-1 rounded-full border border-border/20 bg-background/18 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-foreground/45 shadow-sm backdrop-blur-[1px]">
+                                <span>
+                                  {visibleScheduleIndex + 1}/{cluster.schedules.length}
+                                </span>
+                              </div>
+
+                              <div
+                                className="absolute z-20 overflow-visible rounded-lg"
+                                style={{
+                                  top: `${COLLAPSED_STACK_FRONT_TOP_OFFSET}px`,
+                                  right: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
+                                  left: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
+                                  height: `${frontCardHeight}px`,
+                                }}
+                              >
+                                <div
+                                  key={`${visibleSchedule.scheduleId}-${rotationTick}`}
+                                  className="h-full animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
+                                >
+                                  <ScheduleBlock
+                                    schedule={visibleSchedule}
+                                    compact={false}
+                                    className="h-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+                                  />
+                                </div>
+                              </div>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )
                   })}
@@ -609,6 +633,21 @@ export function WeeklyScheduleGrid({
                     }
 
                     const adjustedTop = getMinutePosition(schedule.startMin)
+                    const temporalBottom = getMinutePosition(schedule.endMin)
+                    const temporalSpanHeight = temporalBottom - adjustedTop
+                    const visualHeight = getSingleScheduleHeight(schedule)
+                    const shouldCenter = temporalSpanHeight > visualHeight
+                    const temporalMidpoint = getTemporalMidpointPosition(
+                      schedule.startMin,
+                      schedule.endMin,
+                      getMinutePosition
+                    )
+                    const visualTop = shouldCenter
+                      ? temporalMidpoint - visualHeight / 2
+                      : adjustedTop
+                    const slotTop = Math.min(adjustedTop, visualTop)
+                    const slotHeight = Math.max(temporalBottom, visualTop + visualHeight) - slotTop
+                    const visualOffset = visualTop - slotTop
                     const width = 100 / schedule.laneCount
                     const left = schedule.laneIndex * width
 
@@ -617,17 +656,22 @@ export function WeeklyScheduleGrid({
                         key={schedule.scheduleId}
                         className="absolute z-10 overflow-visible"
                         style={{
-                          top: `${adjustedTop}px`,
+                          top: `${slotTop}px`,
                           left: `${left}%`,
                           width: `${width}%`,
+                          height: `${slotHeight}px`,
                         }}
                       >
-                        <ScheduleSegmentRenderer
-                          schedule={schedule}
-                          segments={timelineSegments}
-                          isCompact={false}
-                          isExpanded={false}
-                        />
+                        <div
+                          className="absolute inset-x-1 overflow-visible"
+                          style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
+                        >
+                          <ScheduleBlock
+                            schedule={schedule}
+                            compact={false}
+                            className="h-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+                          />
+                        </div>
                       </div>
                     )
                   })}
