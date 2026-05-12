@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useDocenteHorariosStore } from "@/features/scheduling/docentes/application/docenteHorariosStore"
 import { useAsignarHorarioStore } from "@/features/scheduling/docentes/application/asignarHorarioStore"
+import { useUIStore } from "@/shared/stores/uiStore"
 import type { GroupSummary } from "@/features/scheduling/docentes/domain/types"
 import { TeacherSchedulePage } from "@/features/scheduling/docentes/ui/TeacherSchedulePage"
 
@@ -30,15 +31,17 @@ export default function DocenteHorariosRoutePage() {
   } = useDocenteHorariosStore()
 
   const { openModal } = useAsignarHorarioStore()
+  const { setSidebarCollapsed } = useUIStore()
 
   useEffect(() => {
     if (!docenteId) return
+    setSidebarCollapsed(true)
     fetchByDocenteId(docenteId)
 
     return () => {
       clear()
     }
-  }, [clear, docenteId, fetchByDocenteId])
+  }, [clear, docenteId, fetchByDocenteId, setSidebarCollapsed])
 
   const handleAssignClick = (group: GroupSummary) => {
     openModal({

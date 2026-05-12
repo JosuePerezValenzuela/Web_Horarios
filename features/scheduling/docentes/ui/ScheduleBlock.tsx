@@ -41,7 +41,7 @@ export function ScheduleBlock({
         "flex w-full max-h-full min-h-0 flex-col overflow-hidden rounded-lg border shadow-sm",
         compact
           ? "gap-0.5 px-2 py-1.5 text-[10px] leading-tight"
-          : "gap-0.5 px-1.5 py-1 text-[11px] leading-tight",
+          : "gap-0.5 px-2 py-1.5 text-[11px] leading-tight",
         "focus-within:ring-2 focus-within:ring-ring",
         className
       )}

@@ -25,6 +25,7 @@ const COLLAPSED_STACK_FRONT_BOTTOM_OFFSET = 0
 const EXPANDED_STACK_ITEM_HEIGHT = 88
 const EXPANDED_STACK_GAP = 8
 const EXPANDED_STACK_VERTICAL_PADDING = 8
+const EXPANDED_STACK_HEADER_HEIGHT = 28
 
 interface OverlapCluster {
   id: string
@@ -127,6 +128,7 @@ function getCollapsedClusterHeight(cluster: OverlapCluster) {
 function getExpandedClusterHeight(cluster: OverlapCluster) {
   return (
     EXPANDED_STACK_VERTICAL_PADDING * 2 +
+    EXPANDED_STACK_HEADER_HEIGHT +
     cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
     Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
   )
@@ -537,8 +539,11 @@ export function WeeklyScheduleGrid({
                           style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
                         >
                           {isExpanded ? (
-                            <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl">
-                              <div className="absolute right-2 top-1.5 z-30">
+                            <div className="relative h-full w-full rounded-2xl border border-border/60 bg-background/45 p-2">
+                              <div className="absolute inset-x-2 top-2 z-30 flex items-center justify-between gap-2">
+                                <div className="text-[10px] font-medium text-foreground/70">
+                                  {cluster.schedules.length} horarios
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => toggleCluster(cluster.id)}
@@ -549,7 +554,7 @@ export function WeeklyScheduleGrid({
                                 </button>
                               </div>
 
-                              <div className="flex w-full flex-col items-center justify-center gap-2">
+                              <div className="flex h-full w-full flex-col items-center justify-center gap-2 pt-7">
                                 {cluster.schedules.map((schedule) => (
                                   <ScheduleSegmentRenderer
                                     key={schedule.scheduleId}
