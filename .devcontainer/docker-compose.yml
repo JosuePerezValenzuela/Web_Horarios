@@ -1,0 +1,24 @@
+name: web_horarios
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    image: front_horarios-dev
+    container_name: front_horarios-dev
+    user: node
+    working_dir: /workspace/Web_Horarios
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Código fuente montado en caliente — hot-reload funciona directo
+      - ..:/workspace/Web_Horarios
+      # Volumen nombrado para el store de pnpm — persiste cache entre rebuilds
+      - pnpm-store-Web_Horarios:/home/node/.local/share/pnpm/store
+    ports:
+      - "3000:3000"
+    command: sleep infinity
+
+volumes:
+  pnpm-store-Web_Horarios:
