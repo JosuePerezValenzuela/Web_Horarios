@@ -10,6 +10,24 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Project Conventions
 
+## Dev Environment
+
+- **Containerizado**: Docker Compose via Dev Containers
+- **Nombre del proyecto (Engram)**: `web_horarios`
+- **Container name**: `front_horarios-dev`
+- **Package manager**: pnpm 11.1.3 (corepack, dentro del contenedor)
+- **Puerto dev**: 8000
+
+### Comandos que requieren proyecto
+
+Ninguna tool del proyecto (pnpm, next, eslint, tsc, prettier) está instalada en el host.
+TODO comando que dependa de `node_modules/` o de las tools del proyecto debe ejecutarse **dentro del contenedor**:
+
+- **Via `docker exec`** (con el contenedor corriendo):
+  ```bash
+  docker exec front_horarios-dev sh -c "<command>"
+  ```
+
 ## Tech Stack
 
 - **Framework**: Next.js 16.2.4 (App Router)
@@ -121,31 +139,37 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 ## Design System Rules
 
 ### 1. Responsive First
+
 - Design for mobile-first, enhance for larger screens
 - Use Tailwind responsive prefixes: `sm:`, `md:`, `lg:`, `xl:`
 - Test layouts at breakpoints: 640px, 768px, 1024px, 1280px
 
 ### 2. Color System (MUST USE)
+
 - **ALL colors MUST come from `app/globals.css` theme variables**
 - NEVER use custom colors like `surface-container-*`, `stone-*`, `zinc-*`, etc.
 - NEVER use `outline-variant` (it doesn't exist in theme)
 
 **Usage examples:**
+
 - ✅ `bg-background`, `text-foreground`, `border-border`
 - ✅ `bg-primary`, `hover:bg-muted`, `bg-card`
 - ❌ `bg-surface-container-low`, `bg-stone-50`, `border-outline-variant`
 
 ### 3. Component Hierarchy
+
 - **`components/ui/`** = shadcn/ui base components (GLOBAL, reusable everywhere)
 - **`features/*/ui/`** = Feature-specific components (LOCAL, single feature)
 - **Rule**: If it's reusable across features, move to `components/ui/`
 
 ### 4. Before Creating New Components
+
 - Before creating a new component, **always verify first** if there is already a suitable base in `components/ui/` or if it can be built by composing existing shadcn/ui primitives already configured in this project or install using npx.
 - Prefer **extending or composing** the current shadcn/ui setup instead of creating parallel custom primitives.
 - Only create a brand-new component when the existing global base components do not cover the interaction or visual requirement.
 
 ### 5. API Service Boundaries
+
 - Before consuming or creating a new API service, verify if the request belongs to one of the existing global clients in `shared/services/api/`.
 - Current global API clients:
   - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`)
@@ -168,15 +192,15 @@ When writing code, agents should follow this workflow:
 2. **DO NOT run format after each file** - This causes unnecessary file changes
 3. **At the end of each implementation session**, format with Prettier first
    ```bash
-   npx prettier --write <modified-files>
+   pnpm prettier --write <modified-files>
    ```
 4. **Then run the linter** on the affected files / project
    ```bash
-   npm run lint
+   pnpm lint
    ```
 5. **Then run TypeScript check** focused on modified files when feasible; otherwise run project-level typecheck
    ```bash
-   npx tsc --noEmit
+   pnpm tsc --noEmit
    ```
 
 ## Common Mistakes to Avoid
