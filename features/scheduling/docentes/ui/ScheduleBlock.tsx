@@ -3,12 +3,6 @@ import { cn } from "@/lib/utils"
 import type { NormalizedSchedule } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
 
-function formatMinutes(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
-}
-
 interface ScheduleBlockProps {
   schedule: NormalizedSchedule
   compact?: boolean
@@ -64,7 +58,7 @@ export function ScheduleBlock({
       </p>
 
       {/* Line 2: Ambiente + Grupo badge */}
-      <div className="flex items-start justify-between gap-1">
+      <div className="flex items-center justify-between gap-1">
         <p className={cn("truncate text-foreground/85", compact ? "text-[9px]" : "text-[10px]")}>
           <span className="font-medium">Ambiente:</span> {schedule.ambienteLabel}
         </p>
@@ -78,13 +72,6 @@ export function ScheduleBlock({
           G: {schedule.grupo}
         </span>
       </div>
-
-      {/* Line 3: Hora (non-compact only) */}
-      {!compact && (
-        <p className="truncate text-[9px] text-foreground/65">
-          {formatMinutes(schedule.startMin)} - {formatMinutes(schedule.endMin)}
-        </p>
-      )}
     </article>
   )
 }
