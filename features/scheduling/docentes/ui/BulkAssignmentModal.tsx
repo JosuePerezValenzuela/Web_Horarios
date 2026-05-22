@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { es } from "date-fns/locale"
-import { CheckCircle, Plus, Trash2, XCircle } from "lucide-react"
+import { Plus, Trash2, XCircle } from "lucide-react"
+import { toast } from "sonner"
 
-import type { InfraBloque, SolapamientoInfo } from "../domain/types"
+import type { InfraBloque, NormalizedSchedule, SolapamientoInfo } from "../domain/types"
 import { useBulkAsignacionStore } from "../application/useBulkAsignacionStore"
 import { AmbienteSearchPopover } from "./AmbienteSearchPopover"
 import { SolapamientoWarning } from "./SolapamientoWarning"
@@ -44,9 +45,10 @@ const DIA_LABELS: Record<number, string> = {
 
 interface BulkAssignmentModalProps {
   onAssigned?: () => void | Promise<void>
+  schedules?: NormalizedSchedule[]
 }
 
-export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
+export function BulkAssignmentModal({ onAssigned, schedules }: BulkAssignmentModalProps) {
   // ── Store selectors ──────────────────────────────────
   const isOpen = useBulkAsignacionStore((s) => s.isOpen)
   const selectedGroup = useBulkAsignacionStore((s) => s.selectedGroup)
@@ -58,6 +60,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
   const selectedTipos = useBulkAsignacionStore((s) => s.selectedTipos)
   const estudiantes = useBulkAsignacionStore((s) => s.estudiantes)
   const entries = useBulkAsignacionStore((s) => s.entries)
+  const initialLoadError = useBulkAsignacionStore((s) => s.initialLoadError)
   const submitting = useBulkAsignacionStore((s) => s.submitting)
 
   const setDateRange = useBulkAsignacionStore((s) => s.setDateRange)
@@ -74,15 +77,11 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
 
   // ── Local state ──────────────────────────────────────
   const [allBloques, setAllBloques] = useState<InfraBloque[]>([])
+  const [ambientePopoverEntry, setAmbientePopoverEntry] = useState<string | null>(null)
   const [facultadSearch, setFacultadSearch] = useState("")
   const [solapamientoOpen, setSolapamientoOpen] = useState(false)
   const [pendingSolapamientos, setPendingSolapamientos] = useState<SolapamientoInfo[]>([])
-  const [submitResult, setSubmitResult] = useState<{
-    type: "success" | "error"
-    message: string
-    errorEntryId: string | null
-  } | null>(null)
-  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [errorEntryId, setErrorEntryId] = useState<string | null>(null)
 
   // ── Computed ─────────────────────────────────────────
   const filteredFacultades = facultades.filter((facultad) =>
@@ -158,54 +157,39 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
   const doSubmit = useCallback(async () => {
     if (!selectedGroup || !dateRange?.from || !dateRange?.to) return
 
-    setSubmitResult(null)
     const result = await submitBatch(selectedGroup.persona_grupo_id)
 
     if (result.success) {
-      setSubmitResult({
-        type: "success",
-        message: result.message || "Horarios asignados correctamente",
-        errorEntryId: null,
-      })
-
-      // Close after 1.5s and invoke callback
-      closeTimerRef.current = setTimeout(() => {
-        closeModal()
-        setSubmitResult(null)
-        onAssigned?.()
-      }, 1500)
+      toast.success(result.message || "Horarios asignados correctamente")
+      closeModal()
+      onAssigned?.()
     } else {
+      toast.error(result.message || "Error en la asignación")
+
       // Map error index back to entry ID for highlighting
-      let errorEntryId: string | null = null
       if (result.errorIndex !== undefined) {
         const validEntries = entries.filter(
           (e) => e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId
         )
         const erroredEntry = validEntries[result.errorIndex]
         if (erroredEntry) {
-          errorEntryId = erroredEntry.id
+          setErrorEntryId(erroredEntry.id)
         }
       }
-
-      setSubmitResult({
-        type: "error",
-        message: result.message || "Error en la asignación",
-        errorEntryId,
-      })
     }
   }, [selectedGroup, dateRange, entries, submitBatch, closeModal, onAssigned])
 
   const handleSubmit = useCallback(() => {
     if (!selectedGroup || !dateRange?.from || !dateRange?.to) return
 
-    const solapamientos = checkSolapamientos([])
+    const solapamientos = checkSolapamientos(schedules ?? [])
     if (solapamientos.length > 0) {
       setPendingSolapamientos(solapamientos)
       setSolapamientoOpen(true)
     } else {
       doSubmit()
     }
-  }, [selectedGroup, dateRange, checkSolapamientos, doSubmit])
+  }, [selectedGroup, dateRange, checkSolapamientos, doSubmit, schedules])
 
   const handleConfirm = useCallback(() => {
     setSolapamientoOpen(false)
@@ -232,12 +216,8 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
         if (!open) {
           setSolapamientoOpen(false)
           setPendingSolapamientos([])
-          setSubmitResult(null)
+          setErrorEntryId(null)
           setFacultadSearch("")
-          if (closeTimerRef.current) {
-            clearTimeout(closeTimerRef.current)
-            closeTimerRef.current = null
-          }
           closeModal()
         }
       }}
@@ -295,7 +275,10 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                   <SelectTrigger className="mt-1 h-9">
                     <SelectValue placeholder="Seleccione facultad" />
                   </SelectTrigger>
-                  <SearchableSelectContent onFilterChange={setFacultadSearch}>
+                  <SearchableSelectContent
+                    onFilterChange={setFacultadSearch}
+                    className="max-h-[200px]"
+                  >
                     <SelectItem value="none">Seleccione facultad</SelectItem>
                     {filteredFacultades.map((facultad) => (
                       <SelectItem key={facultad.id} value={facultad.id.toString()}>
@@ -308,7 +291,27 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
 
               {/* Bloque */}
               <div>
-                <Label className="text-xs font-medium">Bloque</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Bloque</Label>
+                  {selectedFacultades.length > 0 && (
+                    <div className="flex gap-1.5">
+                      <button
+                        type="button"
+                        className="text-[10px] text-primary hover:underline"
+                        onClick={() => setSelectedBloques(allBloques)}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        type="button"
+                        className="text-[10px] text-muted-foreground hover:underline"
+                        onClick={() => setSelectedBloques([])}
+                      >
+                        Ninguno
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <MultiSelect
                   options={allBloques.map((b) => ({
                     value: b.id,
@@ -327,6 +330,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                         : "Todos los bloques"
                   }
                   searchable
+                  selectAll
                   maxVisibleItems={3}
                   className="mt-1"
                   disabled={selectedFacultades.length === 0}
@@ -335,7 +339,25 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
 
               {/* Tipo de ambiente */}
               <div>
-                <Label className="text-xs font-medium">Tipo ambiente</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Tipo ambiente</Label>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      className="text-[10px] text-primary hover:underline"
+                      onClick={() => setSelectedTipos(tiposAmbiente)}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      type="button"
+                      className="text-[10px] text-muted-foreground hover:underline"
+                      onClick={() => setSelectedTipos([])}
+                    >
+                      Ninguno
+                    </button>
+                  </div>
+                </div>
                 <MultiSelect
                   options={tiposAmbiente.map((t) => ({
                     value: t.id,
@@ -348,6 +370,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                   }}
                   placeholder="Todos los tipos"
                   searchable
+                  selectAll
                   maxVisibleItems={3}
                   className="mt-1"
                 />
@@ -368,6 +391,15 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
             </div>
           </section>
 
+          {/* ═══ Initial load error ═══ */}
+          {initialLoadError && (
+            <Alert variant="destructive" className="mb-4">
+              <XCircle className="size-4 shrink-0" />
+              <AlertTitle>Error de carga</AlertTitle>
+              <AlertDescription>{initialLoadError}</AlertDescription>
+            </Alert>
+          )}
+
           {/* ═══ Entries Table ═══ */}
           <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
             <h3 className="mb-3 text-sm font-semibold">Horarios a asignar</h3>
@@ -377,7 +409,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                 No hay horarios. Agregue al menos uno.
               </p>
             ) : (
-              <div className="max-h-[300px] overflow-auto rounded-xl border border-border/50 shadow-sm">
+              <div className="max-h-75 overflow-auto rounded-xl border border-border/50 shadow-sm">
                 <table className="w-full caption-bottom text-sm">
                   <thead className="sticky top-0 z-10 bg-secondary">
                     <tr className="border-b-2 border-border/80">
@@ -401,8 +433,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                   </thead>
                   <tbody>
                     {entries.map((entry, index) => {
-                      const isErrored =
-                        submitResult?.type === "error" && submitResult.errorEntryId === entry.id
+                      const isErrored = errorEntryId === entry.id
 
                       return (
                         <tr
@@ -423,7 +454,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                                 })
                               }
                             >
-                              <SelectTrigger className="h-8 w-full min-w-[100px]">
+                              <SelectTrigger className="h-8 w-full min-w-25">
                                 <SelectValue placeholder="Día" />
                               </SelectTrigger>
                               <SelectContent>
@@ -438,7 +469,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                           <td className="px-2 py-2 align-middle">
                             <Input
                               type="time"
-                              className="h-8 w-[110px]"
+                              className="h-8 w-full min-w-0 max-w-32"
                               value={entry.horaInicio}
                               onChange={(e) =>
                                 updateEntry(entry.id, {
@@ -450,7 +481,7 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                           <td className="px-2 py-2 align-middle">
                             <Input
                               type="time"
-                              className="h-8 w-[110px]"
+                              className="h-8 w-full min-w-0 max-w-32"
                               value={entry.horaFin}
                               onChange={(e) =>
                                 updateEntry(entry.id, {
@@ -465,14 +496,14 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
                                 {entry.ambienteLabel}
                               </span>
                             ) : (
-                              <AmbienteSearchPopover
-                                entryId={entry.id}
-                                trigger={
-                                  <Button variant="outline" size="xs" className="h-7 text-xs">
-                                    Seleccionar
-                                  </Button>
-                                }
-                              />
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="h-7 text-xs"
+                                onClick={() => setAmbientePopoverEntry(entry.id)}
+                              >
+                                Seleccionar
+                              </Button>
                             )}
                           </td>
                           <td className="px-2 py-2 text-center align-middle">
@@ -495,10 +526,12 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
             )}
 
             {/* Add entry */}
-            <Button variant="outline" size="sm" className="mt-3" onClick={() => addEntry()}>
-              <Plus className="mr-1 size-3.5" />
-              Agregar horario
-            </Button>
+            <div className="mt-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => addEntry()}>
+                <Plus className="mr-1 size-3.5" />
+                Agregar horario
+              </Button>
+            </div>
           </section>
 
           {/* ═══ Alert Area ═══ */}
@@ -510,18 +543,6 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
               onConfirm={handleConfirm}
               onCancel={handleCancel}
             />
-
-            {submitResult && (
-              <Alert variant={submitResult.type === "success" ? "default" : "destructive"}>
-                {submitResult.type === "success" ? (
-                  <CheckCircle className="size-4 shrink-0 text-green-600" />
-                ) : (
-                  <XCircle className="size-4 shrink-0" />
-                )}
-                <AlertTitle>{submitResult.type === "success" ? "Completado" : "Error"}</AlertTitle>
-                <AlertDescription>{submitResult.message}</AlertDescription>
-              </Alert>
-            )}
           </div>
 
           {/* ═══ Submit Button ═══ */}
@@ -550,6 +571,14 @@ export function BulkAssignmentModal({ onAssigned }: BulkAssignmentModalProps) {
             </Button>
           </div>
         </div>
+        {/* ═══ Ambiente Search Overlay ═══ */}
+        <AmbienteSearchPopover
+          entryId={ambientePopoverEntry ?? ""}
+          open={ambientePopoverEntry !== null}
+          onOpenChange={(open) => {
+            if (!open) setAmbientePopoverEntry(null)
+          }}
+        />
       </DialogContent>
     </Dialog>
   )
