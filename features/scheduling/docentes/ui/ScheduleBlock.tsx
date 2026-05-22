@@ -63,20 +63,11 @@ export function ScheduleBlock({
       {compact ? (
         <>
           <p className="truncate text-[9px] text-foreground/85">{schedule.ambienteLabel}</p>
-          <p className="truncate text-[9px] text-muted-foreground">{schedule.tipoLabel}</p>
         </>
       ) : (
         <>
           <p className={cn("truncate text-foreground/85", compact ? "text-[9px]" : "text-[10px]")}>
             <span className="font-medium">Ambiente:</span> {schedule.ambienteLabel}
-          </p>
-          <p className={cn("truncate text-foreground/75", compact ? "text-[9px]" : "text-[10px]")}>
-            <span className="font-medium">Tipo:</span> {schedule.tipoLabel}
-          </p>
-          <p
-            className={cn("truncate text-muted-foreground", compact ? "text-[9px]" : "text-[10px]")}
-          >
-            {schedule.fechasLabel}
           </p>
         </>
       )}
