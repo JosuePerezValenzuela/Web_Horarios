@@ -13,16 +13,16 @@ const DAYS = [
 
 const PX_PER_MINUTE = 0.95
 const DEFAULT_OVERLAP_ROTATION_INTERVAL_MS = 5000
-const SINGLE_SCHEDULE_MIN_HEIGHT = 88
-const COLLAPSED_STACK_MIN_HEIGHT = 100
+const SINGLE_SCHEDULE_MIN_HEIGHT = 48
+const COLLAPSED_STACK_MIN_HEIGHT = 60
 const COLLAPSED_STACK_PREVIEW_COUNT = 2
 const COLLAPSED_STACK_PREVIEW_HEIGHT = 28
 const COLLAPSED_STACK_PREVIEW_TOP_OFFSET = 9
 const COLLAPSED_STACK_PREVIEW_SIDE_OFFSET = 8
-const COLLAPSED_STACK_FRONT_TOP_OFFSET = 18
+const COLLAPSED_STACK_FRONT_TOP_OFFSET = 12
 const COLLAPSED_STACK_FRONT_SIDE_OFFSET = 6
 const COLLAPSED_STACK_FRONT_BOTTOM_OFFSET = 0
-const EXPANDED_STACK_ITEM_HEIGHT = 88
+const EXPANDED_STACK_ITEM_HEIGHT = 48
 const EXPANDED_STACK_GAP = 8
 const EXPANDED_STACK_VERTICAL_PADDING = 8
 const EXPANDED_STACK_HEADER_HEIGHT = 28
@@ -280,6 +280,12 @@ interface ScheduleSegmentRendererProps {
   rotationTick?: number
 }
 
+function formatTime(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
 function ScheduleSegmentRenderer({
   schedule,
   segments,
@@ -307,14 +313,14 @@ function ScheduleSegmentRenderer({
         key={`${schedule.scheduleId}-${rotationTick}`}
         className={
           isExpanded
-            ? "max-w-full overflow-hidden rounded-lg"
+            ? "flex items-center max-w-full overflow-hidden rounded-lg"
             : isCompact
               ? "animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 w-full max-w-full overflow-hidden rounded-lg duration-500"
               : "w-full overflow-hidden rounded-lg"
         }
-        style={isExpanded ? { height: "88px" } : undefined}
+        style={isExpanded ? { height: `${EXPANDED_STACK_ITEM_HEIGHT}px` } : undefined}
       >
-        <ScheduleBlock schedule={schedule} compact={isCompact} className="h-full" />
+        <ScheduleBlock schedule={schedule} compact={isCompact} className="w-full" />
       </div>
     </div>
   )
@@ -484,7 +490,7 @@ export function WeeklyScheduleGrid({
               {rows.length > 0 && (
                 <div className="absolute inset-x-0" style={{ top: `${contentHeight}px` }}>
                   <span className="absolute left-1.5 -translate-y-1/2 rounded-md border border-grid-line/75 bg-background/78 px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 shadow-sm backdrop-blur-[0.5px]">
-                    {rows[rows.length - 1].label}
+                    {formatTime(timeRange.endMin)}
                   </span>
                 </div>
               )}
@@ -625,12 +631,12 @@ export function WeeklyScheduleGrid({
                               >
                                 <div
                                   key={`${visibleSchedule.scheduleId}-${rotationTick}`}
-                                  className="h-full animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
+                                  className="flex items-center h-full animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
                                 >
                                   <ScheduleBlock
                                     schedule={visibleSchedule}
                                     compact={false}
-                                    className="h-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+                                    className="border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
                                   />
                                 </div>
                               </div>
@@ -677,13 +683,13 @@ export function WeeklyScheduleGrid({
                         }}
                       >
                         <div
-                          className="absolute inset-x-1 overflow-visible p-1"
+                          className="absolute inset-x-1 flex items-center overflow-visible p-1"
                           style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
                         >
                           <ScheduleBlock
                             schedule={schedule}
                             compact={false}
-                            className="h-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+                            className="border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
                           />
                         </div>
                       </div>
