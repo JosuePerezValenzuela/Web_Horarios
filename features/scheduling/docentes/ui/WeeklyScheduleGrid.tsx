@@ -13,16 +13,13 @@ const DAYS = [
 
 const PX_PER_MINUTE = 0.95
 const DEFAULT_OVERLAP_ROTATION_INTERVAL_MS = 5000
-const SINGLE_SCHEDULE_MIN_HEIGHT = 48
-const COLLAPSED_STACK_MIN_HEIGHT = 60
 const COLLAPSED_STACK_PREVIEW_COUNT = 2
 const COLLAPSED_STACK_PREVIEW_HEIGHT = 28
 const COLLAPSED_STACK_PREVIEW_TOP_OFFSET = 9
 const COLLAPSED_STACK_PREVIEW_SIDE_OFFSET = 8
-const COLLAPSED_STACK_FRONT_TOP_OFFSET = 12
+const COLLAPSED_STACK_FRONT_TOP_OFFSET = 18
 const COLLAPSED_STACK_FRONT_SIDE_OFFSET = 6
 const COLLAPSED_STACK_FRONT_BOTTOM_OFFSET = 0
-const EXPANDED_STACK_ITEM_HEIGHT = 48
 const EXPANDED_STACK_GAP = 8
 const EXPANDED_STACK_VERTICAL_PADDING = 8
 const EXPANDED_STACK_HEADER_HEIGHT = 28
@@ -112,30 +109,26 @@ function buildOverlapClusters(schedules: NormalizedSchedule[]): OverlapCluster[]
 
 function getCollapsedClusterHeight(cluster: OverlapCluster) {
   const previewCount = Math.min(cluster.schedules.length - 1, COLLAPSED_STACK_PREVIEW_COUNT)
-  const frontCardHeight = Math.max(
-    (cluster.endMin - cluster.startMin) * PX_PER_MINUTE,
-    SINGLE_SCHEDULE_MIN_HEIGHT
-  )
+  const frontCardHeight = (cluster.endMin - cluster.startMin) * PX_PER_MINUTE
   const footprint =
     frontCardHeight +
     COLLAPSED_STACK_FRONT_TOP_OFFSET +
     COLLAPSED_STACK_FRONT_BOTTOM_OFFSET +
     previewCount * COLLAPSED_STACK_PREVIEW_TOP_OFFSET
 
-  return Math.max(footprint, COLLAPSED_STACK_MIN_HEIGHT)
+  return footprint
 }
 
 function getExpandedClusterHeight(cluster: OverlapCluster) {
   return (
     EXPANDED_STACK_VERTICAL_PADDING * 2 +
     EXPANDED_STACK_HEADER_HEIGHT +
-    cluster.schedules.length * EXPANDED_STACK_ITEM_HEIGHT +
     Math.max(cluster.schedules.length - 1, 0) * EXPANDED_STACK_GAP
   )
 }
 
 function getSingleScheduleHeight(schedule: NormalizedSchedule) {
-  return Math.max(schedule.durationMin * PX_PER_MINUTE, SINGLE_SCHEDULE_MIN_HEIGHT)
+  return schedule.durationMin * PX_PER_MINUTE
 }
 
 function getTemporalMidpointPosition(
@@ -318,7 +311,6 @@ function ScheduleSegmentRenderer({
               ? "animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 w-full max-w-full overflow-hidden rounded-lg duration-500"
               : "w-full overflow-hidden rounded-lg"
         }
-        style={isExpanded ? { height: `${EXPANDED_STACK_ITEM_HEIGHT}px` } : undefined}
       >
         <ScheduleBlock schedule={schedule} compact={isCompact} className="w-full" />
       </div>
@@ -626,7 +618,7 @@ export function WeeklyScheduleGrid({
                                   top: `${COLLAPSED_STACK_FRONT_TOP_OFFSET}px`,
                                   right: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
                                   left: `${COLLAPSED_STACK_FRONT_SIDE_OFFSET}px`,
-                                  height: `${frontCardHeight}px`,
+                                  minHeight: `${frontCardHeight}px`,
                                 }}
                               >
                                 <div
@@ -684,7 +676,7 @@ export function WeeklyScheduleGrid({
                       >
                         <div
                           className="absolute inset-x-1 flex items-center overflow-visible p-1"
-                          style={{ top: `${visualOffset}px`, height: `${visualHeight}px` }}
+                          style={{ top: `${visualOffset}px`, minHeight: `${visualHeight}px` }}
                         >
                           <ScheduleBlock
                             schedule={schedule}
