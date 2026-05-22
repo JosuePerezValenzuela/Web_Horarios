@@ -452,11 +452,11 @@ export function WeeklyScheduleGrid({
     <div className="h-full max-h-full overflow-hidden rounded-3xl border border-border bg-card">
       <div className="h-full max-h-full overflow-x-auto overflow-y-auto">
         <div className="min-w-[640px] lg:min-w-0">
-          <div className="grid grid-cols-6 border-b-[3px] border-grid-line bg-muted/35">
+          <div className="grid grid-cols-6 border-b-[2px] border-grid-line bg-muted/35">
             {DAYS.map((day) => (
               <div
                 key={day.value}
-                className="border-r-[3px] border-grid-line px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
+                className="border-r-[2px] border-grid-line px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
               >
                 {day.label}
               </div>
@@ -479,6 +479,15 @@ export function WeeklyScheduleGrid({
                   </span>
                 </div>
               ))}
+
+              {/* Closing bottom line time badge */}
+              {rows.length > 0 && (
+                <div className="absolute inset-x-0" style={{ top: `${contentHeight}px` }}>
+                  <span className="absolute left-1.5 -translate-y-1/2 rounded-md border border-grid-line/75 bg-background/78 px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 shadow-sm backdrop-blur-[0.5px]">
+                    {rows[rows.length - 1].label}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-6">
