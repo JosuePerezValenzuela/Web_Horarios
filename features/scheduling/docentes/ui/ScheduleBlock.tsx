@@ -3,6 +3,12 @@ import { cn } from "@/lib/utils"
 import type { NormalizedSchedule } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
 
+function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
 interface ScheduleBlockProps {
   schedule: NormalizedSchedule
   compact?: boolean
@@ -47,12 +53,25 @@ export function ScheduleBlock({
       )}
       style={token.blockStyle}
     >
+      {/* Line 1: Materia */}
+      <p
+        className={cn(
+          "font-semibold leading-snug",
+          compact ? "truncate text-[10px]" : "line-clamp-2 text-[11px]"
+        )}
+      >
+        {schedule.materia}
+      </p>
+
+      {/* Line 2: Ambiente + Grupo badge */}
       <div className="flex items-start justify-between gap-1">
-        <p className="line-clamp-1 font-semibold leading-snug">{schedule.materia}</p>
+        <p className={cn("truncate text-foreground/85", compact ? "text-[9px]" : "text-[10px]")}>
+          <span className="font-medium">Ambiente:</span> {schedule.ambienteLabel}
+        </p>
         <span
           className={cn(
             "inline-flex shrink-0 rounded-full border font-medium leading-none",
-            compact ? "px-1.5 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"
+            compact ? "px-1.5 py-0.5 text-[8px]" : "px-1.5 py-0.5 text-[9px]"
           )}
           style={token.badgeStyle}
         >
@@ -60,16 +79,11 @@ export function ScheduleBlock({
         </span>
       </div>
 
-      {compact ? (
-        <>
-          <p className="truncate text-[9px] text-foreground/85">{schedule.ambienteLabel}</p>
-        </>
-      ) : (
-        <>
-          <p className={cn("truncate text-foreground/85", compact ? "text-[9px]" : "text-[10px]")}>
-            <span className="font-medium">Ambiente:</span> {schedule.ambienteLabel}
-          </p>
-        </>
+      {/* Line 3: Hora (non-compact only) */}
+      {!compact && (
+        <p className="truncate text-[9px] text-foreground/65">
+          {formatMinutes(schedule.startMin)} - {formatMinutes(schedule.endMin)}
+        </p>
       )}
     </article>
   )

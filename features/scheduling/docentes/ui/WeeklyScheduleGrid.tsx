@@ -452,18 +452,18 @@ export function WeeklyScheduleGrid({
     <div className="h-full max-h-full overflow-hidden rounded-3xl border border-border bg-card">
       <div className="h-full max-h-full overflow-x-auto overflow-y-auto">
         <div className="min-w-[640px] lg:min-w-0">
-          <div className="grid grid-cols-6 border-b-2 border-border/60 bg-muted/35">
+          <div className="grid grid-cols-6 border-b-[3px] border-grid-line bg-muted/35">
             {DAYS.map((day) => (
               <div
                 key={day.value}
-                className="border-r-2 border-border/60 px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
+                className="border-r-[3px] border-grid-line px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
               >
                 {day.label}
               </div>
             ))}
           </div>
 
-          <div className="relative border-b-2 border-border/50">
+          <div className="relative border-b-[3px] border-grid-line">
             <div
               className="pointer-events-none absolute inset-0 z-20"
               style={{ height: `${contentHeight}px` }}
@@ -471,10 +471,10 @@ export function WeeklyScheduleGrid({
               {rows.map((row) => (
                 <div
                   key={row.key}
-                  className="absolute inset-x-0 border-t-2 border-border/50"
+                  className="absolute inset-x-0 border-t-[3px] border-grid-line"
                   style={{ top: `${getMinutePosition(row.startMin)}px` }}
                 >
-                  <span className="absolute left-1.5 -translate-y-1/2 rounded-md border border-border/45 bg-background/78 px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 shadow-sm backdrop-blur-[0.5px]">
+                  <span className="absolute left-1.5 -translate-y-1/2 rounded-md border border-grid-line/75 bg-background/78 px-1.5 py-0.5 text-[10px] font-medium text-foreground/85 shadow-sm backdrop-blur-[0.5px]">
                     {row.label}
                   </span>
                 </div>
@@ -485,7 +485,7 @@ export function WeeklyScheduleGrid({
               {DAYS.map((day) => (
                 <div
                   key={day.value}
-                  className="relative border-r-2 border-border/60 last:border-r-0"
+                  className="relative border-r-[3px] border-grid-line last:border-r-0"
                   style={{ height: `${contentHeight}px` }}
                 >
                   {clustersByDay[day.value].map((cluster) => {
