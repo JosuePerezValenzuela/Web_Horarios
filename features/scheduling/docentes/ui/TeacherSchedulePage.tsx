@@ -12,7 +12,7 @@ import type {
 } from "../domain/types"
 import { GroupSummaryCard } from "./GroupSummaryCard"
 import { WeeklyScheduleGrid } from "./WeeklyScheduleGrid"
-import { AsignarHorarioModal } from "./AsignarHorarioModal"
+import { BulkAssignmentModal } from "./BulkAssignmentModal"
 
 interface TeacherSchedulePageProps {
   docente: DocenteScheduleMeta | null
@@ -140,7 +140,7 @@ export function TeacherSchedulePage({
 
         <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:h-full lg:max-h-full">
           {loading ? (
-            <div className="h-[420px] animate-pulse rounded-3xl border border-border bg-muted" />
+            <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
             <div className="min-h-0 flex-1">
               <WeeklyScheduleGrid
@@ -161,7 +161,9 @@ export function TeacherSchedulePage({
         </main>
       </div>
 
-      {docenteId && onAssignClick && <AsignarHorarioModal onAssigned={onAssigned} />}
+      {docenteId && onAssignClick && (
+        <BulkAssignmentModal schedules={schedules} onAssigned={onAssigned} />
+      )}
     </div>
   )
 }
