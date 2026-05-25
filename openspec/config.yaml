@@ -1,18 +1,39 @@
 schema: spec-driven
 
 context: |
-  Tech stack: Next.js 16.2.4, React 19.2.4, TypeScript (strict), Zustand 5
+  Project: Web Horarios — university schedule management frontend
+  Stack: Next.js 16.2.4 (App Router), React 19.2.4, TypeScript (strict)
   UI: shadcn/ui 4.4.0, TailwindCSS 4, Radix UI, Lucide Icons
+  State: Zustand 5
   Architecture: Atomic Design + Hexagonal Modular
-  State: Zustand (store)
-  API: REST (localhost:3000)
+  API: REST via shared/services/api/client.ts and infraClient.ts
+  Container: Docker (front_horarios-dev), pnpm 11.1.3 inside container
+  No test runner installed yet — testing not configured
 
 strict_tdd: false
+
+testing:
+  runner:
+    installed: false
+    name: null
+    command: null
+  layers:
+    unit: { available: false, tool: null }
+    integration: { available: false, tool: null }
+    e2e: { available: false, tool: null }
+  coverage:
+    available: false
+    command: null
+  quality:
+    linter: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm lint'" }
+    type_checker: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm tsc --noEmit'" }
+    formatter: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm prettier --write <files>'" }
 
 rules:
   proposal:
     - Include rollback plan for risky changes
     - Identify affected modules/packages
+    - Run inside Docker container for commands
   specs:
     - Use Given/When/Then format for scenarios
     - Use RFC 2119 keywords (MUST, SHALL, SHOULD, MAY)
@@ -23,11 +44,14 @@ rules:
     - Group tasks by phase (infrastructure, implementation, testing)
     - Use hierarchical numbering (1.1, 1.2, etc.)
     - Keep tasks small enough to complete in one session
+    - All commands must use `docker exec front_horarios-dev sh -c "<cmd>"`
   apply:
     - Follow existing code patterns and conventions
     - Load relevant coding skills for the project stack
+    - Format with Prettier before finishing, then lint, then typecheck
   verify:
-    - Run tests if test infrastructure exists
+    - Run tests if test infrastructure exists (currently none)
     - Compare implementation against every spec scenario
+    - Manual verification required until testing is configured
   archive:
     - Warn before merging destructive deltas (large removals)
