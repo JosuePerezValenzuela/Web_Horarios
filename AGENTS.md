@@ -97,6 +97,10 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 - `dialog.tsx`
   - Global modal/dialog primitive wrappers
   - Use for: modal flows, confirmations, forms, and detail overlays that block the page
+- `alert-dialog.tsx`
+  - Destructive confirmation primitive (cancel/confirm pattern)
+  - Use for irreversible actions (e.g., physical deletes) instead of generic `dialog`
+  - Pair with `toast.success` / `toast.error` after server responses
 - `popover.tsx`
   - Floating anchored surface wrapper
   - Use for: lightweight anchored overlays like pickers, dropdown helpers, and custom floating panels
@@ -211,6 +215,16 @@ When writing code, agents should follow this workflow:
 ## Skill Registry
 
 Sub-agents and workflows should reference `.atl/skill-registry.md` for available skills and project-specific patterns.
+
+## Scheduling Module Notes (Docentes)
+
+- `BulkAssignmentModal` now supports two modes:
+  - `mode="create"` → creates horarios (POST flow)
+  - `mode="edit"` → edits horarios (PATCH flow)
+- `AmbienteSearchPopover` is store-agnostic via adapter contract (`AmbienteSearchContract`), used by both create/edit stores.
+- In create/edit tables, ambiente selection should validate required fields first (rango/fecha source, día, hora inicio, hora fin) and provide explicit user feedback.
+- For destructive actions in this module (delete one/all horarios), use `alert-dialog.tsx` + server-driven toast messages.
+- `WeeklyScheduleGrid` uses adaptive timeline segment heights; avoid hardcoded floor heights that add dead space to the last row when real segment data exists.
 
 ## Testing
 
