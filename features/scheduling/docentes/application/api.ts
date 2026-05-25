@@ -146,7 +146,9 @@ export async function hydrateSchedulesWithAmbienteDetails(
   schedules: NormalizedSchedule[]
 ): Promise<NormalizedSchedule[]> {
   const ambienteIds = Array.from(
-    new Set(schedules.map((schedule) => schedule.ambienteId).filter((id): id is number => id !== null))
+    new Set(
+      schedules.map((schedule) => schedule.ambienteId).filter((id): id is number => id !== null)
+    )
   )
 
   if (ambienteIds.length === 0) return schedules
@@ -154,7 +156,9 @@ export async function hydrateSchedulesWithAmbienteDetails(
   const details = await Promise.all(
     ambienteIds.map(async (ambienteId) => {
       try {
-        const response = await infraApiClient.get<AmbienteDetalleResponse>(`/ambientes/${ambienteId}/detalle`)
+        const response = await infraApiClient.get<AmbienteDetalleResponse>(
+          `/ambientes/${ambienteId}/detalle`
+        )
         return [ambienteId, response.ambiente] as const
       } catch {
         return [ambienteId, null] as const

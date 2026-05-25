@@ -165,6 +165,9 @@ export interface NormalizedSchedule {
   ambienteLabel: string
   tipoLabel: string
   fechasLabel: string
+  dbId: number | null
+  fechaInicioRaw: string | null
+  fechaFinRaw: string | null
 }
 
 export interface GroupSummary {
@@ -312,4 +315,120 @@ export interface SolapamientoInfo {
   entryIndex: number
   conflictingEntryIndex?: number
   message: string
+}
+
+// ============================================
+// Edit Schedule Types
+// ============================================
+
+export interface EditScheduleEntry {
+  id: string
+  dbId: number | null
+  dia: number | null
+  horaInicio: string
+  horaFin: string
+  ambienteId?: number
+  ambienteLabel?: string
+  fechaInicio?: string
+  fechaFin?: string
+  error?: string | null
+}
+
+export interface EditarHorarioItem {
+  id: number
+  dia?: number
+  hora_inicio?: string
+  hora_fin?: string
+  aula_id?: number
+  fecha_inicio?: string
+  fecha_fin?: string
+}
+
+export interface EditarHorariosBatchRequest {
+  horarios: EditarHorarioItem[]
+}
+
+export interface EditarHorariosBatchResponse {
+  success: boolean
+  message?: string
+  data?: unknown
+}
+
+export interface EntryFilterOverrides {
+  selectedFacultades: InfraFacultad[]
+  selectedBloques: InfraBloque[]
+  selectedTipos: InfraTipoAmbiente[]
+  estudiantes: number | null
+}
+
+export interface AmbienteSearchContract {
+  getEntry: (entryId: string) => EditScheduleEntry | HorarioEntry | undefined
+  getEntryFilters: (entryId: string) => EntryFilterOverrides | undefined
+  facultades: InfraFacultad[]
+  tiposAmbiente: InfraTipoAmbiente[]
+  selectedFacultades: InfraFacultad[]
+  selectedBloques: InfraBloque[]
+  selectedTipos: InfraTipoAmbiente[]
+  estudiantes: number | null
+  dateRange?: { from?: Date; to?: Date }
+  loadingAmbientesForEntry: string | null
+  ambienteCache: Record<string, InfraAmbiente[]>
+  setEntryAmbiente: (entryId: string, ambiente: InfraAmbiente) => void
+  setEntryFilters: (entryId: string, filters: Partial<EntryFilterOverrides>) => void
+  fetchAmbientesForEntry: (entryId: string) => Promise<void>
+}
+
+// ============================================
+// Updated Component Prop Interfaces
+// These will be used by components in Batch 2/3.
+// ============================================
+
+export interface GroupSummaryCardProps {
+  group: GroupSummary
+  onAddClick?: (group: GroupSummary) => void
+  onEditClick?: (group: GroupSummary) => void
+  onDeleteClick?: (group: GroupSummary) => void
+}
+
+export interface BulkAssignmentModalProps {
+  mode: "create" | "edit"
+  onAssigned?: () => void | Promise<void>
+  schedules?: NormalizedSchedule[]
+}
+
+export interface ScheduleBlockProps {
+  schedule: NormalizedSchedule
+  compact?: boolean
+  mode?: "full" | "peek"
+  className?: string
+  onClick?: (schedule: NormalizedSchedule) => void
+}
+
+export interface WeeklyScheduleGridProps {
+  schedules: NormalizedSchedule[]
+  rows: TimeRow[]
+  timeRange: TimeRange
+  overlapRotationIntervalMs?: number
+  onEditSchedule?: (schedule: NormalizedSchedule) => void
+}
+
+export interface TeacherSchedulePageProps {
+  docente: DocenteScheduleMeta | null
+  groups: GroupSummary[]
+  schedules: NormalizedSchedule[]
+  period: number
+  overlapRotationIntervalMs?: number
+  rows: TimeRow[]
+  timeRange: TimeRange
+  loading: boolean
+  error: string | null
+  onRetry: () => void
+  onBack: () => void
+  onPeriodChange: (period: number) => void
+  docenteId?: string
+  onAddClick?: (group: GroupSummary) => void
+  onEditClick?: (group: GroupSummary) => void
+  onDeleteClick?: (group: GroupSummary) => void
+  onEditSchedule?: (schedule: NormalizedSchedule) => void
+  onAssigned?: () => void | Promise<void>
 }

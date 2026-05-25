@@ -20,6 +20,8 @@ const COLLAPSED_STACK_PREVIEW_SIDE_OFFSET = 8
 const COLLAPSED_STACK_FRONT_TOP_OFFSET = 18
 const COLLAPSED_STACK_FRONT_SIDE_OFFSET = 6
 const COLLAPSED_STACK_FRONT_BOTTOM_OFFSET = 0
+const MIN_BLOCK_HEIGHT = 44
+const BASE_CONTENT_HEIGHT = 44
 const EXPANDED_STACK_GAP = 8
 const EXPANDED_STACK_VERTICAL_PADDING = 8
 const EXPANDED_STACK_HEADER_HEIGHT = 28
@@ -109,7 +111,13 @@ function buildOverlapClusters(schedules: NormalizedSchedule[]): OverlapCluster[]
 
 function getCollapsedClusterHeight(cluster: OverlapCluster) {
   const previewCount = Math.min(cluster.schedules.length - 1, COLLAPSED_STACK_PREVIEW_COUNT)
-  const frontCardHeight = (cluster.endMin - cluster.startMin) * PX_PER_MINUTE
+  const clusterContentHeight = Math.max(
+    ...cluster.schedules.map((s) => getContentAwareMinHeight(s))
+  )
+  const frontCardHeight = Math.max(
+    (cluster.endMin - cluster.startMin) * PX_PER_MINUTE,
+    clusterContentHeight
+  )
   const footprint =
     frontCardHeight +
     COLLAPSED_STACK_FRONT_TOP_OFFSET +
@@ -117,6 +125,11 @@ function getCollapsedClusterHeight(cluster: OverlapCluster) {
     previewCount * COLLAPSED_STACK_PREVIEW_TOP_OFFSET
 
   return footprint
+}
+
+function getContentAwareMinHeight(schedule: NormalizedSchedule) {
+  const lanePenalty = schedule.laneCount > 1 ? Math.min((schedule.laneCount - 1) * 6, 12) : 0
+  return BASE_CONTENT_HEIGHT + lanePenalty
 }
 
 function getExpandedClusterHeight(cluster: OverlapCluster) {
@@ -128,7 +141,11 @@ function getExpandedClusterHeight(cluster: OverlapCluster) {
 }
 
 function getSingleScheduleHeight(schedule: NormalizedSchedule) {
-  return schedule.durationMin * PX_PER_MINUTE
+  return Math.max(
+    schedule.durationMin * PX_PER_MINUTE,
+    MIN_BLOCK_HEIGHT,
+    getContentAwareMinHeight(schedule)
+  )
 }
 
 function getTemporalMidpointPosition(
@@ -263,6 +280,7 @@ interface WeeklyScheduleGridProps {
   rows: TimeRow[]
   timeRange: TimeRange
   overlapRotationIntervalMs?: number
+  onEditSchedule?: (schedule: NormalizedSchedule) => void
 }
 
 interface ScheduleSegmentRendererProps {
@@ -271,6 +289,7 @@ interface ScheduleSegmentRendererProps {
   isCompact?: boolean
   isExpanded?: boolean
   rotationTick?: number
+  onScheduleClick?: (schedule: NormalizedSchedule) => void
 }
 
 function formatTime(minutes: number): string {
@@ -285,6 +304,7 @@ function ScheduleSegmentRenderer({
   isCompact = false,
   isExpanded = false,
   rotationTick = 0,
+  onScheduleClick,
 }: ScheduleSegmentRendererProps) {
   const subSegments = useMemo(
     () => getSubSegmentsForSchedule(schedule, segments),
@@ -312,7 +332,12 @@ function ScheduleSegmentRenderer({
               : "w-full overflow-hidden rounded-lg"
         }
       >
-        <ScheduleBlock schedule={schedule} compact={isCompact} className="w-full" />
+        <ScheduleBlock
+          schedule={schedule}
+          compact={isCompact}
+          className="w-full"
+          onClick={onScheduleClick}
+        />
       </div>
     </div>
   )
@@ -323,6 +348,7 @@ export function WeeklyScheduleGrid({
   rows,
   timeRange,
   overlapRotationIntervalMs = DEFAULT_OVERLAP_ROTATION_INTERVAL_MS,
+  onEditSchedule,
 }: WeeklyScheduleGridProps) {
   const [expandedClusters, setExpandedClusters] = useState<Record<string, boolean>>({})
   const [hoveredClusters, setHoveredClusters] = useState<Record<string, boolean>>({})
@@ -414,10 +440,8 @@ export function WeeklyScheduleGrid({
     return basePosition + adaptiveOffset
   }
 
-  const contentHeight = Math.max(
-    timelineSegments.reduce((acc, segment) => acc + segment.height, 0),
-    220
-  )
+  const computedContentHeight = timelineSegments.reduce((acc, segment) => acc + segment.height, 0)
+  const contentHeight = computedContentHeight > 0 ? computedContentHeight : 220
 
   const schedulesByDay = DAYS.reduce<Record<number, NormalizedSchedule[]>>((acc, day) => {
     acc[day.value] = schedules.filter((schedule) => schedule.day === day.value)
@@ -569,6 +593,7 @@ export function WeeklyScheduleGrid({
                                     segments={timelineSegments}
                                     isCompact={false}
                                     isExpanded={true}
+                                    onScheduleClick={onEditSchedule}
                                   />
                                 ))}
                               </div>
@@ -682,6 +707,7 @@ export function WeeklyScheduleGrid({
                             schedule={schedule}
                             compact={false}
                             className="border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+                            onClick={onEditSchedule}
                           />
                         </div>
                       </div>

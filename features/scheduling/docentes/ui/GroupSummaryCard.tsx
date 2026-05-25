@@ -1,5 +1,6 @@
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChevronRight, PlusCircle } from "lucide-react"
+import { Pencil, Plus, Trash2 } from "lucide-react"
 
 import type { GroupSummary } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
@@ -7,55 +8,43 @@ import { cn } from "@/lib/utils"
 
 interface GroupSummaryCardProps {
   group: GroupSummary
-  onAssignClick?: (group: GroupSummary) => void
+  onAddClick?: (group: GroupSummary) => void
+  onEditClick?: (group: GroupSummary) => void
+  onDeleteClick?: (group: GroupSummary) => void
 }
 
-export function GroupSummaryCard({ group, onAssignClick }: GroupSummaryCardProps) {
+export function GroupSummaryCard({
+  group,
+  onAddClick,
+  onEditClick,
+  onDeleteClick,
+}: GroupSummaryCardProps) {
   const token = resolveGroupColorToken(group.colorIndex)
   const carreras = group.carrerasLabel
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean)
-  const estadoLabel = `${group.estado.replace("Horarios", "horarios")} - ${group.countHorarios}`
-
-  const handleClick = (e: React.MouseEvent) => {
-    if (onAssignClick) {
-      e.preventDefault()
-      e.stopPropagation()
-      onAssignClick(group)
-    }
-  }
 
   return (
     <Card
       size="sm"
       className={cn(
-        "gap-0.5 rounded-3xl border shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-md",
-        group.countHorarios === 0 && "opacity-90",
-        onAssignClick && "cursor-pointer hover:bg-primary/5"
+        "gap-0.5 rounded-3xl border shadow-sm transition-all duration-200",
+        group.countHorarios === 0 && "opacity-90"
       )}
       style={token.cardStyle}
-      onClick={onAssignClick ? handleClick : undefined}
     >
       <CardHeader className="px-3 pt-2 pb-1">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-start gap-2">
-            {onAssignClick ? <PlusCircle className="mt-0.5 size-3.5 shrink-0 text-primary" /> : null}
-            <CardTitle className="line-clamp-2 text-[13px] leading-tight">{group.materia}</CardTitle>
-          </div>
-          <div className="flex shrink-0 items-center gap-1">
-            <span
-              className={cn(
-                "inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none"
-              )}
-              style={token.badgeStyle}
-            >
-              {estadoLabel}
-            </span>
-            {onAssignClick ? (
-              <ChevronRight className="size-4 text-primary/80 transition-transform group-hover/card:translate-x-0.5" />
-            ) : null}
-          </div>
+          <CardTitle className="line-clamp-2 text-[13px] leading-tight">{group.materia}</CardTitle>
+          <span
+            className={cn(
+              "inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-none"
+            )}
+            style={token.badgeStyle}
+          >
+            Horarios: {group.countHorarios}
+          </span>
         </div>
       </CardHeader>
 
@@ -75,6 +64,48 @@ export function GroupSummaryCard({ group, onAssignClick }: GroupSummaryCardProps
               <p className="leading-tight">Sin carreras</p>
             )}
           </div>
+        </div>
+
+        <div className="mt-1 flex justify-end gap-0.5">
+          {onAddClick && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onAddClick(group)
+              }}
+              aria-label="Agregar horarios"
+            >
+              <Plus className="size-3.5 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+          {onEditClick && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditClick(group)
+              }}
+              aria-label="Editar horarios"
+            >
+              <Pencil className="size-3.5 text-muted-foreground hover:text-foreground" />
+            </Button>
+          )}
+          {onDeleteClick && (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              onClick={(e) => {
+                e.stopPropagation()
+                onDeleteClick(group)
+              }}
+              aria-label="Eliminar horarios"
+            >
+              <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

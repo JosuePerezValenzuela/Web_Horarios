@@ -7,9 +7,15 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useDocenteHorariosStore } from "@/features/scheduling/docentes/application/docenteHorariosStore"
 import { useBulkAsignacionStore } from "@/features/scheduling/docentes/application/useBulkAsignacionStore"
+import { useEditScheduleStore } from "@/features/scheduling/docentes/application/useEditScheduleStore"
 import { useUIStore } from "@/shared/stores/uiStore"
-import type { GroupSummary } from "@/features/scheduling/docentes/domain/types"
+import type {
+  GroupInfo,
+  GroupSummary,
+  NormalizedSchedule,
+} from "@/features/scheduling/docentes/domain/types"
 import { TeacherSchedulePage } from "@/features/scheduling/docentes/ui/TeacherSchedulePage"
+import { toast } from "sonner"
 
 export default function DocenteHorariosRoutePage() {
   const router = useRouter()
@@ -43,14 +49,47 @@ export default function DocenteHorariosRoutePage() {
     }
   }, [clear, docenteId, fetchByDocenteId, setSidebarCollapsed])
 
-  const handleAssignClick = (group: GroupSummary) => {
-    openModal({
+  const handleAddClick = (group: GroupSummary) => {
+    const groupInfo: GroupInfo = {
       persona_grupo_id: group.persona_grupo_id,
       groupKey: group.groupKey,
       materia: group.materia,
       grupo: group.grupo,
       carrerasLabel: group.carrerasLabel,
-    })
+    }
+    openModal(groupInfo)
+  }
+
+  const handleEditClick = (group: GroupSummary) => {
+    const groupInfo: GroupInfo = {
+      persona_grupo_id: group.persona_grupo_id,
+      groupKey: group.groupKey,
+      materia: group.materia,
+      grupo: group.grupo,
+      carrerasLabel: group.carrerasLabel,
+    }
+    const editStore = useEditScheduleStore.getState()
+    const groupSchedules = schedules.filter((s) => s.groupKey === group.groupKey)
+    editStore.open(groupInfo, groupSchedules)
+  }
+
+  const handleEditSchedule = (schedule: NormalizedSchedule) => {
+    const group = groups.find((g) => g.groupKey === schedule.groupKey)
+    if (!group) return
+    const groupInfo: GroupInfo = {
+      persona_grupo_id: group.persona_grupo_id,
+      groupKey: group.groupKey,
+      materia: group.materia,
+      grupo: group.grupo,
+      carrerasLabel: group.carrerasLabel,
+    }
+    const editStore = useEditScheduleStore.getState()
+    const groupSchedules = schedules.filter((s) => s.groupKey === schedule.groupKey)
+    editStore.open(groupInfo, groupSchedules, schedule.dbId ?? undefined)
+  }
+
+  const handleDeleteClick = () => {
+    toast.info("Próximamente disponible")
   }
 
   return (
@@ -72,7 +111,10 @@ export default function DocenteHorariosRoutePage() {
           onBack={() => router.push("/docentes")}
           onPeriodChange={setPeriod}
           docenteId={docenteId}
-          onAssignClick={handleAssignClick}
+          onAddClick={handleAddClick}
+          onEditClick={handleEditClick}
+          onDeleteClick={handleDeleteClick}
+          onEditSchedule={handleEditSchedule}
           onAssigned={() => fetchByDocenteId(docenteId)}
         />
       </AppLayout>

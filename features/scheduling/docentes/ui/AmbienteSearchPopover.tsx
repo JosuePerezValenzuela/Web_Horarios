@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AlertTriangle } from "lucide-react"
 
-import type { InfraAmbiente, InfraBloque } from "../domain/types"
-import { useBulkAsignacionStore } from "../application/useBulkAsignacionStore"
+import type {
+  AmbienteSearchContract,
+  EditScheduleEntry,
+  InfraAmbiente,
+  InfraBloque,
+} from "../domain/types"
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -18,6 +22,7 @@ interface AmbienteSearchPopoverProps {
   entryId: string
   open: boolean
   onOpenChange: (open: boolean) => void
+  adapter: AmbienteSearchContract
 }
 
 /** Compute the same cache key the store uses for ambienteCache lookups */
@@ -38,24 +43,27 @@ function computeCacheKey(params: {
   return `${entryId}-${dia}-${horaInicio}-${horaFin}-${filtersHash}`
 }
 
-export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteSearchPopoverProps) {
+export function AmbienteSearchPopover({
+  entryId,
+  open,
+  onOpenChange,
+  adapter,
+}: AmbienteSearchPopoverProps) {
   const [facultadSearch, setFacultadSearch] = useState("")
   const [availableBloques, setAvailableBloques] = useState<InfraBloque[]>([])
 
-  // ── Store selectors ──────────────────────────
-  const entry = useBulkAsignacionStore((s) => s.entries.find((e) => e.id === entryId))
-  const entryFilters = useBulkAsignacionStore((s) => s.entryFilters[entryId])
-  const facultades = useBulkAsignacionStore((s) => s.facultades)
-  const tiposAmbiente = useBulkAsignacionStore((s) => s.tiposAmbiente)
-  const selectedFacultades = useBulkAsignacionStore((s) => s.selectedFacultades)
-  const selectedBloques = useBulkAsignacionStore((s) => s.selectedBloques)
-  const selectedTipos = useBulkAsignacionStore((s) => s.selectedTipos)
-  const estudiantes = useBulkAsignacionStore((s) => s.estudiantes)
-  const loadingAmbientesForEntry = useBulkAsignacionStore((s) => s.loadingAmbientesForEntry)
-  const ambienteCache = useBulkAsignacionStore((s) => s.ambienteCache)
-  const setEntryAmbiente = useBulkAsignacionStore((s) => s.setEntryAmbiente)
-  const setEntryFilters = useBulkAsignacionStore((s) => s.setEntryFilters)
-  const fetchAmbientesForEntry = useBulkAsignacionStore((s) => s.fetchAmbientesForEntry)
+  // ── Adapter reads ──────────────────────────
+  const entry = adapter.getEntry(entryId)
+  const entryFilters = adapter.getEntryFilters(entryId)
+  const facultades = adapter.facultades
+  const tiposAmbiente = adapter.tiposAmbiente
+  const selectedFacultades = adapter.selectedFacultades
+  const selectedBloques = adapter.selectedBloques
+  const selectedTipos = adapter.selectedTipos
+  const estudiantes = adapter.estudiantes
+  const loadingAmbientesForEntry = adapter.loadingAmbientesForEntry
+  const ambienteCache = adapter.ambienteCache
+  const dateRange = adapter.dateRange
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -66,18 +74,18 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
     }
   }, [])
 
-  // ── Derive effective filter values from store ─
-  // No local state — read directly from store (entry overrides → global fallback)
+  // ── Derive effective filter values ─────────
   const effectiveFacultad = entryFilters?.selectedFacultades ?? selectedFacultades
   const effectiveBloques = entryFilters?.selectedBloques ?? selectedBloques
   const effectiveTipos = entryFilters?.selectedTipos ?? selectedTipos
   const effectiveCapacidad = entryFilters?.estudiantes ?? estudiantes
 
   // ── Derived state ────────────────────────────
-  const dateRange = useBulkAsignacionStore((s) => s.dateRange)
   const hasGlobalDates = dateRange?.from != null && dateRange?.to != null
-  const isComplete =
-    entry?.dia !== null && !!entry?.horaInicio && !!entry?.horaFin && hasGlobalDates
+  const hasEntryDates =
+    entry && "fechaInicio" in entry ? !!(entry as EditScheduleEntry).fechaInicio : false
+  const hasDateSource = hasGlobalDates || hasEntryDates
+  const isComplete = entry?.dia !== null && !!entry?.horaInicio && !!entry?.horaFin && hasDateSource
   const isLoading = loadingAmbientesForEntry === entryId
 
   const filteredFacultades = facultades.filter((facultad) =>
@@ -88,7 +96,6 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
 
   // ── Fetch available bloques when facultad changes ──
   useEffect(() => {
-    // Reset availableBloques when facultad is deselected (handled in handler for immediate reset)
     if (effectiveFacultad.length === 0) return
 
     let mounted = true
@@ -124,46 +131,61 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
   // ── Auto-search on open or when entry becomes complete ──
   useEffect(() => {
     if (!open || !isComplete) return
-    fetchAmbientesForEntry(entryId)
-  }, [open, isComplete, entryId, fetchAmbientesForEntry])
+    adapter.fetchAmbientesForEntry(entryId)
+  }, [open, isComplete, entryId, adapter])
 
   // ── Debounced search helper ───────────────────
   const triggerDebouncedSearch = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      fetchAmbientesForEntry(entryId)
+      adapter.fetchAmbientesForEntry(entryId)
     }, 300)
-  }, [entryId, fetchAmbientesForEntry])
+  }, [entryId, adapter])
 
   // ── Filter handlers ──────────────────────────
   const handleFacultadChange = (value: string) => {
     if (value === "none") {
       setAvailableBloques([])
-      setEntryFilters(entryId, { selectedFacultades: [], selectedBloques: [] })
+      adapter.setEntryFilters(entryId, { selectedFacultades: [], selectedBloques: [] })
     } else {
       const selected = facultades.find((f) => f.id.toString() === value)
       const newFacultad = selected ? [selected] : []
       setAvailableBloques([])
-      setEntryFilters(entryId, { selectedFacultades: newFacultad, selectedBloques: [] })
+      adapter.setEntryFilters(entryId, { selectedFacultades: newFacultad, selectedBloques: [] })
     }
     if (isComplete) triggerDebouncedSearch()
   }
 
   const handleBloqueChange = (ids: (string | number)[]) => {
     const selected = availableBloques.filter((b) => ids.includes(b.id))
-    setEntryFilters(entryId, { selectedBloques: selected })
+    adapter.setEntryFilters(entryId, {
+      selectedFacultades: effectiveFacultad,
+      selectedBloques: selected,
+      selectedTipos: effectiveTipos,
+      estudiantes: effectiveCapacidad,
+    })
     if (isComplete) triggerDebouncedSearch()
   }
 
   const handleTipoChange = (ids: (string | number)[]) => {
     const selected = tiposAmbiente.filter((t) => ids.includes(t.id))
-    setEntryFilters(entryId, { selectedTipos: selected })
+    adapter.setEntryFilters(entryId, {
+      selectedFacultades: effectiveFacultad,
+      selectedBloques: effectiveBloques,
+      selectedTipos: selected,
+      estudiantes: effectiveCapacidad,
+    })
     if (isComplete) triggerDebouncedSearch()
   }
 
   const handleCapacidadChange = (value: string) => {
     const numValue = value ? Number(value) : null
-    setEntryFilters(entryId, { estudiantes: numValue })
+    adapter.setEntryFilters(entryId, {
+      selectedFacultades: effectiveFacultad,
+      selectedBloques: effectiveBloques,
+      selectedTipos: effectiveTipos,
+      estudiantes: numValue,
+    })
     if (isComplete) triggerDebouncedSearch()
   }
 
@@ -192,14 +214,14 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
 
   // ── Selection handler ────────────────────────
   const handleSelect = (ambiente: InfraAmbiente) => {
-    setEntryAmbiente(entryId, ambiente)
+    adapter.setEntryAmbiente(entryId, ambiente)
     onOpenChange(false)
   }
 
   // ── Render ───────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg h-auto min-h-[320px] p-4" showCloseButton={false}>
+      <DialogContent className="sm:max-w-lg h-auto min-h-80 p-4" showCloseButton={false}>
         <DialogHeader className="pb-2">
           <DialogTitle className="text-sm font-semibold">Seleccionar ambiente</DialogTitle>
         </DialogHeader>
@@ -229,27 +251,7 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
 
           {/* Bloque */}
           <div>
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-medium leading-4">Bloque</Label>
-              {effectiveFacultad.length > 0 && (
-                <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    className="text-[10px] text-primary hover:underline"
-                    onClick={() => handleBloqueChange(availableBloques.map((b) => b.id))}
-                  >
-                    Todos
-                  </button>
-                  <button
-                    type="button"
-                    className="text-[10px] text-muted-foreground hover:underline"
-                    onClick={() => handleBloqueChange([])}
-                  >
-                    Ninguno
-                  </button>
-                </div>
-              )}
-            </div>
+            <Label className="text-[10px] font-medium leading-4">Bloque</Label>
             <MultiSelect
               options={availableBloques.map((b) => ({
                 value: b.id,
@@ -268,25 +270,7 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
 
           {/* Tipo ambiente */}
           <div>
-            <div className="flex items-center justify-between">
-              <Label className="text-[10px] font-medium leading-4">Tipo ambiente</Label>
-              <div className="flex gap-1.5">
-                <button
-                  type="button"
-                  className="text-[10px] text-primary hover:underline"
-                  onClick={() => handleTipoChange(tiposAmbiente.map((t) => t.id))}
-                >
-                  Todos
-                </button>
-                <button
-                  type="button"
-                  className="text-[10px] text-muted-foreground hover:underline"
-                  onClick={() => handleTipoChange([])}
-                >
-                  Ninguno
-                </button>
-              </div>
-            </div>
+            <Label className="text-[10px] font-medium leading-4">Tipo ambiente</Label>
             <MultiSelect
               options={tiposAmbiente.map((t) => ({
                 value: t.id,
@@ -317,11 +301,11 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
         </div>
 
         {/* ═══ Results ═══ */}
-        <div className="min-h-[180px]">
+        <div className="min-h-45">
           {!isComplete ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
-              {!hasGlobalDates
-                ? "Configure el rango de fechas global primero"
+            <div className="flex min-h-45 items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
+              {!hasDateSource
+                ? "Configure fechas para el horario primero"
                 : entry?.dia === null
                   ? "Seleccione un día primero"
                   : !entry?.horaInicio || !entry?.horaFin
@@ -329,20 +313,20 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
                     : "Complete los datos del horario"}
             </div>
           ) : isLoading ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
+            <div className="flex min-h-45 items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
               Cargando...
             </div>
           ) : !ambientes ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
+            <div className="flex min-h-45 items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
               Buscando ambientes...
             </div>
           ) : sortedAmbientes.length === 0 ? (
-            <div className="flex min-h-[180px] items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
+            <div className="flex min-h-45 items-center justify-center rounded-xl bg-muted/30 px-3 py-6 text-xs text-muted-foreground">
               No se encontraron ambientes disponibles
             </div>
           ) : (
             <>
-              <div className="max-h-[180px] min-h-[180px] space-y-1 overflow-y-auto">
+              <div className="max-h-45 min-h-45 space-y-1 overflow-y-auto">
                 {sortedAmbientes.map((amb) => (
                   <button
                     key={amb.id}
@@ -380,7 +364,10 @@ export function AmbienteSearchPopover({ entryId, open, onOpenChange }: AmbienteS
               {hasSolapamientoPropio && (
                 <div className="mt-2 flex items-center gap-1.5 rounded-lg bg-amber-50/50 px-2.5 py-1.5 text-[10px] text-amber-700 dark:bg-amber-950/10 dark:text-amber-400">
                   <AlertTriangle className="size-3 shrink-0" />
-                  <span>Ambiente con solapamiento: mismo docente lo utiliza en otro horario</span>
+                  <span>
+                    Ambiente con solapamiento: el docente ya utiliza este ambiente en este dia y
+                    hora
+                  </span>
                 </div>
               )}
             </>

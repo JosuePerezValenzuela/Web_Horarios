@@ -3,11 +3,15 @@
  */
 
 import type { LoginRequest, LoginResponse } from "@/features/auth/domain/types"
+import type {
+  EditarHorariosBatchRequest,
+  EditarHorariosBatchResponse,
+} from "@/features/scheduling/docentes/domain/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
 
 interface ApiClientOptions {
-  method?: "GET" | "POST" | "PUT" | "DELETE"
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   body?: unknown
   headers?: Record<string, string>
 }
@@ -96,6 +100,10 @@ class ApiClient {
 
   async post<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "POST", body })
+  }
+
+  async patch<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "PATCH", body })
   }
 }
 
@@ -218,5 +226,9 @@ export const horariosApi = {
 
   asignarBatch: (payload: AsignarHorariosBatchRequest): Promise<AsignarHorariosBatchResponse> => {
     return apiClient.post<AsignarHorariosBatchResponse>("/horario-clases/asignar", payload)
+  },
+
+  editarBatch: (payload: EditarHorariosBatchRequest): Promise<EditarHorariosBatchResponse> => {
+    return apiClient.patch<EditarHorariosBatchResponse>("/horario-clases", payload)
   },
 }

@@ -1,11 +1,12 @@
 import { create } from "zustand"
-import type { DateRange } from "react-day-picker"
 
 import type {
   AmbienteSearchContract,
+  EditScheduleEntry,
+  EditarHorariosBatchRequest,
+  EditarHorariosBatchResponse,
   EntryFilterOverrides,
   GroupInfo,
-  HorarioEntry,
   InfraAmbiente,
   InfraBloque,
   InfraFacultad,
@@ -13,31 +14,48 @@ import type {
   NormalizedSchedule,
   SolapamientoInfo,
 } from "../domain/types"
-import {
-  horariosApi,
-  type BuscarAmbienteRequest,
-  type AsignarHorariosBatchRequest,
-} from "@/shared/services/api/client"
+import { horariosApi, type BuscarAmbienteRequest } from "@/shared/services/api/client"
 import { infraApiClient } from "@/shared/services/api/infraClient"
 
-interface BulkAsignacionState {
+function formatMinutes(minutes: number): string {
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
+}
+
+function mapScheduleToEntry(schedule: NormalizedSchedule): EditScheduleEntry {
+  return {
+    id: crypto.randomUUID(),
+    dbId: schedule.dbId,
+    dia: schedule.day - 1, // 1-6 → 0-5 (infra format)
+    horaInicio: formatMinutes(schedule.startMin),
+    horaFin: formatMinutes(schedule.endMin),
+    ambienteId: schedule.ambienteId ?? undefined,
+    ambienteLabel:
+      schedule.ambienteLabel && schedule.ambienteLabel !== "Sin ambiente"
+        ? schedule.ambienteLabel
+        : undefined,
+    fechaInicio: schedule.fechaInicioRaw ?? undefined,
+    fechaFin: schedule.fechaFinRaw ?? undefined,
+  }
+}
+
+interface EditScheduleState {
   // Modal
   isOpen: boolean
   selectedGroup: GroupInfo | null
+  existingSchedules: NormalizedSchedule[]
 
-  // Global date
-  dateRange: DateRange | undefined
+  // Entries
+  entries: EditScheduleEntry[]
 
-  // Global filters
+  // Global filters (shared across entries unless overridden)
   facultades: InfraFacultad[]
   tiposAmbiente: InfraTipoAmbiente[]
   selectedFacultades: InfraFacultad[]
   selectedBloques: InfraBloque[]
   selectedTipos: InfraTipoAmbiente[]
   estudiantes: number | null
-
-  // Entries
-  entries: HorarioEntry[]
 
   // Per-entry filter overrides: entryId -> filters
   entryFilters: Record<
@@ -57,14 +75,16 @@ interface BulkAsignacionState {
   // Error state
   initialLoadError: string | null
 
+  // Highlighted entry (from grid click)
+  highlightedEntryId: string | null
+
   // Submission
   submitting: boolean
   solapamientos: SolapamientoInfo[]
 
   // Actions
-  openModal: (group: GroupInfo) => void
-  closeModal: () => void
-  setDateRange: (range: DateRange | undefined) => void
+  open: (group: GroupInfo, schedules: NormalizedSchedule[], highlightDbId?: number) => void
+  close: () => void
   setSelectedFacultades: (f: InfraFacultad[]) => void
   setSelectedBloques: (b: InfraBloque[]) => void
   setSelectedTipos: (t: InfraTipoAmbiente[]) => void
@@ -73,7 +93,7 @@ interface BulkAsignacionState {
   // Entry management
   addEntry: () => void
   removeEntry: (id: string) => void
-  updateEntry: (id: string, partial: Partial<HorarioEntry>) => void
+  updateEntry: (id: string, partial: Partial<EditScheduleEntry>) => void
   setEntryAmbiente: (entryId: string, ambiente: InfraAmbiente) => void
 
   // Per-entry filter overrides
@@ -94,9 +114,7 @@ interface BulkAsignacionState {
   checkSolapamientos: (existingSchedules: NormalizedSchedule[]) => SolapamientoInfo[]
 
   // Submit
-  submitBatch: (
-    personaGrupoId: number
-  ) => Promise<{ success: boolean; message?: string; errorIndex?: number }>
+  submitEdit: () => Promise<{ success: boolean; message?: string; errorIndex?: number }>
 
   fetchInitialData: () => Promise<void>
   reset: () => void
@@ -105,36 +123,46 @@ interface BulkAsignacionState {
 const INITIAL_STATE = {
   isOpen: false,
   selectedGroup: null,
-  dateRange: undefined,
+  existingSchedules: [],
+  entries: [],
   facultades: [],
   tiposAmbiente: [],
   selectedFacultades: [],
   selectedBloques: [],
   selectedTipos: [],
   estudiantes: null,
-  entries: [],
   entryFilters: {},
   ambienteCache: {},
   loadingAmbientesForEntry: null,
   initialLoadError: null,
+  highlightedEntryId: null,
   submitting: false,
   solapamientos: [],
 }
 
-export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) => ({
+export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   ...INITIAL_STATE,
 
-  openModal: (group: GroupInfo) => {
-    set({ isOpen: true, selectedGroup: group })
+  open: (group: GroupInfo, schedules: NormalizedSchedule[], highlightDbId?: number) => {
+    const entries = schedules.map((s) => mapScheduleToEntry(s))
+    const highlightedEntryId =
+      highlightDbId !== undefined
+        ? (entries.find((e) => e.dbId === highlightDbId)?.id ?? null)
+        : null
+    set({
+      isOpen: true,
+      selectedGroup: group,
+      existingSchedules: schedules,
+      entries,
+      highlightedEntryId,
+    })
     get().fetchInitialData()
   },
 
-  closeModal: () => {
+  close: () => {
     set({ isOpen: false })
     setTimeout(() => get().reset(), 300)
   },
-
-  setDateRange: (range: DateRange | undefined) => set({ dateRange: range }),
 
   setSelectedFacultades: (f: InfraFacultad[]) => set({ selectedFacultades: f }),
 
@@ -145,8 +173,9 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
   setEstudiantes: (n: number | null) => set({ estudiantes: n }),
 
   addEntry: () => {
-    const entry: HorarioEntry = {
+    const entry: EditScheduleEntry = {
       id: crypto.randomUUID(),
+      dbId: null,
       dia: null,
       horaInicio: "",
       horaFin: "",
@@ -166,7 +195,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
     }))
   },
 
-  updateEntry: (id: string, partial: Partial<HorarioEntry>) => {
+  updateEntry: (id: string, partial: Partial<EditScheduleEntry>) => {
     set((state) => ({
       entries: state.entries.map((e) => (e.id === id ? { ...e, ...partial } : e)),
     }))
@@ -225,8 +254,8 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
         dia: entry.dia,
         hora_inicio: entry.horaInicio,
         hora_fin: entry.horaFin,
-        fecha_inicio: state.dateRange?.from?.toISOString().split("T")[0],
-        fecha_fin: state.dateRange?.to?.toISOString().split("T")[0],
+        fecha_inicio: entry.fechaInicio ?? undefined,
+        fecha_fin: entry.fechaFin ?? undefined,
         persona_grupo_id: state.selectedGroup?.persona_grupo_id,
         facultad_ids: facultadIds.length > 0 ? facultadIds : undefined,
         bloque_ids: bloqueIds.length > 0 ? bloqueIds : undefined,
@@ -284,7 +313,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       }
     }
 
-    // Against existing schedules
+    // Against existing schedules — self-exclude by dbId
     for (let i = 0; i < entries.length; i++) {
       const entry = entries[i]
       if (entry.dia === null || !entry.horaInicio || !entry.horaFin) continue
@@ -293,8 +322,10 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       const eEnd = toMinutes(entry.horaFin)
 
       for (const schedule of existingSchedules) {
-        // NormalizedSchedule.day is 1-6 (1=Lunes)
-        // entry.dia is 0-6 (0=Lunes), so entry.dia + 1 === schedule.day
+        // Self-exclusion: skip if entry's dbId matches this schedule's dbId
+        if (entry.dbId !== null && schedule.dbId !== null && entry.dbId === schedule.dbId) continue
+
+        // entry.dia is 0-6, schedule.day is 1-6 → entry.dia + 1 === schedule.day
         if (entry.dia + 1 !== schedule.day) continue
 
         if (eStart < schedule.endMin && eEnd > schedule.startMin) {
@@ -310,41 +341,48 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
     return solapamientos
   },
 
-  submitBatch: async (personaGrupoId: number) => {
-    const { entries, dateRange, selectedGroup } = get()
+  submitEdit: async () => {
+    const { entries } = get()
 
-    if (!selectedGroup || !dateRange?.from || !dateRange?.to) {
-      return { success: false, message: "Seleccione un rango de fechas" }
-    }
-
-    const fechaInicio = dateRange.from.toISOString().split("T")[0]
-    const fechaFin = dateRange.to.toISOString().split("T")[0]
-
-    // Filter entries with valid data
+    // Filter entries that have a valid dbId (can be edited via PATCH)
     const validEntries = entries.filter(
-      (e) => e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId
+      (e) => e.dbId !== null && e.dia !== null && e.horaInicio && e.horaFin
     )
 
     if (validEntries.length === 0) {
-      return { success: false, message: "No hay horarios válidos para asignar" }
+      return { success: false, message: "No hay horarios válidos para editar" }
     }
 
     set({ submitting: true })
 
     try {
-      const payload: AsignarHorariosBatchRequest = {
-        persona_grupo_id: personaGrupoId,
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        horarios: validEntries.map((e) => ({
-          dia: e.dia!,
-          hora_inicio: e.horaInicio,
-          hora_fin: e.horaFin,
-          aula_id: e.ambienteId!,
-        })),
-      }
+      const horarios = validEntries.map((e) => {
+        const item: {
+          id: number
+          dia?: number
+          hora_inicio?: string
+          hora_fin?: string
+          aula_id?: number
+          fecha_inicio?: string
+          fecha_fin?: string
+        } = {
+          id: e.dbId!,
+        }
 
-      const response = await horariosApi.asignarBatch(payload)
+        // Only include non-null, non-undefined optional fields
+        if (e.dia !== null) item.dia = e.dia
+        if (e.horaInicio) item.hora_inicio = e.horaInicio
+        if (e.horaFin) item.hora_fin = e.horaFin
+        if (e.ambienteId != null) item.aula_id = e.ambienteId
+        if (e.fechaInicio) item.fecha_inicio = e.fechaInicio
+        if (e.fechaFin) item.fecha_fin = e.fechaFin
+
+        return item
+      })
+
+      const payload: EditarHorariosBatchRequest = { horarios }
+
+      const response: EditarHorariosBatchResponse = await horariosApi.editarBatch(payload)
       set({ submitting: false })
       return { success: true, message: response.message }
     } catch (error: unknown) {
@@ -353,7 +391,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       if (error && typeof error === "object" && "status" in error) {
         const apiError = error as { status: number; body?: { message?: string } }
         if (apiError.status === 400) {
-          const message = apiError.body?.message || "Error en la asignación"
+          const message = apiError.body?.message || "Error al editar horarios"
           // Parse "Error en horario N: ..." to extract errorIndex
           const match = message.match(/Error en horario (\d+)/)
           const errorIndex = match ? parseInt(match[1], 10) - 1 : undefined
@@ -361,11 +399,11 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
         }
         return {
           success: false,
-          message: apiError.body?.message || "Error en la asignación",
+          message: apiError.body?.message || "Error al editar horarios",
         }
       }
 
-      return { success: false, message: "Error inesperado en la asignación" }
+      return { success: false, message: "Error inesperado al editar horarios" }
     }
   },
 
@@ -394,9 +432,9 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
   reset: () => set({ ...INITIAL_STATE }),
 }))
 
-// ── Adapter: wraps useBulkAsignacionStore into AmbienteSearchContract ──
-export function createBulkAmbienteAdapter(
-  store: typeof useBulkAsignacionStore
+// ── Adapter: wraps useEditScheduleStore into AmbienteSearchContract ──
+export function createEditAmbienteAdapter(
+  store: typeof useEditScheduleStore
 ): AmbienteSearchContract {
   return {
     getEntry: (entryId: string) => store.getState().entries.find((e) => e.id === entryId),
@@ -419,9 +457,6 @@ export function createBulkAmbienteAdapter(
     },
     get estudiantes() {
       return store.getState().estudiantes
-    },
-    get dateRange() {
-      return store.getState().dateRange
     },
     get loadingAmbientesForEntry() {
       return store.getState().loadingAmbientesForEntry

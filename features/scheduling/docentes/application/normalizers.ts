@@ -247,6 +247,27 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     toNumber(schedule.ambienteId) ??
     (typeof schedule.ambiente === "object" ? toNumber(schedule.ambiente?.id) : null)
 
+  // Extract dbId from schedule.id — use numeric value when available
+  const rawId = schedule.id
+  const dbId: number | null =
+    typeof rawId === "number" && Number.isFinite(rawId)
+      ? rawId
+      : typeof rawId === "string" && /^\d+$/.test(rawId.trim())
+        ? parseInt(rawId, 10)
+        : null
+
+  // Extract raw fecha strings — use inline extraction to support null return
+  const rawFechaInicio = schedule.fechaInicio ?? schedule.fecha_inicio
+  const rawFechaFin = schedule.fechaFin ?? schedule.fecha_fin
+  const fechaInicioRaw: string | null =
+    rawFechaInicio != null && typeof rawFechaInicio === "string" && rawFechaInicio.trim().length > 0
+      ? rawFechaInicio.trim()
+      : null
+  const fechaFinRaw: string | null =
+    rawFechaFin != null && typeof rawFechaFin === "string" && rawFechaFin.trim().length > 0
+      ? rawFechaFin.trim()
+      : null
+
   return {
     scheduleId: toStringValue(schedule.id, `${groupKey}-${day}-${startMin}-${endMin}`),
     groupKey,
@@ -265,6 +286,9 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     ambienteLabel: normalizeAmbienteLabel(schedule.ambiente),
     tipoLabel: normalizeTipoLabel(schedule),
     fechasLabel: normalizeFechasLabel(schedule),
+    dbId,
+    fechaInicioRaw,
+    fechaFinRaw,
   }
 }
 

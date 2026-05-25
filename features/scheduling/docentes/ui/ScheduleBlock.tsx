@@ -8,6 +8,7 @@ interface ScheduleBlockProps {
   compact?: boolean
   mode?: "full" | "peek"
   className?: string
+  onClick?: (schedule: NormalizedSchedule) => void
 }
 
 export function ScheduleBlock({
@@ -15,19 +16,29 @@ export function ScheduleBlock({
   compact = false,
   mode = "full",
   className,
+  onClick,
 }: ScheduleBlockProps) {
   const token = resolveGroupColorToken(schedule.colorIndex)
+  const isClickable = onClick !== undefined && mode !== "peek"
+
+  const commonProps = {
+    className: cn(
+      "flex w-full overflow-hidden rounded-lg border shadow-sm",
+      mode === "peek"
+        ? "h-full items-center px-3 py-2 backdrop-blur-[1px]"
+        : compact
+          ? "flex-col gap-0.5 px-2 py-1.5 text-[10px] leading-tight"
+          : "flex-col gap-0.5 px-2 py-1.5 text-[11px] leading-tight",
+      "focus-within:ring-2 focus-within:ring-ring",
+      isClickable && "cursor-pointer hover:brightness-95",
+      className
+    ),
+    style: token.blockStyle,
+  }
 
   if (mode === "peek") {
     return (
-      <article
-        className={cn(
-          "flex h-full w-full items-center overflow-hidden rounded-lg border px-3 py-2 shadow-sm backdrop-blur-[1px]",
-          "focus-within:ring-2 focus-within:ring-ring",
-          className
-        )}
-        style={token.blockStyle}
-      >
+      <article {...commonProps}>
         <p className="truncate text-[10px] font-semibold leading-none text-foreground/95">
           {schedule.materia}
         </p>
@@ -37,15 +48,21 @@ export function ScheduleBlock({
 
   return (
     <article
-      className={cn(
-        "flex w-full flex-col overflow-hidden rounded-lg border shadow-sm",
-        compact
-          ? "gap-0.5 px-2 py-1.5 text-[10px] leading-tight"
-          : "gap-0.5 px-2 py-1.5 text-[11px] leading-tight",
-        "focus-within:ring-2 focus-within:ring-ring",
-        className
-      )}
-      style={token.blockStyle}
+      {...commonProps}
+      onClick={isClickable ? () => onClick(schedule) : undefined}
+      onKeyDown={
+        isClickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault()
+                onClick(schedule)
+              }
+            }
+          : undefined
+      }
+      tabIndex={isClickable ? 0 : undefined}
+      role={isClickable ? "button" : undefined}
+      aria-label={isClickable ? `Editar horario de ${schedule.materia}` : undefined}
     >
       {/* Line 1: Materia */}
       <p

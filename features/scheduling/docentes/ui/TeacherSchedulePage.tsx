@@ -28,7 +28,10 @@ interface TeacherSchedulePageProps {
   onBack: () => void
   onPeriodChange: (period: number) => void
   docenteId?: string
-  onAssignClick?: (group: GroupSummary) => void
+  onAddClick?: (group: GroupSummary) => void
+  onEditClick?: (group: GroupSummary) => void
+  onDeleteClick?: (group: GroupSummary) => void
+  onEditSchedule?: (schedule: NormalizedSchedule) => void
   onAssigned?: () => void | Promise<void>
 }
 
@@ -46,15 +49,24 @@ export function TeacherSchedulePage({
   onBack,
   onPeriodChange,
   docenteId,
-  onAssignClick,
+  onAddClick,
+  onEditClick,
+  onDeleteClick,
+  onEditSchedule,
   onAssigned,
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
 
-  const handleAssignClick = (group: GroupSummary) => {
-    if (onAssignClick) {
-      onAssignClick(group)
-    }
+  const handleAddClick = (group: GroupSummary) => {
+    onAddClick?.(group)
+  }
+
+  const handleEditClick = (group: GroupSummary) => {
+    onEditClick?.(group)
+  }
+
+  const handleDeleteClick = (group: GroupSummary) => {
+    onDeleteClick?.(group)
   }
 
   return (
@@ -91,7 +103,7 @@ export function TeacherSchedulePage({
         </section>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:items-stretch">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch">
         <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 lg:h-full lg:max-h-full">
           <div className="space-y-1.5">
             <Label htmlFor="periodo-horario" className="text-sm font-medium">
@@ -126,7 +138,9 @@ export function TeacherSchedulePage({
                   <GroupSummaryCard
                     key={group.groupKey}
                     group={group}
-                    onAssignClick={onAssignClick ? handleAssignClick : undefined}
+                    onAddClick={onAddClick ? handleAddClick : undefined}
+                    onEditClick={onEditClick ? handleEditClick : undefined}
+                    onDeleteClick={onDeleteClick ? handleDeleteClick : undefined}
                   />
                 ))
               ) : (
@@ -148,6 +162,7 @@ export function TeacherSchedulePage({
                 rows={rows}
                 timeRange={timeRange}
                 overlapRotationIntervalMs={overlapRotationIntervalMs}
+                onEditSchedule={onEditSchedule}
               />
             </div>
           ) : (
@@ -161,8 +176,11 @@ export function TeacherSchedulePage({
         </main>
       </div>
 
-      {docenteId && onAssignClick && (
-        <BulkAssignmentModal schedules={schedules} onAssigned={onAssigned} />
+      {docenteId && onAddClick && (
+        <BulkAssignmentModal mode="create" schedules={schedules} onAssigned={onAssigned} />
+      )}
+      {docenteId && onEditClick && (
+        <BulkAssignmentModal mode="edit" schedules={schedules} onAssigned={onAssigned} />
       )}
     </div>
   )
