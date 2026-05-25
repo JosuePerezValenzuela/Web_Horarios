@@ -70,6 +70,10 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 
 ### `components/ui/` — Global base components
 
+- `alert.tsx`
+  - Installed via shadcn; variants: `default`, `destructive`, **`success`**
+  - Use `success` variant (`className="border-green-500/50 text-green-700 dark:text-green-400"`) for success feedback
+  - Prefer **sonner toasts** (`toast.success`/`toast.error`) over inline Alerts for transient feedback — see `app/layout.tsx` for Toaster setup
 - `button.tsx`
   - Uses **CVA** variants: `default`, `outline`, `secondary`, `ghost`, `destructive`, `link`
   - Sizes: `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`, `icon-sm`, `icon-lg`
@@ -111,7 +115,8 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
   - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing
   - Use this when a `Select` needs in-panel filtering but selection remains **single-select**
 - `multi-select.tsx`
-  - Searchable multi-selection dropdown with internal scroll, optional filter, and selected-count badge
+  - Searchable multi-selection dropdown with internal scroll, optional filter, selected-count badge, and **`selectAll`** prop
+  - `selectAll={true}` shows a "Seleccionar todos" / "Quitar todos" toggle as first item in the dropdown
   - Use for: reusable **multi-select** cases (e.g. bloques, tipos, tags) where multiple values are required
 - `table.tsx`
   - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`
@@ -219,4 +224,34 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
 
 - **Status**: Not configured yet
 - **Recommendation**: Vitest + React Testing Library when needed
+
+## Session: 2026-05-25 — Schedule View Refinements + SDD Archive
+
+Cambios importantes que otro agente debe conocer:
+
+### CSS: Nueva variable `--grid-line`
+- `app/globals.css` registra `--color-grid-line` en `@theme inline`
+- Light: `oklch(0.78 0 0)`, Dark: `oklch(1 0 0 / 25%)`
+- **Grid borders en `WeeklyScheduleGrid` usan `border-grid-line` con grosor `[3px]`**
+- NO usar `border-border/XX` para líneas de la grilla horaria
+
+### ScheduleBlock: Layout definitivo (2 líneas)
+- **Línea 1**: Nombre de materia (`line-clamp-2` modo full, `truncate` modo compact)
+- **Línea 2**: `Ambiente: <Valor>` + badge `G: #` alineado a la derecha, centrados verticalmente (`items-center`)
+- **Peek mode**: Solo nombre de materia
+- **Altura natural**: Sin `max-h-full` ni `min-h-0` — la card se adapta a su contenido
+
+### WeeklyScheduleGrid: Alturas dinámicas
+- SIN constantes mágicas (`SINGLE_SCHEDULE_MIN_HEIGHT`, `COLLAPSED_STACK_MIN_HEIGHT`, `EXPANDED_STACK_ITEM_HEIGHT` eliminadas)
+- Los contenedores usan `min-height` (no `height` fijo) basado en `duration * PX_PER_MINUTE`
+- Cards centradas verticalmente con `flex items-center`
+- Línea de cierre inferior con badge de hora fin (`timeRange.endMin`)
+- Constructores de altura: `getSingleScheduleHeight()` → solo `duration * 0.95`; `getCollapsedClusterHeight()` → suma real sin floors
+
+### SDD: Change archivado
+- `asignacion-n-horarios` archivado en `openspec/changes/archive/2026-05-25-asignacion-n-horarios/`
+- Specs promovidos a `openspec/specs/bulk-schedule-assignment/spec.md`
+- Legacy eliminado: `AsignarHorarioModal.tsx`, `asignarHorarioStore.ts`
+- Store activa: `useBulkAsignacionStore`
+- Modal activo: `BulkAssignmentModal`
 <!-- END:project-conventions -->
