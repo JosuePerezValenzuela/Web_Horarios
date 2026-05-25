@@ -1,7 +1,7 @@
 schema: spec-driven
 
 context: |
-  Project: Web Horarios — university schedule management frontend
+  Project: Web Horarios
   Stack: Next.js 16.2.4 (App Router), React 19.2.4, TypeScript (strict)
   UI: shadcn/ui 4.4.0, TailwindCSS 4, Radix UI, Lucide Icons
   State: Zustand 5
@@ -26,8 +26,13 @@ testing:
     command: null
   quality:
     linter: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm lint'" }
-    type_checker: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm tsc --noEmit'" }
-    formatter: { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm prettier --write <files>'" }
+    type_checker:
+      { available: true, command: "docker exec front_horarios-dev sh -c 'pnpm tsc --noEmit'" }
+    formatter:
+      {
+        available: true,
+        command: "docker exec front_horarios-dev sh -c 'pnpm prettier --write <files>'",
+      }
 
 rules:
   proposal:

@@ -181,14 +181,6 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
   - `shared/services/api/infraClient.ts` → infrastructure/physical resources API (`NEXT_PUBLIC_INFRA_URL`)
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
-## Code Style
-
-- **Indentation**: 2 spaces
-- **Quotes**: Double quotes (`"`) or single quotes (`'`) allowed
-- **Semicolons**: No (Prettier config)
-- **Line ending**: LF
-- **Print width**: 100 characters
-
 ## Formatting Workflow (IMPORTANT)
 
 When writing code, agents should follow this workflow:
@@ -224,34 +216,4 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
 
 - **Status**: Not configured yet
 - **Recommendation**: Vitest + React Testing Library when needed
-
-## Session: 2026-05-25 — Schedule View Refinements + SDD Archive
-
-Cambios importantes que otro agente debe conocer:
-
-### CSS: Nueva variable `--grid-line`
-- `app/globals.css` registra `--color-grid-line` en `@theme inline`
-- Light: `oklch(0.78 0 0)`, Dark: `oklch(1 0 0 / 25%)`
-- **Grid borders en `WeeklyScheduleGrid` usan `border-grid-line` con grosor `[3px]`**
-- NO usar `border-border/XX` para líneas de la grilla horaria
-
-### ScheduleBlock: Layout definitivo (2 líneas)
-- **Línea 1**: Nombre de materia (`line-clamp-2` modo full, `truncate` modo compact)
-- **Línea 2**: `Ambiente: <Valor>` + badge `G: #` alineado a la derecha, centrados verticalmente (`items-center`)
-- **Peek mode**: Solo nombre de materia
-- **Altura natural**: Sin `max-h-full` ni `min-h-0` — la card se adapta a su contenido
-
-### WeeklyScheduleGrid: Alturas dinámicas
-- SIN constantes mágicas (`SINGLE_SCHEDULE_MIN_HEIGHT`, `COLLAPSED_STACK_MIN_HEIGHT`, `EXPANDED_STACK_ITEM_HEIGHT` eliminadas)
-- Los contenedores usan `min-height` (no `height` fijo) basado en `duration * PX_PER_MINUTE`
-- Cards centradas verticalmente con `flex items-center`
-- Línea de cierre inferior con badge de hora fin (`timeRange.endMin`)
-- Constructores de altura: `getSingleScheduleHeight()` → solo `duration * 0.95`; `getCollapsedClusterHeight()` → suma real sin floors
-
-### SDD: Change archivado
-- `asignacion-n-horarios` archivado en `openspec/changes/archive/2026-05-25-asignacion-n-horarios/`
-- Specs promovidos a `openspec/specs/bulk-schedule-assignment/spec.md`
-- Legacy eliminado: `AsignarHorarioModal.tsx`, `asignarHorarioStore.ts`
-- Store activa: `useBulkAsignacionStore`
-- Modal activo: `BulkAssignmentModal`
 <!-- END:project-conventions -->
