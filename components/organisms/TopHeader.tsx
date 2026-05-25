@@ -8,7 +8,8 @@
 import { useAuth } from "@/features/auth/application/useAuth"
 import { useUIStore } from "@/shared/stores/uiStore"
 import { cn } from "@/lib/utils"
-import { Moon, Bell, HelpCircle, User, LogOut, PanelLeftClose, PanelLeft } from "lucide-react"
+import { ThemeToggle } from "@/components/ui/theme-toggle"
+import { Bell, HelpCircle, User, LogOut, PanelLeftClose, PanelLeft } from "lucide-react"
 
 interface TopHeaderProps {
   className?: string
@@ -82,9 +83,7 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
             )}
           </div>
 
-          <button className="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center">
-            <Moon className="w-5 h-5" />
-          </button>
+          <ThemeToggle />
           <button className="text-muted-foreground hover:text-primary transition-colors flex items-center justify-center">
             <Bell className="w-5 h-5" />
           </button>

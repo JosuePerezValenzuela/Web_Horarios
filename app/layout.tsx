@@ -4,6 +4,7 @@ import { Toaster } from "sonner"
 
 import "./globals.css"
 import { cn } from "@/lib/utils"
+import { ThemeProvider } from "@/core/providers/ThemeProvider"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={cn(
         "h-full",
         "antialiased",
@@ -40,8 +42,15 @@ export default function RootLayout({
       )}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster richColors position="top-right" closeButton />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster richColors position="top-right" closeButton />
+        </ThemeProvider>
       </body>
     </html>
   )
