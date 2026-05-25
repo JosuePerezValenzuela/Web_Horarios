@@ -22,6 +22,7 @@ interface MultiSelectProps {
   searchable?: boolean
   searchPlaceholder?: string
   maxVisibleItems?: number
+  selectAll?: boolean
 }
 
 export function MultiSelect({
@@ -34,6 +35,7 @@ export function MultiSelect({
   searchable = false,
   searchPlaceholder = "Buscar...",
   maxVisibleItems = 6,
+  selectAll = false,
 }: MultiSelectProps) {
   const [open, setOpen] = React.useState(false)
   const [filterValue, setFilterValue] = React.useState("")
@@ -147,11 +149,35 @@ export function MultiSelect({
         ) : null}
 
         <div
-          className="overflow-y-auto overscroll-contain p-1"
+          className="overflow-y-auto overscroll-contain p-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
           style={{ maxHeight: viewportMaxHeight }}
           onWheelCapture={(event) => event.stopPropagation()}
           onTouchMoveCapture={(event) => event.stopPropagation()}
         >
+          {selectAll && options.length > 0 && (
+            <label className="relative flex cursor-pointer items-center gap-2.5 rounded-xl px-3 py-2 pr-8 text-sm transition-colors hover:bg-accent/50 border-b border-border/50 mb-1">
+              <input
+                type="checkbox"
+                checked={value.length === options.length && options.length > 0}
+                onChange={() => {
+                  if (value.length === options.length) {
+                    onValueChange([])
+                  } else {
+                    onValueChange(options.map((o) => o.value))
+                  }
+                }}
+                className="size-4 rounded border-border text-primary focus:ring-primary"
+              />
+              <span className="flex-1 text-xs font-medium text-muted-foreground">
+                {value.length === options.length ? "Quitar todos" : "Seleccionar todos"}
+              </span>
+              {value.length === options.length && options.length > 0 ? (
+                <span className="pointer-events-none absolute right-2 flex size-4 items-center justify-center">
+                  <CheckIcon className="size-4" />
+                </span>
+              ) : null}
+            </label>
+          )}
           {sortedOptions.length > 0 ? (
             sortedOptions.map((option) => (
               <label
