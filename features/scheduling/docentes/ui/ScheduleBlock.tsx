@@ -38,7 +38,7 @@ export function ScheduleBlock({
   return (
     <article
       className={cn(
-        "flex w-full max-h-full min-h-0 flex-col overflow-hidden rounded-lg border shadow-sm",
+        "flex w-full flex-col overflow-hidden rounded-lg border shadow-sm",
         compact
           ? "gap-0.5 px-2 py-1.5 text-[10px] leading-tight"
           : "gap-0.5 px-2 py-1.5 text-[11px] leading-tight",
