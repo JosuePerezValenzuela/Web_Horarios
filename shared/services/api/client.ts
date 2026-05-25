@@ -12,7 +12,7 @@ interface ApiClientOptions {
   headers?: Record<string, string>
 }
 
-interface ApiError extends Error {
+export interface ApiError extends Error {
   status: number
   body?: unknown
 }
@@ -165,6 +165,37 @@ export interface AsignarHorarioResponse {
   }
 }
 
+export interface HorarioItem {
+  dia: number // 0=Lunes...6=Domingo (Infraestructura format)
+  hora_inicio: string // "HH:mm"
+  hora_fin: string // "HH:mm"
+  aula_id: number
+}
+
+export interface AsignarHorariosBatchRequest {
+  persona_grupo_id: number
+  fecha_inicio: string // "YYYY-MM-DD"
+  fecha_fin: string // "YYYY-MM-DD"
+  horarios: HorarioItem[]
+}
+
+export interface AsignarHorariosBatchResponse {
+  success: boolean
+  message?: string
+  data?: Array<{
+    id: number
+    persona_grupo_id: number
+    dia: number
+    hora_inicio: string
+    hora_fin: string
+    fecha_inicio: string
+    fecha_fin: string
+    aula_id: number
+    modalidad: string | null
+    created_at: string
+  }>
+}
+
 // Auth-specific methods
 export const authApi = {
   login: (credentials: LoginRequest): Promise<LoginResponse> => {
@@ -183,5 +214,9 @@ export const horariosApi = {
 
   asignar: (payload: AsignarHorarioRequest): Promise<AsignarHorarioResponse> => {
     return apiClient.post<AsignarHorarioResponse>("/horario-clases/asignar", payload)
+  },
+
+  asignarBatch: (payload: AsignarHorariosBatchRequest): Promise<AsignarHorariosBatchResponse> => {
+    return apiClient.post<AsignarHorariosBatchResponse>("/horario-clases/asignar", payload)
   },
 }

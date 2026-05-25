@@ -280,3 +280,36 @@ export interface AsignarHorarioPayload {
   ambienteId: number
   estudiantes: number | null
 }
+
+// ============================================
+// Bulk Assignment Types
+// ============================================
+
+export interface HorarioEntry {
+  id: string
+  dia: number | null
+  horaInicio: string
+  horaFin: string
+  ambienteId?: number
+  ambienteLabel?: string
+  error?: string | null
+}
+
+export interface BulkAssignPayload {
+  persona_grupo_id: number
+  fecha_inicio: string
+  fecha_fin: string
+  horarios: Array<{
+    dia: number
+    hora_inicio: string
+    hora_fin: string
+    aula_id: number
+  }>
+}
+
+export interface SolapamientoInfo {
+  type: "intra-bulk" | "existing-schedule"
+  entryIndex: number
+  conflictingEntryIndex?: number
+  message: string
+}
