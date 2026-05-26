@@ -33,17 +33,17 @@ export function resolveGroupColorToken(index: number): GroupColorToken {
 
   return {
     cardStyle: {
-      backgroundColor: `hsl(${hue} ${step.card[0]}% ${step.card[1]}%)`,
-      borderColor: `hsl(${hue} 42% 66%)`,
+      backgroundColor: `hsl(${hue} ${step.card[0]}% calc(${step.card[1]}% - (var(--theme-dark-modifier, 0) * 80%)))`,
+      borderColor: `hsl(${hue} 42% calc(66% - (var(--theme-dark-modifier, 0) * 45%)))`,
     },
     blockStyle: {
-      backgroundColor: `hsl(${hue} ${step.block[0]}% ${step.block[1]}%)`,
-      borderColor: `hsl(${hue} 44% 58%)`,
+      backgroundColor: `hsl(${hue} ${step.block[0]}% calc(${step.block[1]}% - (var(--theme-dark-modifier, 0) * 75%)))`,
+      borderColor: `hsl(${hue} 44% calc(58% - (var(--theme-dark-modifier, 0) * 35%)))`,
     },
     badgeStyle: {
-      backgroundColor: `hsl(${hue} ${step.badge[0]}% ${step.badge[1]}%)`,
-      borderColor: `hsl(${hue} 48% 52%)`,
-      color: "hsl(var(--foreground))",
+      backgroundColor: `hsl(${hue} ${step.badge[0]}% calc(${step.badge[1]}% - (var(--theme-dark-modifier, 0) * 65%)))`,
+      borderColor: `hsl(${hue} 48% calc(52% - (var(--theme-dark-modifier, 0) * 20%)))`,
+      color: "var(--color-foreground)",
     },
   }
 }
