@@ -98,7 +98,7 @@ The system MUST provide shared global filters (facultad, bloque, tipo, capacidad
 
 ### R7: API Client Only
 
-The system MUST use apiClient for ALL HTTP calls in the assignment flow — zero raw fetch() calls. The client MUST expose a generic `patch<T>(url, body)` method for PATCH requests.
+The system MUST use apiClient for ALL HTTP calls in the assignment flow — zero raw fetch() calls. The client MUST expose generic `patch<T>(url, body)` and `delete<T>(url, body?)` methods for PATCH/DELETE requests.
 
 #### Scenario: Assignment flow uses apiClient throughout
 
@@ -112,9 +112,15 @@ The system MUST use apiClient for ALL HTTP calls in the assignment flow — zero
 - WHEN the user clicks "Guardar cambios"
 - THEN the system calls apiClient.patch() for PATCH /horario-clases — no raw fetch()
 
+#### Scenario: Delete flow uses apiClient.delete()
+
+- GIVEN group delete or row delete in edit mode
+- WHEN persisted horarios are removed
+- THEN the system calls apiClient.delete() for DELETE /horario-clases with `{ ids: number[] }`
+
 ### R8: Edit Mode in BulkAssignmentModal
 
-The system MUST support `mode: "create" | "edit"` in BulkAssignmentModal. Edit mode MUST pre-fill entries from existing schedules and submit via PATCH.
+The system MUST support `mode: "create" | "edit"` in BulkAssignmentModal. Edit mode MUST pre-fill entries from existing schedules and submit via PATCH. Row deletion in edit mode MUST be persisted when `dbId` is valid, MUST require destructive confirmation, and MAY remove only local unsaved rows when `dbId` is absent.
 
 #### Scenario: Edit modal shows correct title
 
@@ -135,11 +141,32 @@ The system MUST support `mode: "create" | "edit"` in BulkAssignmentModal. Edit m
 - WHEN the user clicks "Agregar horario"
 - THEN a new empty entry appears in the table
 
-#### Scenario: User can remove entries in edit mode
+#### Scenario: Persisted row delete requires confirmation and API call
 
-- GIVEN the edit modal with 3 entries
-- WHEN the user clicks ✕ on entry 2
-- THEN entry 2 is removed and remaining entries stay unchanged
+- GIVEN an edit row with numeric `dbId`
+- WHEN the user clicks trash and confirms in AlertDialog
+- THEN the system DELETEs `/horario-clases` with `{ ids: [dbId] }`
+- AND on success removes the row, triggers refresh (`onAssigned`), and shows success toast
+
+#### Scenario: Unsaved row delete remains local
+
+- GIVEN an edit row with `dbId` null/invalid
+- WHEN the user clicks row delete
+- THEN the system removes the row locally without calling DELETE API
+
+#### Scenario: Row delete guard for invalid IDs
+
+- GIVEN a persisted-delete attempt where no valid numeric IDs are derivable
+- WHEN the user confirms deletion
+- THEN the system MUST NOT call DELETE API
+- AND MUST show an error toast
+
+#### Scenario: Row delete stale ID handling
+
+- GIVEN DELETE `/horario-clases` returns 404 for stale/missing ID
+- WHEN the user confirms persisted row delete
+- THEN the system shows error toast using backend message when available
+- AND triggers refresh to reconcile UI state
 
 #### Scenario: User can modify existing entries
 
@@ -175,7 +202,7 @@ The system MUST support `mode: "create" | "edit"` in BulkAssignmentModal. Edit m
 
 ### R9: Group Summary Card Actions
 
-The system MUST render GroupSummaryCard as a compact card with NO card-level onClick, NO PlusCircle/ChevronRight icons, badge showing "Horarios: N", and three action icons at bottom-right.
+The system MUST render GroupSummaryCard as a compact card with NO card-level onClick, NO PlusCircle/ChevronRight icons, badge showing "Horarios: N", and three action icons at bottom-right. Card trash action MUST open destructive confirmation and MUST execute persisted group deletion for valid IDs.
 
 #### Scenario: Card renders without decoration icons
 
@@ -207,11 +234,33 @@ The system MUST render GroupSummaryCard as a compact card with NO card-level onC
 - WHEN the user clicks Pencil
 - THEN BulkAssignmentModal opens in edit mode with pre-filled entries for that group
 
-#### Scenario: Delete shows toast
+#### Scenario: Delete all opens confirmation with preview
 
-- GIVEN a GroupSummaryCard
+- GIVEN a GroupSummaryCard with N persisted horarios
 - WHEN the user clicks Trash2
-- THEN toast.info("Próximamente disponible") is shown (no-op)
+- THEN AlertDialog opens with destructive message for deleting N horarios
+- AND a compact preview lists día, inicio, fin, ambiente
+
+#### Scenario: Delete all validates IDs before request
+
+- GIVEN group deletion where derived IDs are empty/invalid
+- WHEN the user confirms deletion
+- THEN the system MUST NOT call DELETE API
+- AND MUST show an error toast
+
+#### Scenario: Delete all success and refresh
+
+- GIVEN group deletion with valid IDs
+- WHEN the user confirms and backend returns success
+- THEN the system shows success toast (server message when available)
+- AND refreshes schedules via `fetchByDocenteId`
+
+#### Scenario: Delete all stale IDs handling
+
+- GIVEN group deletion where backend returns 404 for stale IDs
+- WHEN the user confirms deletion
+- THEN the system shows error toast (server message when available)
+- AND refreshes schedules to reconcile stale state
 
 #### Scenario: No card onClick
 
