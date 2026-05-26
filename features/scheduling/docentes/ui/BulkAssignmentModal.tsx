@@ -23,6 +23,16 @@ import { AmbienteSearchPopover } from "./AmbienteSearchPopover"
 import { SolapamientoWarning } from "./SolapamientoWarning"
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { DatePickerRange } from "@/components/ui/date-picker-range"
 import {
@@ -43,6 +53,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
+import { horariosApi } from "@/shared/services/api/client"
 import { infraApiClient } from "@/shared/services/api/infraClient"
 
 const DIA_LABELS: Record<number, string> = {
@@ -110,6 +121,20 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   const [solapamientoOpen, setSolapamientoOpen] = useState(false)
   const [pendingSolapamientos, setPendingSolapamientos] = useState<SolapamientoInfo[]>([])
   const [errorEntryId, setErrorEntryId] = useState<string | null>(null)
+  const [pendingDeleteEntryId, setPendingDeleteEntryId] = useState<string | null>(null)
+  const [deletingEntry, setDeletingEntry] = useState(false)
+
+  const pendingDeleteEntry = useMemo(
+    () => entries.find((entry) => entry.id === pendingDeleteEntryId) ?? null,
+    [entries, pendingDeleteEntryId]
+  )
+
+  const toTimeLabel = (value: string) => value || "--"
+
+  const getDeleteErrorMessage = (error: unknown, fallback: string) => {
+    const apiError = error as Error & { body?: { message?: string } }
+    return apiError?.body?.message || apiError?.message || fallback
+  }
 
   // ── Computed ─────────────────────────────────────────
   const filteredFacultades = facultades.filter((facultad) =>
@@ -277,6 +302,55 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
     setSolapamientoOpen(false)
     setPendingSolapamientos([])
   }, [])
+
+  const handleRowDeleteClick = useCallback(
+    (entryId: string) => {
+      const entry = entries.find((item) => item.id === entryId)
+      if (!entry) return
+
+      if (mode !== "edit") {
+        removeEntry(entry.id)
+        return
+      }
+
+      const editEntry = entry as EditScheduleEntry
+      if (!Number.isInteger(editEntry.dbId)) {
+        removeEntry(entry.id)
+        return
+      }
+
+      setPendingDeleteEntryId(entry.id)
+    },
+    [entries, mode, removeEntry]
+  )
+
+  const handleConfirmDeleteRow = useCallback(async () => {
+    if (mode !== "edit" || !pendingDeleteEntry || deletingEntry) return
+
+    const dbId = (pendingDeleteEntry as EditScheduleEntry).dbId
+    if (!Number.isInteger(dbId)) {
+      toast.error("No se encontró un ID válido para eliminar este horario")
+      return
+    }
+    const validDbId = Number(dbId)
+
+    try {
+      setDeletingEntry(true)
+      const response = await horariosApi.eliminarBatch({ ids: [validDbId] })
+      removeEntry(pendingDeleteEntry.id)
+      setPendingDeleteEntryId(null)
+      toast.success(response.message || "Horario eliminado correctamente")
+      await onAssigned?.()
+    } catch (error) {
+      const apiError = error as Error & { status?: number }
+      toast.error(getDeleteErrorMessage(error, "No se pudo eliminar el horario"))
+      if (apiError.status === 404) {
+        await onAssigned?.()
+      }
+    } finally {
+      setDeletingEntry(false)
+    }
+  }, [deletingEntry, mode, onAssigned, pendingDeleteEntry, removeEntry])
 
   const handleSolapamientoOpenChange = useCallback((open: boolean) => {
     setSolapamientoOpen(open)
@@ -595,7 +669,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                               variant="ghost"
                               size="icon-xs"
                               disabled={entries.length <= 1}
-                              onClick={() => removeEntry(entry.id)}
+                              onClick={() => handleRowDeleteClick(entry.id)}
                               title="Eliminar horario"
                             >
                               <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
@@ -628,6 +702,61 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
               onCancel={handleCancel}
             />
           </div>
+
+          <AlertDialog
+            open={pendingDeleteEntry !== null}
+            onOpenChange={(open) => {
+              if (!open && !deletingEntry) {
+                setPendingDeleteEntryId(null)
+              }
+            }}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eliminar horario</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta acción eliminará este horario de este grupo.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+
+              {pendingDeleteEntry && (
+                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs">
+                  <p>
+                    <span className="font-semibold">Día:</span>{" "}
+                    {pendingDeleteEntry.dia !== null
+                      ? DIA_LABELS[pendingDeleteEntry.dia] || pendingDeleteEntry.dia
+                      : "--"}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Inicio:</span>{" "}
+                    {toTimeLabel(pendingDeleteEntry.horaInicio)}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Fin:</span>{" "}
+                    {toTimeLabel(pendingDeleteEntry.horaFin)}
+                  </p>
+                  <p>
+                    <span className="font-semibold">Ambiente:</span>{" "}
+                    {pendingDeleteEntry.ambienteLabel || "Sin ambiente"}
+                  </p>
+                </div>
+              )}
+
+              <AlertDialogFooter>
+                <AlertDialogCancel disabled={deletingEntry}>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  disabled={deletingEntry}
+                  onClick={(event) => {
+                    event.preventDefault()
+                    void handleConfirmDeleteRow()
+                  }}
+                >
+                  {deletingEntry ? "Eliminando..." : "Eliminar horario"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* ═══ Submit Button ═══ */}
           <div className="mt-4 flex items-center justify-between">

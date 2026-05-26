@@ -4,6 +4,8 @@
 
 import type { LoginRequest, LoginResponse } from "@/features/auth/domain/types"
 import type {
+  EliminarHorariosBatchRequest,
+  EliminarHorariosBatchResponse,
   EditarHorariosBatchRequest,
   EditarHorariosBatchResponse,
 } from "@/features/scheduling/docentes/domain/types"
@@ -104,6 +106,10 @@ class ApiClient {
 
   async patch<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "PATCH", body })
+  }
+
+  async delete<T>(endpoint: string, body?: unknown, options: ApiClientOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "DELETE", body })
   }
 }
 
@@ -230,5 +236,11 @@ export const horariosApi = {
 
   editarBatch: (payload: EditarHorariosBatchRequest): Promise<EditarHorariosBatchResponse> => {
     return apiClient.patch<EditarHorariosBatchResponse>("/horario-clases", payload)
+  },
+
+  eliminarBatch: (
+    payload: EliminarHorariosBatchRequest
+  ): Promise<EliminarHorariosBatchResponse> => {
+    return apiClient.delete<EliminarHorariosBatchResponse>("/horario-clases", payload)
   },
 }

@@ -354,6 +354,16 @@ export interface EditarHorariosBatchResponse {
   data?: unknown
 }
 
+export interface EliminarHorariosBatchRequest {
+  ids: number[]
+}
+
+export interface EliminarHorariosBatchResponse {
+  success: boolean
+  message?: string
+  data?: unknown
+}
+
 export interface EntryFilterOverrides {
   selectedFacultades: InfraFacultad[]
   selectedBloques: InfraBloque[]
