@@ -668,7 +668,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                             <Button
                               variant="ghost"
                               size="icon-xs"
-                              disabled={entries.length <= 1}
+                              disabled={mode === "create" && entries.length <= 1}
                               onClick={() => handleRowDeleteClick(entry.id)}
                               title="Eliminar horario"
                             >
