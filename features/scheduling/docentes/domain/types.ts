@@ -335,7 +335,7 @@ export interface EditScheduleEntry {
 }
 
 export interface EditarHorarioItem {
-  id: number
+  id?: number
   dia?: number
   hora_inicio?: string
   hora_fin?: string
@@ -345,6 +345,16 @@ export interface EditarHorarioItem {
 }
 
 export interface EditarHorariosBatchRequest {
+  persona_grupo_id?: number
+  fecha_inicio?: string
+  fecha_fin?: string
+  horarios: EditarHorarioItem[]
+}
+
+export interface EditarHorariosBatchRequest {
+  persona_grupo_id?: number
+  fecha_inicio?: string
+  fecha_fin?: string
   horarios: EditarHorarioItem[]
 }
 

@@ -5,12 +5,7 @@ import { es } from "date-fns/locale"
 import { Plus, Trash2, XCircle } from "lucide-react"
 import { toast } from "sonner"
 
-import type {
-  BulkAssignmentModalProps,
-  EditScheduleEntry,
-  InfraBloque,
-  SolapamientoInfo,
-} from "../domain/types"
+import type { BulkAssignmentModalProps, EditScheduleEntry, SolapamientoInfo } from "../domain/types"
 import {
   useBulkAsignacionStore,
   createBulkAmbienteAdapter,
@@ -45,6 +40,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MultiSelect } from "@/components/ui/multi-select"
+import { TimePicker } from "@/components/ui/time-picker"
 import {
   Select,
   SelectContent,
@@ -52,9 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { horariosApi } from "@/shared/services/api/client"
-import { infraApiClient } from "@/shared/services/api/infraClient"
 
 const DIA_LABELS: Record<number, string> = {
   0: "Lunes",
@@ -83,16 +77,10 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   // Mode-conditional state
   const isOpen = mode === "create" ? bulk.isOpen : edit.isOpen
   const selectedGroup = mode === "create" ? bulk.selectedGroup : edit.selectedGroup
-  const facultades = mode === "create" ? bulk.facultades : edit.facultades
-  const tiposAmbiente = mode === "create" ? bulk.tiposAmbiente : edit.tiposAmbiente
-  const selectedFacultades = mode === "create" ? bulk.selectedFacultades : edit.selectedFacultades
-  const selectedBloques = mode === "create" ? bulk.selectedBloques : edit.selectedBloques
-  const selectedTipos = mode === "create" ? bulk.selectedTipos : edit.selectedTipos
-  const estudiantes = mode === "create" ? bulk.estudiantes : edit.estudiantes
   const entries = mode === "create" ? bulk.entries : edit.entries
   const initialLoadError = mode === "create" ? bulk.initialLoadError : edit.initialLoadError
   const submitting = mode === "create" ? bulk.submitting : edit.submitting
-  const dateRange = mode === "create" ? bulk.dateRange : undefined
+  const dateRange = mode === "create" ? bulk.dateRange : edit.dateRange
 
   // Mode-conditional actions (stable references)
   const bulkSubmitBatch = useBulkAsignacionStore((s) => s.submitBatch)
@@ -101,6 +89,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
 
   const editSubmitEdit = useEditScheduleStore((s) => s.submitEdit)
   const editClose = useEditScheduleStore((s) => s.close)
+  const editSetDateRange = useEditScheduleStore((s) => s.setDateRange)
   const editEntries = useEditScheduleStore((s) => s.entries)
   const editHighlightedEntryId = useEditScheduleStore((s) => s.highlightedEntryId)
 
@@ -108,16 +97,8 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   const removeEntry = mode === "create" ? bulk.removeEntry : edit.removeEntry
   const updateEntry = mode === "create" ? bulk.updateEntry : edit.updateEntry
   const checkSolapamientos = mode === "create" ? bulk.checkSolapamientos : edit.checkSolapamientos
-  const setSelectedFacultades =
-    mode === "create" ? bulk.setSelectedFacultades : edit.setSelectedFacultades
-  const setSelectedBloques = mode === "create" ? bulk.setSelectedBloques : edit.setSelectedBloques
-  const setSelectedTipos = mode === "create" ? bulk.setSelectedTipos : edit.setSelectedTipos
-  const setEstudiantes = mode === "create" ? bulk.setEstudiantes : edit.setEstudiantes
-
   // ── Local state ──────────────────────────────────────
-  const [allBloques, setAllBloques] = useState<InfraBloque[]>([])
   const [ambientePopoverEntry, setAmbientePopoverEntry] = useState<string | null>(null)
-  const [facultadSearch, setFacultadSearch] = useState("")
   const [solapamientoOpen, setSolapamientoOpen] = useState(false)
   const [pendingSolapamientos, setPendingSolapamientos] = useState<SolapamientoInfo[]>([])
   const [errorEntryId, setErrorEntryId] = useState<string | null>(null)
@@ -137,30 +118,11 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   }
 
   // ── Computed ─────────────────────────────────────────
-  const filteredFacultades = facultades.filter((facultad) =>
-    facultadSearch.trim()
-      ? facultad.nombre.toLowerCase().includes(facultadSearch.trim().toLowerCase())
-      : true
-  )
-
   const allEntriesIncomplete =
     entries.length === 0 ||
     entries.every((e) => e.dia === null || !e.horaInicio || !e.horaFin || !e.ambienteId)
 
-  // Create-mode only: has valid date range
   const hasValidDateRange = dateRange?.from != null && dateRange?.to != null
-
-  const editDateRange = useMemo(() => {
-    if (mode !== "edit") return undefined
-    const editEntriesWithDates = entries as EditScheduleEntry[]
-    if (editEntriesWithDates.length === 0) return undefined
-    const first = editEntriesWithDates[0]
-    if (!first?.fechaInicio || !first?.fechaFin) return undefined
-    const from = new Date(`${first.fechaInicio}T00:00:00`)
-    const to = new Date(`${first.fechaFin}T00:00:00`)
-    if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return undefined
-    return { from, to }
-  }, [entries, mode])
 
   // ── Effects ──────────────────────────────────────────
   // Auto-add first entry when modal opens (only in create mode)
@@ -170,56 +132,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       addEntry()
     }
   }, [mode, isOpen, entries.length, addEntry])
-
-  // Fetch bloques when selected facultades change
-  useEffect(() => {
-    if (selectedFacultades.length === 0) return
-
-    let mounted = true
-
-    const fetchBloques = async () => {
-      try {
-        const params = new URLSearchParams({
-          page: "1",
-          limit: "1000",
-          activo: "true",
-          orderBy: "nombre",
-          orderDir: "asc",
-        })
-        params.set("facultadId", selectedFacultades.map((f) => f.id).join(","))
-
-        const res = await infraApiClient.get<{ items: InfraBloque[] }>(
-          `/bloques?${params.toString()}`
-        )
-
-        if (!mounted) return
-
-        const newBloques = res.items.map((b) => ({
-          ...b,
-          facultadId: selectedFacultades[0]?.id,
-        }))
-
-        // Merge with bloques from other facultades
-        const newIds = new Set(newBloques.map((b) => b.id))
-        const kept = allBloques.filter((b) => b.facultadId && !newIds.has(b.id))
-        const merged = [...newBloques, ...kept]
-        setAllBloques(merged)
-
-        // Auto-select all bloques — only in create mode (edit mode uses per-entry filters)
-        if (mode === "create") {
-          bulk.setSelectedBloques(merged)
-        }
-      } catch (e) {
-        console.error("Error fetching bloques:", e)
-      }
-    }
-
-    fetchBloques()
-    return () => {
-      mounted = false
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedFacultades])
 
   // ── Handlers ─────────────────────────────────────────
   const doSubmit = useCallback(async () => {
@@ -235,7 +147,9 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       } else {
         toast.error(result.message || "Error en la asignación")
 
-        if (result.errorIndex !== undefined) {
+        if (result.erroredEntryId) {
+          setErrorEntryId(result.erroredEntryId)
+        } else if (result.errorIndex !== undefined) {
           const validEntries = bulkEntries.filter(
             (e) => e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId
           )
@@ -255,7 +169,9 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       } else {
         toast.error(result.message || "Error al editar horarios")
 
-        if (result.errorIndex !== undefined) {
+        if (result.erroredEntryId) {
+          setErrorEntryId(result.erroredEntryId)
+        } else if (result.errorIndex !== undefined) {
           const erroredEntry = editEntries[result.errorIndex]
           if (erroredEntry) {
             setErrorEntryId(erroredEntry.id)
@@ -368,7 +284,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
           setSolapamientoOpen(false)
           setPendingSolapamientos([])
           setErrorEntryId(null)
-          setFacultadSearch("")
           if (mode === "create") {
             bulkCloseModal()
           } else {
@@ -377,7 +292,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
         }
       }}
     >
-      <DialogContent className="flex max-h-[90vh] flex-col p-0 sm:max-w-3xl lg:max-w-4xl xl:max-w-5xl">
+      <DialogContent className="flex max-h-[90vh] w-full flex-col p-0 sm:max-w-fit">
         <DialogHeader className="shrink-0 px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-2">
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
             <DialogTitle className="shrink-0 text-base font-semibold text-foreground sm:text-lg">
@@ -398,13 +313,14 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
               <Label className="text-xs">Rango de fechas</Label>
               <div className="mt-1">
                 <DatePickerRange
-                  value={mode === "create" ? dateRange : editDateRange}
+                  value={dateRange}
                   onChange={(range) => {
                     if (!range?.from || !range?.to) return
                     if (mode === "create") {
                       bulk.setDateRange(range)
                       return
                     }
+                    editSetDateRange(range)
                     const fechaInicio = range.from.toISOString().split("T")[0]
                     const fechaFin = range.to.toISOString().split("T")[0]
                     entries.forEach((entry) => {
@@ -416,107 +332,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
               </div>
             </div>
 
-            {/* Filters grid */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {/* Facultad */}
-              <div>
-                <Label className="text-xs font-medium">Facultad</Label>
-                <Select
-                  value={selectedFacultades[0]?.id?.toString() ?? "none"}
-                  onValueChange={(value) => {
-                    if (value === "none") {
-                      setSelectedFacultades([])
-                      setSelectedBloques([])
-                      setAllBloques([])
-                      return
-                    }
-                    const selected = facultades.find((f) => f.id.toString() === value)
-                    setSelectedBloques([])
-                    setAllBloques([])
-                    setSelectedFacultades(selected ? [selected] : [])
-                  }}
-                >
-                  <SelectTrigger className="mt-1 h-9">
-                    <SelectValue placeholder="Seleccione facultad" />
-                  </SelectTrigger>
-                  <SearchableSelectContent
-                    onFilterChange={setFacultadSearch}
-                    className="max-h-[200px]"
-                  >
-                    <SelectItem value="none">Seleccione facultad</SelectItem>
-                    {filteredFacultades.map((facultad) => (
-                      <SelectItem key={facultad.id} value={facultad.id.toString()}>
-                        {facultad.nombre}
-                      </SelectItem>
-                    ))}
-                  </SearchableSelectContent>
-                </Select>
-              </div>
-
-              {/* Bloque */}
-              <div>
-                <Label className="text-xs font-medium">Bloque</Label>
-                <MultiSelect
-                  options={allBloques.map((b) => ({
-                    value: b.id,
-                    label: b.nombre || b.codigo || `Bloque ${b.id}`,
-                  }))}
-                  value={selectedBloques.map((b) => b.id)}
-                  onValueChange={(ids) => {
-                    const selected = allBloques.filter((b) => ids.includes(b.id))
-                    setSelectedBloques(selected)
-                  }}
-                  placeholder={
-                    selectedFacultades.length === 0
-                      ? "Seleccione facultad primero"
-                      : allBloques.length === 0
-                        ? "Cargando bloques..."
-                        : "Todos los bloques"
-                  }
-                  searchable
-                  selectAll
-                  maxVisibleItems={3}
-                  className="mt-1"
-                  disabled={selectedFacultades.length === 0}
-                />
-              </div>
-
-              {/* Tipo de ambiente */}
-              <div>
-                <Label className="text-xs font-medium">Tipo ambiente</Label>
-                <MultiSelect
-                  options={tiposAmbiente.map((t) => ({
-                    value: t.id,
-                    label: t.nombre,
-                  }))}
-                  value={selectedTipos.map((t) => t.id)}
-                  onValueChange={(ids) => {
-                    const selected = tiposAmbiente.filter((t) => ids.includes(t.id))
-                    setSelectedTipos(selected)
-                  }}
-                  placeholder="Todos los tipos"
-                  searchable
-                  selectAll
-                  maxVisibleItems={3}
-                  className="mt-1"
-                />
-              </div>
-
-              {/* Capacidad mínima */}
-              <div>
-                <Label className="text-xs font-medium">Capacidad mínima</Label>
-                <Input
-                  type="number"
-                  className="mt-1 h-9"
-                  min={0}
-                  placeholder="Cantidad mínima"
-                  value={estudiantes ?? ""}
-                  onChange={(e) => {
-                    setEstudiantes(e.target.value ? Number(e.target.value) : null)
-                  }}
-                />
-              </div>
-            </div>
+            {/* Location filters intentionally hidden in both modes */}
           </section>
 
           {/* ═══ Initial load error ═══ */}
@@ -600,25 +416,21 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                             </Select>
                           </td>
                           <td className="px-2 py-2 align-middle">
-                            <Input
-                              type="time"
-                              className="h-8 w-full min-w-[6.5rem]"
+                            <TimePicker
                               value={entry.horaInicio}
-                              onChange={(e) =>
+                              onChange={(val) =>
                                 updateEntry(entry.id, {
-                                  horaInicio: e.target.value,
+                                  horaInicio: val,
                                 })
                               }
                             />
                           </td>
                           <td className="px-2 py-2 align-middle">
-                            <Input
-                              type="time"
-                              className="h-8 w-full min-w-[6.5rem]"
+                            <TimePicker
                               value={entry.horaFin}
-                              onChange={(e) =>
+                              onChange={(val) =>
                                 updateEntry(entry.id, {
-                                  horaFin: e.target.value,
+                                  horaFin: val,
                                 })
                               }
                             />
@@ -630,8 +442,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                               const hasDateData =
                                 mode === "create"
                                   ? hasValidDateRange
-                                  : "fechaInicio" in entry &&
-                                    "fechaFin" in entry &&
+                                  : hasValidDateRange ||
                                     Boolean((entry.fechaInicio ?? "") && (entry.fechaFin ?? ""))
                               const canSelectAmbiente = hasEntryData && hasDateData
 
@@ -639,12 +450,15 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                                 <Button
                                   variant={entry.ambienteLabel ? "secondary" : "outline"}
                                   size="xs"
-                                  className="h-7 w-full min-w-[8.5rem] justify-start text-xs"
+                                  className="h-7 w-full justify-start text-xs"
                                   onClick={() => {
                                     if (!canSelectAmbiente) {
-                                      toast.error(
-                                        "Completá rango de fechas, día, hora inicio y hora fin para seleccionar ambiente"
-                                      )
+                                      const missing: string[] = []
+                                      if (!hasDateData) missing.push("rango de fechas")
+                                      if (entry.dia === null) missing.push("día")
+                                      if (!entry.horaInicio) missing.push("hora inicio")
+                                      if (!entry.horaFin) missing.push("hora fin")
+                                      toast.error(`Completá: ${missing.join(", ")}`)
                                       return
                                     }
                                     setAmbientePopoverEntry(entry.id)

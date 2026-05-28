@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import type { DateRange } from "react-day-picker"
 
 import type {
   AmbienteSearchContract,
@@ -46,6 +47,9 @@ interface EditScheduleState {
   selectedGroup: GroupInfo | null
   existingSchedules: NormalizedSchedule[]
 
+  // Global date range (for creates in mixed mode)
+  dateRange: DateRange | undefined
+
   // Entries
   entries: EditScheduleEntry[]
 
@@ -85,6 +89,7 @@ interface EditScheduleState {
   // Actions
   open: (group: GroupInfo, schedules: NormalizedSchedule[], highlightDbId?: number) => void
   close: () => void
+  setDateRange: (range: DateRange | undefined) => void
   setSelectedFacultades: (f: InfraFacultad[]) => void
   setSelectedBloques: (b: InfraBloque[]) => void
   setSelectedTipos: (t: InfraTipoAmbiente[]) => void
@@ -114,7 +119,12 @@ interface EditScheduleState {
   checkSolapamientos: (existingSchedules: NormalizedSchedule[]) => SolapamientoInfo[]
 
   // Submit
-  submitEdit: () => Promise<{ success: boolean; message?: string; errorIndex?: number }>
+  submitEdit: () => Promise<{
+    success: boolean
+    message?: string
+    errorIndex?: number
+    erroredEntryId?: string
+  }>
 
   fetchInitialData: () => Promise<void>
   reset: () => void
@@ -124,6 +134,7 @@ const INITIAL_STATE = {
   isOpen: false,
   selectedGroup: null,
   existingSchedules: [],
+  dateRange: undefined,
   entries: [],
   facultades: [],
   tiposAmbiente: [],
@@ -149,10 +160,19 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
       highlightDbId !== undefined
         ? (entries.find((e) => e.dbId === highlightDbId)?.id ?? null)
         : null
+    const firstWithDates = schedules.find((s) => s.fechaInicioRaw && s.fechaFinRaw)
+    const dateRange: DateRange | undefined =
+      firstWithDates?.fechaInicioRaw && firstWithDates?.fechaFinRaw
+        ? {
+            from: new Date(`${firstWithDates.fechaInicioRaw}T00:00:00`),
+            to: new Date(`${firstWithDates.fechaFinRaw}T00:00:00`),
+          }
+        : undefined
     set({
       isOpen: true,
       selectedGroup: group,
       existingSchedules: schedules,
+      dateRange,
       entries,
       highlightedEntryId,
     })
@@ -164,6 +184,8 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     setTimeout(() => get().reset(), 300)
   },
 
+  setDateRange: (range: DateRange | undefined) => set({ dateRange: range }),
+
   setSelectedFacultades: (f: InfraFacultad[]) => set({ selectedFacultades: f }),
 
   setSelectedBloques: (b: InfraBloque[]) => set({ selectedBloques: b }),
@@ -173,12 +195,15 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   setEstudiantes: (n: number | null) => set({ estudiantes: n }),
 
   addEntry: () => {
+    const { dateRange } = get()
     const entry: EditScheduleEntry = {
       id: crypto.randomUUID(),
       dbId: null,
       dia: null,
       horaInicio: "",
       horaFin: "",
+      fechaInicio: dateRange?.from?.toISOString().split("T")[0],
+      fechaFin: dateRange?.to?.toISOString().split("T")[0],
     }
     set((state) => ({ entries: [...state.entries, entry] }))
   },
@@ -250,12 +275,14 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     set({ loadingAmbientesForEntry: entryId })
 
     try {
+      const fechaInicio = entry.fechaInicio ?? state.dateRange?.from?.toISOString().split("T")[0]
+      const fechaFin = entry.fechaFin ?? state.dateRange?.to?.toISOString().split("T")[0]
       const payload: BuscarAmbienteRequest = {
         dia: entry.dia,
         hora_inicio: entry.horaInicio,
         hora_fin: entry.horaFin,
-        fecha_inicio: entry.fechaInicio ?? undefined,
-        fecha_fin: entry.fechaFin ?? undefined,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
         persona_grupo_id: state.selectedGroup?.persona_grupo_id,
         facultad_ids: facultadIds.length > 0 ? facultadIds : undefined,
         bloque_ids: bloqueIds.length > 0 ? bloqueIds : undefined,
@@ -342,45 +369,68 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   },
 
   submitEdit: async () => {
-    const { entries } = get()
+    const { entries, selectedGroup, dateRange } = get()
 
-    // Filter entries that have a valid dbId (can be edited via PATCH)
-    const validEntries = entries.filter(
+    if (!selectedGroup) {
+      return { success: false, message: "No hay grupo seleccionado" }
+    }
+
+    const updateItems = entries.filter(
       (e) => e.dbId !== null && e.dia !== null && e.horaInicio && e.horaFin
     )
+    const createItems = entries.filter(
+      (e) => e.dbId === null && e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId != null
+    )
 
-    if (validEntries.length === 0) {
-      return { success: false, message: "No hay horarios válidos para editar" }
+    if (updateItems.length === 0 && createItems.length === 0) {
+      return { success: false, message: "No hay horarios válidos para guardar" }
+    }
+
+    const needsRootFields = createItems.length > 0
+    if (needsRootFields && (!dateRange?.from || !dateRange?.to)) {
+      return { success: false, message: "Seleccione un rango de fechas para los nuevos horarios" }
     }
 
     set({ submitting: true })
 
+    let payloadEntries: { entryId: string; item: EditarHorarioItem }[] = []
+
     try {
-      const horarios = validEntries.map((e) => {
-        const item: {
-          id: number
-          dia?: number
-          hora_inicio?: string
-          hora_fin?: string
-          aula_id?: number
-          fecha_inicio?: string
-          fecha_fin?: string
-        } = {
-          id: e.dbId!,
-        }
+      // Build payload with entryId tracking for accurate error mapping
+      payloadEntries = [
+        ...updateItems.map((e) => ({
+          entryId: e.id,
+          item: {
+            id: e.dbId!,
+            ...(e.dia !== null && { dia: e.dia }),
+            ...(e.horaInicio && { hora_inicio: e.horaInicio }),
+            ...(e.horaFin && { hora_fin: e.horaFin }),
+            ...(e.ambienteId != null && { aula_id: e.ambienteId }),
+            ...(e.fechaInicio && { fecha_inicio: e.fechaInicio }),
+            ...(e.fechaFin && { fecha_fin: e.fechaFin }),
+          } as EditarHorarioItem,
+        })),
+        ...createItems.map((e) => ({
+          entryId: e.id,
+          item: {
+            dia: e.dia!,
+            hora_inicio: e.horaInicio,
+            hora_fin: e.horaFin,
+            aula_id: e.ambienteId!,
+          } as EditarHorarioItem,
+        })),
+      ]
 
-        // Only include non-null, non-undefined optional fields
-        if (e.dia !== null) item.dia = e.dia
-        if (e.horaInicio) item.hora_inicio = e.horaInicio
-        if (e.horaFin) item.hora_fin = e.horaFin
-        if (e.ambienteId != null) item.aula_id = e.ambienteId
-        if (e.fechaInicio) item.fecha_inicio = e.fechaInicio
-        if (e.fechaFin) item.fecha_fin = e.fechaFin
-
-        return item
-      })
+      const horarios = payloadEntries.map((pe) => pe.item)
 
       const payload: EditarHorariosBatchRequest = { horarios }
+
+      // Root fields required for creates
+      if (needsRootFields) {
+        payload.persona_grupo_id = selectedGroup.persona_grupo_id
+        payload.fecha_inicio = dateRange!.from!.toISOString().split("T")[0]
+        payload.fecha_fin = dateRange!.to!.toISOString().split("T")[0]
+      }
 
       const response: EditarHorariosBatchResponse = await horariosApi.editarBatch(payload)
       set({ submitting: false })
@@ -395,7 +445,9 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
           // Parse "Error en horario N: ..." to extract errorIndex
           const match = message.match(/Error en horario (\d+)/)
           const errorIndex = match ? parseInt(match[1], 10) - 1 : undefined
-          return { success: false, message, errorIndex }
+          const erroredEntryId =
+            errorIndex !== undefined ? payloadEntries[errorIndex]?.entryId : undefined
+          return { success: false, message, errorIndex, erroredEntryId }
         }
         return {
           success: false,
@@ -457,6 +509,9 @@ export function createEditAmbienteAdapter(
     },
     get estudiantes() {
       return store.getState().estudiantes
+    },
+    get dateRange() {
+      return store.getState().dateRange
     },
     get loadingAmbientesForEntry() {
       return store.getState().loadingAmbientesForEntry

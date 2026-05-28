@@ -94,9 +94,12 @@ interface BulkAsignacionState {
   checkSolapamientos: (existingSchedules: NormalizedSchedule[]) => SolapamientoInfo[]
 
   // Submit
-  submitBatch: (
-    personaGrupoId: number
-  ) => Promise<{ success: boolean; message?: string; errorIndex?: number }>
+  submitBatch: (personaGrupoId: number) => Promise<{
+    success: boolean
+    message?: string
+    errorIndex?: number
+    erroredEntryId?: string
+  }>
 
   fetchInitialData: () => Promise<void>
   reset: () => void
@@ -331,17 +334,28 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
     set({ submitting: true })
 
+    let payloadItems: {
+      entryId: string
+      item: { dia: number; hora_inicio: string; hora_fin: string; aula_id: number }
+    }[] = []
+
     try {
-      const payload: AsignarHorariosBatchRequest = {
-        persona_grupo_id: personaGrupoId,
-        fecha_inicio: fechaInicio,
-        fecha_fin: fechaFin,
-        horarios: validEntries.map((e) => ({
+      // Build payload with entryId tracking for accurate error mapping
+      payloadItems = validEntries.map((e) => ({
+        entryId: e.id,
+        item: {
           dia: e.dia!,
           hora_inicio: e.horaInicio,
           hora_fin: e.horaFin,
           aula_id: e.ambienteId!,
-        })),
+        },
+      }))
+
+      const payload: AsignarHorariosBatchRequest = {
+        persona_grupo_id: personaGrupoId,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        horarios: payloadItems.map((pi) => pi.item),
       }
 
       const response = await horariosApi.asignarBatch(payload)
@@ -357,7 +371,9 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
           // Parse "Error en horario N: ..." to extract errorIndex
           const match = message.match(/Error en horario (\d+)/)
           const errorIndex = match ? parseInt(match[1], 10) - 1 : undefined
-          return { success: false, message, errorIndex }
+          const erroredEntryId =
+            errorIndex !== undefined ? payloadItems[errorIndex]?.entryId : undefined
+          return { success: false, message, errorIndex, erroredEntryId }
         }
         return {
           success: false,
