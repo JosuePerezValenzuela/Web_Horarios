@@ -125,7 +125,7 @@ export function TeacherSchedulePage({
               Resumen por grupo
             </p>
 
-            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
               {loading ? (
                 Array.from({ length: 3 }).map((_, index) => (
                   <div
