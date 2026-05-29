@@ -1,0 +1,16 @@
+name: web_horarios_prod
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    image: web_horarios-prod
+    container_name: web_horarios-prod
+    environment:
+      - NODE_ENV=production
+      - PORT=8000
+    ports:
+      - "8000:8000"
+    restart: always

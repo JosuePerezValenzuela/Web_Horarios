@@ -2,9 +2,16 @@
   "name": "Web Horarios",
   "dockerComposeFile": "docker-compose.yml",
   "service": "app",
-  "workspaceFolder": "/workspace/Web_Horarios",
+  "workspaceFolder": "/app",
   "shutdownAction": "stopCompose",
   "postCreateCommand": "pnpm install",
+  "remoteUser": "node",
+  "containerUser": "node",
+  "updateRemoteUserUID": true,
+  "containerEnv": {
+    "COREPACK_ENABLE_DOWNLOADS": "1",
+    "CI": "true"
+  },
   "mounts": [
     "source=${localEnv:HOME}/.gitconfig,target=/home/node/.gitconfig,type=bind,readonly"
   ],
