@@ -4,6 +4,7 @@ import type { DateRange } from "react-day-picker"
 import type {
   AmbienteSearchContract,
   EditScheduleEntry,
+  EditarHorarioItem,
   EditarHorariosBatchRequest,
   EditarHorariosBatchResponse,
   EntryFilterOverrides,

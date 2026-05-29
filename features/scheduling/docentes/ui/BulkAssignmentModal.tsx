@@ -443,7 +443,10 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                                 mode === "create"
                                   ? hasValidDateRange
                                   : hasValidDateRange ||
-                                    Boolean((entry.fechaInicio ?? "") && (entry.fechaFin ?? ""))
+                                    Boolean(
+                                      ((entry as EditScheduleEntry).fechaInicio ?? "") &&
+                                      ((entry as EditScheduleEntry).fechaFin ?? "")
+                                    )
                               const canSelectAmbiente = hasEntryData && hasDateData
 
                               return (

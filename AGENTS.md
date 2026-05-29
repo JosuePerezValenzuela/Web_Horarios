@@ -114,6 +114,11 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
   - **Base select only**
   - Provides `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`, `SelectValue`
   - Use this for **simple selection without search**
+- `sonner.tsx`
+  - Premium custom Toast notification service (wraps Sonner).
+  - Automatically renders custom glassmorphism style alerts (success, error, info, warning) with rich icons and a synchronized progress bar at the bottom that shrinks according to auto-dismiss duration (pausing on hover).
+  - Custom `toast` object mirrors Sonner trigger interface: `toast.success(msg, desc?, duration?)`.
+
 - `searchable-select-content.tsx`
   - Specialized dropdown content for searchable selects
   - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing
@@ -121,11 +126,15 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 - `multi-select.tsx`
   - Searchable multi-selection dropdown with internal scroll, optional filter, selected-count badge, and **`selectAll`** prop
   - `selectAll={true}` shows a "Seleccionar todos" / "Quitar todos" toggle as first item in the dropdown
+  - Long content options are truncated with an ellipsis and use native `title` tooltips to reveal the full content on hover without breaking the dropdown structure.
   - Use for: reusable **multi-select** cases (e.g. bloques, tipos, tags) where multiple values are required
 - `table.tsx`
   - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`
   - Also includes `TableRowEven` and `TableRowOdd` helpers for alternating row backgrounds
   - Use for: structured tabular data; prefer internal scroll containers over changing table semantics
+- `time-picker.tsx`
+  - Hybrid 12-hour format time picker (segmented keyboard inputs + scrollable column picker popover).
+  - Handles local 12h UX interaction (AM/PM selection) while outputting and managing standard 24h (`HH:mm`) format for integration with the scheduling stores.
 
 ### `components/organisms/` — Existing layout-level components
 
