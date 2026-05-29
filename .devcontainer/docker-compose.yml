@@ -15,12 +15,6 @@ services:
     volumes:
       # Código fuente montado en caliente
       - ..:/app
-      # Volumen compartido externo de pnpm store
-      - pnpm-store-shared:/home/node/.local/share/pnpm/store
     ports:
       - "8000:8000"
     command: sleep infinity
-
-volumes:
-  pnpm-store-shared:
-    external: true
