@@ -15,6 +15,11 @@ services:
     volumes:
       # Código fuente montado en caliente
       - ..:/app
+      # Volumen local nombrado para este proyecto
+      - pnpm-store-Web_Horarios:/home/node/.local/share/pnpm/store
     ports:
       - "8000:8000"
     command: sleep infinity
+
+volumes:
+  pnpm-store-Web_Horarios:
