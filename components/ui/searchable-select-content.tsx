@@ -13,6 +13,7 @@ type SearchableSelectContentProps = React.ComponentProps<typeof SelectPrimitive.
   align?: "center" | "start" | "end"
   onFilterChange?: (value: string) => void
   searchPlaceholder?: string
+  maxVisibleItems?: number
 }
 
 function SearchableSelectContent({
@@ -23,6 +24,8 @@ function SearchableSelectContent({
   onFilterChange,
   searchPlaceholder = "Buscar...",
   onKeyDownCapture,
+  maxVisibleItems = 3, // Por defecto, la primera opción ("Todas") + 3 adicionales
+  style,
   ...props
 }: SearchableSelectContentProps) {
   const inputRef = React.useRef<HTMLInputElement>(null)
@@ -53,6 +56,18 @@ function SearchableSelectContent({
     onFilterChange?.(value)
   }
 
+  // Alturas exactas de los elementos en pixeles:
+  // - ITEM_HEIGHT: py-2 (16px) + text-sm line-height (20px) = 36px
+  // - SEARCH_HEIGHT: h-8 input (32px) + p-1.5 container (12px) + 1px border-b = 45px
+  // - VIEWPORT_PADDING: padding superior e inferior de SelectPrimitive.Viewport (p-1 = 4px arriba + 4px abajo) = 8px
+  const ITEM_HEIGHT = 36
+  const SEARCH_HEIGHT = 45
+  const VIEWPORT_PADDING = 8
+
+  // Alto exacto = buscador + padding del viewport + 1 ítem base ("Todas...") + N ítems adicionales
+  const computedMaxHeight =
+    SEARCH_HEIGHT + VIEWPORT_PADDING + ITEM_HEIGHT + maxVisibleItems * ITEM_HEIGHT
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -60,11 +75,12 @@ function SearchableSelectContent({
         data-align-trigger={position === "item-aligned"}
         ref={handleContentRef}
         className={cn(
-          "relative z-50 max-h-(--radix-select-content-available-height) min-w-[12rem] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "relative z-50 min-w-[12rem] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           position === "popper" &&
             "w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width) data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:translate-y-1",
           className
         )}
+        style={{ maxHeight: computedMaxHeight, ...style }}
         position={position}
         align={align}
         onKeyDownCapture={(event) => {
