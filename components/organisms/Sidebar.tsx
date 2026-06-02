@@ -9,7 +9,15 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useUIStore } from "@/shared/stores/uiStore"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, FileText, FileBarChart, User, LogOut } from "lucide-react"
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  FileBarChart,
+  User,
+  LogOut,
+  Calendar,
+} from "lucide-react"
 
 interface SidebarProps {
   className?: string
@@ -25,6 +33,11 @@ const navItems = [
     name: "Docentes",
     href: "/docentes",
     icon: Users,
+  },
+  {
+    name: "Horarios",
+    href: "/horarios",
+    icon: Calendar,
   },
   {
     name: "Partes Diarias",
