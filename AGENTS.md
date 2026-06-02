@@ -14,7 +14,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - **Containerizado**: Docker Compose via Dev Containers
 - **Nombre del proyecto (Engram)**: `web_horarios`
-- **Container name**: `front_horarios-dev`
+- **Container name**: `web_horarios`
 - **Package manager**: pnpm 11.1.3 (corepack, dentro del contenedor)
 - **Puerto dev**: 8000
 
@@ -25,7 +25,7 @@ TODO comando que dependa de `node_modules/` o de las tools del proyecto debe eje
 
 - **Via `docker exec`** (con el contenedor corriendo):
   ```bash
-  docker exec front_horarios-dev sh -c "<command>"
+  docker exec web_horarios sh -c "<command>"
   ```
 
 ## Tech Stack
@@ -120,9 +120,10 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
   - Custom `toast` object mirrors Sonner trigger interface: `toast.success(msg, desc?, duration?)`.
 
 - `searchable-select-content.tsx`
-  - Specialized dropdown content for searchable selects
-  - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing
-  - Use this when a `Select` needs in-panel filtering but selection remains **single-select**
+  - Specialized dropdown content for searchable selects.
+  - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing.
+  - Supports `maxVisibleItems` property (defaults to `3`) to dynamically and mathematically compute and enforce `maxHeight` so dropdown viewport doesn't overflow vertically.
+  - Use this when a `Select` needs in-panel filtering but selection remains **single-select**.
 - `multi-select.tsx`
   - Searchable multi-selection dropdown with internal scroll, optional filter, selected-count badge, and **`selectAll`** prop
   - `selectAll={true}` shows a "Seleccionar todos" / "Quitar todos" toggle as first item in the dropdown
@@ -225,7 +226,7 @@ When writing code, agents should follow this workflow:
 
 Sub-agents and workflows should reference `.atl/skill-registry.md` for available skills and project-specific patterns.
 
-## Scheduling Module Notes (Docentes)
+## Scheduling Module Notes (Docentes & Global)
 
 - `BulkAssignmentModal` now supports two modes:
   - `mode="create"` → creates horarios (POST flow)
@@ -234,6 +235,18 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
 - In create/edit tables, ambiente selection should validate required fields first (rango/fecha source, día, hora inicio, hora fin) and provide explicit user feedback.
 - For destructive actions in this module (delete one/all horarios), use `alert-dialog.tsx` + server-driven toast messages.
 - `WeeklyScheduleGrid` uses adaptive timeline segment heights; avoid hardcoded floor heights that add dead space to the last row when real segment data exists.
+
+### Zustand Stores & Vista Global
+
+- **Stores de Catálogos Modulares** (`shared/stores/catalogos/`):
+  - `useFacultadesStore`: Obtiene y cachea facultades (`/facultad/all`).
+  - `useCarrerasStore`: Obtiene y cachea carreras/planes (`/carrera/all`).
+  - `useAsignaturasStore`: Obtiene y cachea asignaturas (`/asignatura/all`).
+  - `useDocentesSearchStore`: Búsqueda debounced interactiva de docentes (`/docentes?search=...`).
+- **Store de Horarios Globales** (`features/scheduling/docentes/application/useHorariosListStore.ts`):
+  - Maneja la consulta `GET /horario-clases` con filtros complejos (`facultad_codigo`, `plan_estudio_codigo`, `asignatura_codigo`, `grupo`, `persona_documento`, `aula_id`, etc.).
+  - Valida reglas de negocio en frontend (el filtro de grupo requiere código de asignatura, rangos de fechas/horas válidos) antes de llamar a la API.
+  - Paginación establecida por defecto a `1000` registros para evitar scrollbar global en la ventana de navegación, delegando la visualización única en la grilla semanal (`WeeklyScheduleGrid`) con scroll interno.
 
 ## Testing
 
