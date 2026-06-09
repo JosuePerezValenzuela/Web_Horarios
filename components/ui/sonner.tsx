@@ -76,7 +76,7 @@ function CustomToast({ message, description, type, duration = 4000, id }: Custom
           style={{
             width: "100%",
             // Passing the custom duration dynamically to the CSS animation using a custom property
-            // @ts-ignore
+            // @ts-expect-error - CSS custom properties are not typed on CSSProperties
             "--toast-duration": `${duration}ms`,
           }}
         />

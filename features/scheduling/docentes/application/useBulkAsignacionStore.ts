@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import type { DateRange } from "react-day-picker"
+import { toast } from "sonner"
 
 import type {
   AmbienteSearchContract,
@@ -248,8 +249,9 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       }))
     } catch (error) {
       const apiError = error as { status?: number; body?: { message?: string } }
-      const msg = apiError?.body?.message || error
+      const msg = (apiError?.body?.message || error || "Error al buscar ambientes").toString()
       console.error("Error fetching ambientes for entry:", msg)
+      toast.error(msg)
       set({ loadingAmbientesForEntry: null })
     }
   },
@@ -330,6 +332,13 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
     if (validEntries.length === 0) {
       return { success: false, message: "No hay horarios válidos para asignar" }
+    }
+
+    const hasInvalidTimes = validEntries.some(
+      (e) => e.horaInicio && e.horaFin && e.horaInicio >= e.horaFin
+    )
+    if (hasInvalidTimes) {
+      return { success: false, message: "La hora de inicio debe ser menor a la hora de fin" }
     }
 
     set({ submitting: true })

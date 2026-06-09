@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { es } from "date-fns/locale"
-import { Plus, Trash2, XCircle } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import type { BulkAssignmentModalProps, EditScheduleEntry, SolapamientoInfo } from "../domain/types"
@@ -17,7 +17,6 @@ import {
 import { AmbienteSearchPopover } from "./AmbienteSearchPopover"
 import { SolapamientoWarning } from "./SolapamientoWarning"
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,9 +36,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { MultiSelect } from "@/components/ui/multi-select"
 import { TimePicker } from "@/components/ui/time-picker"
 import {
   Select,
@@ -133,6 +130,13 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
     }
   }, [mode, isOpen, entries.length, addEntry])
 
+  // Trigger toast on initial load error
+  useEffect(() => {
+    if (initialLoadError) {
+      toast.error(initialLoadError)
+    }
+  }, [initialLoadError])
+
   // ── Handlers ─────────────────────────────────────────
   const doSubmit = useCallback(async () => {
     if (mode === "create") {
@@ -193,6 +197,15 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   ])
 
   const handleSubmit = useCallback(() => {
+    const invalidEntry = entries.find(
+      (e) => e.dia !== null && e.horaInicio && e.horaFin && e.horaInicio >= e.horaFin
+    )
+    if (invalidEntry) {
+      toast.error("La hora de inicio debe ser menor a la hora de fin")
+      setErrorEntryId(invalidEntry.id)
+      return
+    }
+
     if (mode === "create") {
       if (!selectedGroup || !hasValidDateRange) return
 
@@ -207,7 +220,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       // Edit mode: solapamiento check handled inside submitEdit
       doSubmit()
     }
-  }, [mode, selectedGroup, hasValidDateRange, checkSolapamientos, doSubmit, schedules])
+  }, [mode, selectedGroup, hasValidDateRange, checkSolapamientos, doSubmit, schedules, entries])
 
   const handleConfirm = useCallback(() => {
     setSolapamientoOpen(false)
@@ -292,8 +305,8 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
         }
       }}
     >
-      <DialogContent className="flex max-h-[90vh] w-full flex-col p-0 sm:max-w-fit">
-        <DialogHeader className="shrink-0 px-4 pt-4 pb-2 sm:px-6 sm:pt-6 sm:pb-2">
+      <DialogContent className="flex max-h-[90vh] w-full flex-col p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl min-w-[320px] sm:min-w-[550px] md:min-w-[650px] lg:min-w-[750px]">
+        <DialogHeader className="shrink-0 px-4 pt-4 pb-2 pr-12 sm:px-6 sm:pt-6 sm:pb-2 sm:pr-14">
           <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
             <DialogTitle className="shrink-0 text-base font-semibold text-foreground sm:text-lg">
               {mode === "edit" ? "Editar Horarios" : "Asignar Horarios"}
@@ -335,23 +348,26 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
             {/* Location filters intentionally hidden in both modes */}
           </section>
 
-          {/* ═══ Initial load error ═══ */}
-          {initialLoadError && (
-            <Alert variant="destructive" className="mb-4">
-              <XCircle className="size-4 shrink-0" />
-              <AlertTitle>Error de carga</AlertTitle>
-              <AlertDescription>{initialLoadError}</AlertDescription>
-            </Alert>
-          )}
-
           {/* ═══ Entries Table ═══ */}
           <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
             <h3 className="mb-3 text-sm font-semibold">Horarios a asignar</h3>
 
             {entries.length === 0 ? (
-              <p className="py-4 text-center text-sm text-muted-foreground">
-                No hay horarios. Agregue al menos uno.
-              </p>
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/10 p-8 text-center">
+                <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground/80 mb-3">
+                  <Plus className="size-6" />
+                </div>
+                <h4 className="text-sm font-semibold text-foreground">Sin horarios asignados</h4>
+                <p className="mt-1 text-xs text-muted-foreground max-w-[280px]">
+                  {mode === "edit"
+                    ? "Este grupo no tiene horarios asignados en este período. Agregá un horario nuevo para comenzar."
+                    : "No hay horarios cargados en la lista de asignación."}
+                </p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={() => addEntry()}>
+                  <Plus className="mr-1 size-3.5" />
+                  Agregar horario
+                </Button>
+              </div>
             ) : (
               <div className="max-h-75 overflow-auto rounded-xl border border-border/50 shadow-sm">
                 <table className="w-full caption-bottom text-sm">
@@ -464,6 +480,16 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                                       toast.error(`Completá: ${missing.join(", ")}`)
                                       return
                                     }
+                                    if (
+                                      entry.horaInicio &&
+                                      entry.horaFin &&
+                                      entry.horaInicio >= entry.horaFin
+                                    ) {
+                                      toast.error(
+                                        "La hora de inicio debe ser menor a la hora de fin"
+                                      )
+                                      return
+                                    }
                                     setAmbientePopoverEntry(entry.id)
                                   }}
                                   title={
@@ -501,12 +527,14 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
             )}
 
             {/* Add entry */}
-            <div className="mt-3 flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => addEntry()}>
-                <Plus className="mr-1 size-3.5" />
-                Agregar horario
-              </Button>
-            </div>
+            {entries.length > 0 && (
+              <div className="mt-3 flex justify-end">
+                <Button variant="outline" size="sm" onClick={() => addEntry()}>
+                  <Plus className="mr-1 size-3.5" />
+                  Agregar horario
+                </Button>
+              </div>
+            )}
           </section>
 
           {/* ═══ Alert Area ═══ */}
@@ -576,7 +604,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
           </AlertDialog>
 
           {/* ═══ Submit Button ═══ */}
-          <div className="mt-4 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">
               {entries.length > 0 &&
                 `${entries.length} horario${entries.length !== 1 ? "s" : ""} definido${entries.length !== 1 ? "s" : ""}`}

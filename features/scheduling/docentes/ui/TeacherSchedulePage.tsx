@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, RefreshCw } from "lucide-react"
+import { ArrowLeft, RefreshCw, Calendar } from "lucide-react"
 
 import type {
   DocenteScheduleMeta,
@@ -72,21 +72,21 @@ export function TeacherSchedulePage({
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
       <header className="rounded-3xl border border-border bg-card p-2 md:p-3">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
-            <h1 className="shrink-0 text-base font-semibold text-foreground md:text-lg">
+        <div className="flex flex-row items-center gap-3">
+          <Button variant="outline" size="sm" onClick={onBack} className="shrink-0">
+            <ArrowLeft className="mr-2 size-4" />
+            Volver
+          </Button>
+
+          <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2.5">
+            <h1 className="shrink-0 text-sm font-semibold text-foreground md:text-base">
               Vista semanal del docente
             </h1>
-            <p className="min-w-0 text-xs text-muted-foreground md:text-sm">
+            <p className="min-w-0 text-xs text-muted-foreground">
               {docente?.nombres ?? "Cargando..."} · CI: {docente?.documento ?? "--"} · Código:{" "}
               {docente?.codigo ?? "--"}
             </p>
           </div>
-
-          <Button variant="outline" size="sm" onClick={onBack}>
-            <ArrowLeft className="mr-2 size-4" />
-            Volver
-          </Button>
         </div>
       </header>
 
@@ -166,10 +166,12 @@ export function TeacherSchedulePage({
               />
             </div>
           ) : (
-            <section className="rounded-3xl border border-border bg-muted/40 p-8 text-center">
-              <h3 className="text-lg font-semibold">Sin horarios cargados</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Este docente no tiene horarios normalizados para mostrar en la grilla semanal.
+            <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-border bg-muted/10 p-8 text-center shadow-xs">
+              <Calendar className="size-12 text-muted-foreground/40 mb-3" />
+              <h3 className="text-base font-bold text-foreground">Sin horarios cargados</h3>
+              <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
+                Este docente no tiene horarios normalizados asignados en este período para mostrar
+                en la grilla semanal.
               </p>
             </section>
           )}

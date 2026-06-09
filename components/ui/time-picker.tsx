@@ -63,17 +63,27 @@ export function TimePicker({
 
   // Sync with external value when it changes from outside
   React.useEffect(() => {
+    const isEditing =
+      document.activeElement === hourRef.current || document.activeElement === minuteRef.current
+    if (isEditing) return
+
     const p = parseTime(value)
     setHour(p.hour)
     setMinute(p.minute)
     setPeriod(p.period)
   }, [value])
 
-  const notifyChange = (h: string, m: string, p: string) => {
+  const notifyChange = (h: string, m: string, p: string, force = false) => {
     if (onChange) {
-      if (h.length === 2 && m.length === 2) {
-        onChange(to24h(h, m, p))
-      } else if (!h && !m) {
+      const cleanH = h.trim()
+      const cleanM = m.trim()
+      if (cleanH && cleanM) {
+        if (force || (cleanH.length === 2 && cleanM.length === 2)) {
+          const paddedH = cleanH.padStart(2, "0")
+          const paddedM = cleanM.padStart(2, "0")
+          onChange(to24h(paddedH, paddedM, p))
+        }
+      } else if (!cleanH && !cleanM) {
         onChange("")
       }
     }
@@ -113,12 +123,38 @@ export function TimePicker({
     }
   }
 
+  const handleHourBlur = () => {
+    if (hour) {
+      const hInt = parseInt(hour, 10)
+      let finalHour = hour
+      if (isNaN(hInt) || hInt < 1 || hInt > 12) {
+        finalHour = "12"
+      } else {
+        finalHour = hInt.toString().padStart(2, "0")
+      }
+      setHour(finalHour)
+      notifyChange(finalHour, minute, period, true)
+    }
+  }
+
+  const handleMinuteBlur = () => {
+    if (minute) {
+      const mInt = parseInt(minute, 10)
+      let finalMinute = minute
+      if (isNaN(mInt) || mInt < 0 || mInt > 59) {
+        finalMinute = "00"
+      } else {
+        finalMinute = mInt.toString().padStart(2, "0")
+      }
+      setMinute(finalMinute)
+      notifyChange(hour, finalMinute, period, true)
+    }
+  }
+
   const togglePeriod = () => {
     const p = period === "AM" ? "PM" : "AM"
     setPeriod(p)
-    if (hour.length === 2 && minute.length === 2) {
-      notifyChange(hour, minute, p)
-    }
+    notifyChange(hour, minute, p)
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, type: "hour" | "minute") => {
@@ -195,6 +231,7 @@ export function TimePicker({
           disabled={disabled}
           value={hour}
           onChange={(e) => handleHourChange(e.target.value)}
+          onBlur={handleHourBlur}
           onKeyDown={(e) => handleKeyDown(e, "hour")}
           onFocus={(e) => e.target.select()}
           placeholder={placeholder.split(":")[0]}
@@ -206,6 +243,7 @@ export function TimePicker({
           disabled={disabled}
           value={minute}
           onChange={(e) => handleMinuteChange(e.target.value)}
+          onBlur={handleMinuteBlur}
           onKeyDown={(e) => handleKeyDown(e, "minute")}
           onFocus={(e) => e.target.select()}
           placeholder={placeholder.split(":")[1]?.split(" ")[0]}
@@ -260,7 +298,7 @@ export function TimePicker({
                   type="button"
                   onClick={() => {
                     setHour(h)
-                    if (minute.length === 2) notifyChange(h, minute, period)
+                    notifyChange(h, minute, period)
                   }}
                   className={cn(
                     "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground",
@@ -287,7 +325,7 @@ export function TimePicker({
                   type="button"
                   onClick={() => {
                     setMinute(m)
-                    if (hour.length === 2) notifyChange(hour, m, period)
+                    notifyChange(hour, m, period)
                   }}
                   className={cn(
                     "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground",
@@ -313,7 +351,7 @@ export function TimePicker({
                   type="button"
                   onClick={() => {
                     setPeriod(p)
-                    if (hour.length === 2 && minute.length === 2) notifyChange(hour, minute, p)
+                    notifyChange(hour, minute, p)
                     setOpen(false) // Auto close when period is clicked (last step usually)
                   }}
                   className={cn(
