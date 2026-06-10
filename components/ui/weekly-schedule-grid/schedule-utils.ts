@@ -1,7 +1,7 @@
 import type { ScheduleItem, RenderSlice, TimelineSegment, TimeRange } from "./types"
 
 const PX_PER_MINUTE = 0.95
-const MIN_BLOCK_HEIGHT = 48
+const MIN_BLOCK_HEIGHT = 52
 const VERTICAL_GAP = 4
 
 export const GRID_CONSTANTS = {

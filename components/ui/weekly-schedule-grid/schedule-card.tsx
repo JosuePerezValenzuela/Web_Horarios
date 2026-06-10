@@ -87,28 +87,28 @@ export function ScheduleCard({
       {/* Title */}
       <p
         className={cn(
-          "font-bold leading-snug tracking-tight text-foreground/95",
-          mode === "compact" ? "truncate text-[10px]" : "line-clamp-2 text-[11px]"
+          "font-bold leading-snug tracking-tight text-foreground/95 break-words",
+          mode === "compact" ? "text-[10px]" : "text-[11px]"
         )}
       >
         {item.title}
       </p>
 
-      {/* Bottom row: subtitle + badge */}
-      <div className="flex w-full items-center justify-between gap-0.5 pt-0.5">
-        {item.subtitle ? (
-          <p
-            className={cn(
-              "truncate font-medium text-foreground/75",
-              mode === "compact" ? "text-[9px]" : "text-[10px]"
-            )}
-          >
-            {item.subtitle}
-          </p>
-        ) : (
-          <span />
-        )}
-        {item.badge ? (
+      {/* Subtitle */}
+      {item.subtitle && (
+        <p
+          className={cn(
+            "truncate font-medium text-foreground/75 mt-0.5",
+            mode === "compact" ? "text-[9px]" : "text-[10px]"
+          )}
+        >
+          {item.subtitle}
+        </p>
+      )}
+
+      {/* Badge row on its own line */}
+      {item.badge && (
+        <div className="mt-1 flex w-full justify-start">
           <span
             className={cn(
               "inline-flex shrink-0 items-center justify-center rounded-md border font-bold leading-none shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
@@ -118,8 +118,8 @@ export function ScheduleCard({
           >
             {item.badge}
           </span>
-        ) : null}
-      </div>
+        </div>
+      )}
     </article>
   )
 }

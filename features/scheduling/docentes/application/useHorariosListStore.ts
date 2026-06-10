@@ -44,7 +44,7 @@ interface HorariosListApiResponse {
 
 export interface HorariosListFilters {
   facultad_codigo?: string
-  plan_estudio_codigo?: string[]
+  plan_estudio_codigo?: string
   asignatura_codigo?: string[]
   grupo?: string[]
   persona_documento?: string
@@ -79,7 +79,7 @@ interface HorariosListState {
 
 const defaultFilters: HorariosListFilters = {
   facultad_codigo: undefined,
-  plan_estudio_codigo: [],
+  plan_estudio_codigo: undefined,
   asignatura_codigo: [],
   grupo: [],
   persona_documento: undefined,
@@ -127,15 +127,16 @@ function normalizeHorarioToSchedule(item: HorarioClaseItem, index: number): Norm
     durationMin: endMin - startMin,
     laneIndex: 0,
     laneCount: 1,
-    materia: item.asignatura?.nombre || "Materia no especificada",
+    materia: item.asignatura?.nombre || item.plan_estudio?.nombre || "Materia no especificada",
     grupo: item.grupo,
     carreras: item.plan_estudio?.nombre ? [item.plan_estudio.nombre] : [],
-    ambienteLabel: `Aula ${item.aula_id}`,
+    ambienteLabel: item.aula_id ? `Aula ${item.aula_id}` : "Sin aula",
     tipoLabel: item.modalidad === "C" ? "Presencial" : "Virtual",
     fechasLabel: `${item.fecha_inicio} al ${item.fecha_fin}`,
     dbId: item.id,
     fechaInicioRaw: item.fecha_inicio,
     fechaFinRaw: item.fecha_fin,
+    docente: item.persona?.nombres || "Docente no asignado",
   }
 }
 
@@ -185,7 +186,6 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
     if (
       !filters.facultad_codigo ||
       !filters.plan_estudio_codigo ||
-      filters.plan_estudio_codigo.length === 0 ||
       !filters.gestion ||
       filters.periodo === undefined
     ) {
@@ -219,8 +219,8 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
 
       // Filtros opcionales
       if (filters.facultad_codigo) searchParams.set("facultad_codigo", filters.facultad_codigo)
-      if (filters.plan_estudio_codigo && filters.plan_estudio_codigo.length > 0)
-        searchParams.set("plan_estudio_codigo", filters.plan_estudio_codigo.join(","))
+      if (filters.plan_estudio_codigo)
+        searchParams.set("plan_estudio_codigo", filters.plan_estudio_codigo)
       if (filters.asignatura_codigo && filters.asignatura_codigo.length > 0)
         searchParams.set("asignatura_codigo", filters.asignatura_codigo.join(","))
       if (filters.grupo && filters.grupo.length > 0)

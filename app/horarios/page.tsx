@@ -18,19 +18,14 @@ import { useUIStore } from "@/shared/stores/uiStore"
 import {
   buildRows,
   resolveDefaultPeriod,
+  deriveTimeRange,
 } from "@/features/scheduling/docentes/application/normalizers"
 
 // UI Componentes
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { Badge } from "@/components/ui/badge"
@@ -38,16 +33,8 @@ import { TimePicker } from "@/components/ui/time-picker"
 import type { DateRange } from "react-day-picker"
 import { DatePickerRange } from "@/components/ui/date-picker-range"
 import { Checkbox } from "@/components/ui/checkbox"
-import { WeeklyScheduleGrid } from "@/features/scheduling/docentes/ui/WeeklyScheduleGrid"
-
-const DIAS_MAP: Record<number, string> = {
-  1: "Lunes",
-  2: "Martes",
-  3: "Miércoles",
-  4: "Jueves",
-  5: "Viernes",
-  6: "Sábado",
-}
+import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
+import type { ScheduleItem } from "@/components/ui/weekly-schedule-grid/types"
 
 export default function HorariosListPage() {
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore()
@@ -60,6 +47,7 @@ export default function HorariosListPage() {
 
   // Filtros de búsqueda locales para comboboxes
   const [facultadSearch, setFacultadSearch] = useState("")
+  const [carreraSearch, setCarreraSearch] = useState("")
 
   // Stores vinculados
   const {
@@ -119,7 +107,6 @@ export default function HorariosListPage() {
     return !!(
       filters.facultad_codigo &&
       filters.plan_estudio_codigo &&
-      filters.plan_estudio_codigo.length > 0 &&
       filters.gestion &&
       filters.periodo !== undefined
     )
@@ -127,12 +114,12 @@ export default function HorariosListPage() {
 
   // Filtrar asignaturas basadas en las carreras seleccionadas localmente
   const filteredAsignaturasOptions = useMemo(() => {
-    if (!filters.plan_estudio_codigo || filters.plan_estudio_codigo.length === 0) {
+    if (!filters.plan_estudio_codigo) {
       return []
     }
 
     const selectedCarrerasIds = carreras
-      .filter((c) => filters.plan_estudio_codigo?.includes(c.codigo))
+      .filter((c) => c.codigo === filters.plan_estudio_codigo)
       .map((c) => c.id.toString())
 
     return asignaturas
@@ -190,6 +177,28 @@ export default function HorariosListPage() {
       .slice(0, 100)
   }, [facultades, facultadSearch, filters.facultad_codigo])
 
+  // Asegurar que la carrera actualmente seleccionada no sea filtrada por la búsqueda del dropdown
+  const filteredCarreras = useMemo(() => {
+    const term = carreraSearch.toLowerCase().trim()
+    const selectedCodigo = filters.plan_estudio_codigo
+    return carreras
+      .filter((c) => {
+        if (selectedCodigo && c.codigo === selectedCodigo) return true
+        return c.nombre.toLowerCase().includes(term) || c.codigo.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [carreras, carreraSearch, filters.plan_estudio_codigo])
+
+  const [customPeriod, setCustomPeriod] = useState<number | "">("")
+
+  // Calcular el período por defecto o usar el personalizado
+  const activePeriod = useMemo(() => {
+    if (typeof customPeriod === "number" && customPeriod > 0) {
+      return customPeriod
+    }
+    return resolveDefaultPeriod(normalizedSchedules)
+  }, [normalizedSchedules, customPeriod])
+
   // Lógica de cálculo del rango de tiempo dinámico para la grilla semanal
   const { timeRange, rows } = useMemo(() => {
     if (normalizedSchedules.length === 0) {
@@ -199,17 +208,27 @@ export default function HorariosListPage() {
         rows: buildRows(defaultRange, 90),
       }
     }
-    const min = Math.min(...normalizedSchedules.map((s) => s.startMin))
-    const max = Math.max(...normalizedSchedules.map((s) => s.endMin))
-    const startMin = Math.max(7 * 60, Math.floor(min / 60) * 60)
-    const endMin = Math.min(22 * 60, Math.ceil(max / 60) * 60)
-
-    const range = { startMin, endMin }
-    const period = resolveDefaultPeriod(normalizedSchedules)
+    const range = deriveTimeRange(normalizedSchedules)
     return {
       timeRange: range,
-      rows: buildRows(range, period),
+      rows: buildRows(range, activePeriod),
     }
+  }, [normalizedSchedules, activePeriod])
+
+  // Map normalized schedules to ScheduleItem for GlobalWeeklyScheduleGrid
+  const scheduleItems = useMemo<ScheduleItem[]>(() => {
+    return normalizedSchedules.map((schedule) => ({
+      id: schedule.scheduleId,
+      day: schedule.day,
+      startMin: schedule.startMin,
+      endMin: schedule.endMin,
+      durationMin: schedule.durationMin,
+      title: schedule.materia,
+      subtitle: schedule.docente || "Docente no asignado",
+      badge: `G: ${schedule.grupo} · ${schedule.ambienteLabel}`,
+      colorIndex: schedule.colorIndex,
+      meta: { schedule },
+    }))
   }, [normalizedSchedules])
 
   // Helper local para forzar actualización solo si los obligatorios están completos
@@ -218,7 +237,6 @@ export default function HorariosListPage() {
     const hasMandatory = !!(
       updatedFilters.facultad_codigo &&
       updatedFilters.plan_estudio_codigo &&
-      updatedFilters.plan_estudio_codigo.length > 0 &&
       updatedFilters.gestion &&
       updatedFilters.periodo !== undefined
     )
@@ -231,7 +249,7 @@ export default function HorariosListPage() {
   const handleFacultadChange = (value: string) => {
     if (value === "none") {
       setFilter("facultad_codigo", undefined)
-      setFilter("plan_estudio_codigo", [])
+      setFilter("plan_estudio_codigo", undefined)
       setFilter("asignatura_codigo", [])
       setFilter("grupo", [])
       clearCarreras()
@@ -239,7 +257,7 @@ export default function HorariosListPage() {
     } else {
       setFilter("facultad_codigo", value)
       // Resetear filtros dependientes aguas abajo al cambiar facultad
-      setFilter("plan_estudio_codigo", [])
+      setFilter("plan_estudio_codigo", undefined)
       setFilter("asignatura_codigo", [])
       setFilter("grupo", [])
 
@@ -291,7 +309,29 @@ export default function HorariosListPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                {/* Campo para modificar el valor del período */}
+                <div className="flex items-center gap-1.5">
+                  <Label
+                    htmlFor="periodo-global"
+                    className="text-xs font-semibold text-foreground/80 whitespace-nowrap"
+                  >
+                    Período (min):
+                  </Label>
+                  <Input
+                    id="periodo-global"
+                    type="number"
+                    min={1}
+                    value={customPeriod !== "" ? customPeriod : activePeriod}
+                    onChange={(e) => {
+                      const val = e.target.value === "" ? "" : Number(e.target.value)
+                      setCustomPeriod(val)
+                    }}
+                    className="h-9 w-18 text-xs text-center font-medium bg-background no-spinner"
+                    aria-label="Periodo de segmentacion en minutos"
+                  />
+                </div>
+
                 <Button
                   variant="outline"
                   size="sm"
@@ -385,21 +425,35 @@ export default function HorariosListPage() {
                       <Label className="text-xs font-semibold text-foreground">
                         Plan de Estudio <span className="text-destructive">*</span>
                       </Label>
-                      <MultiSelect
-                        options={carreras.map((c) => ({
-                          value: c.codigo,
-                          label: c.nombre,
-                        }))}
-                        value={filters.plan_estudio_codigo || []}
+                      <Select
+                        value={filters.plan_estudio_codigo || "none"}
                         onValueChange={(val) => {
-                          setFilter("plan_estudio_codigo", val as string[])
+                          setFilter("plan_estudio_codigo", val === "none" ? undefined : val)
                           triggerFetchIfValid()
                         }}
                         disabled={loadingCarreras || !filters.facultad_codigo}
-                        searchable
-                        selectAll
-                        placeholder="Seleccione Planes"
-                      />
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setCarreraSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
+                          {filteredCarreras.map((c) => (
+                            <SelectItem key={c.id} value={c.codigo}>
+                              {c.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
                     </div>
 
                     {/* Gestión y Periodo */}
@@ -433,7 +487,7 @@ export default function HorariosListPage() {
                             setFilter("periodo", val)
                             triggerFetchIfValid()
                           }}
-                          className="h-9 text-xs"
+                          className="h-9 text-xs no-spinner"
                         />
                       </div>
                     </div>
@@ -488,47 +542,6 @@ export default function HorariosListPage() {
                         selectAll
                         placeholder="Seleccione Grupos"
                       />
-                    </div>
-
-                    {/* Aula y Día */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Aula ID</Label>
-                        <Input
-                          type="text"
-                          placeholder="Aula"
-                          value={filters.aula_id || ""}
-                          onChange={(e) => {
-                            setFilter("aula_id", e.target.value || undefined)
-                            triggerFetchIfValid()
-                          }}
-                          disabled={!isMandatoryFiltersSet}
-                          className="h-9 text-xs"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Día</Label>
-                        <Select
-                          value={filters.dia !== undefined ? filters.dia.toString() : "none"}
-                          onValueChange={(val) => {
-                            setFilter("dia", val === "none" ? undefined : Number(val))
-                            triggerFetchIfValid()
-                          }}
-                          disabled={!isMandatoryFiltersSet}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Seleccione" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Todos</SelectItem>
-                            {[1, 2, 3, 4, 5, 6].map((d) => (
-                              <SelectItem key={d} value={d.toString()}>
-                                {DIAS_MAP[d]}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
                     </div>
 
                     {/* Filtro Rango de Fechas */}
@@ -650,8 +663,8 @@ export default function HorariosListPage() {
                   ) : (
                     /* Vista Semanal (Grilla) - Única vista permitida */
                     <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
-                      <WeeklyScheduleGrid
-                        schedules={normalizedSchedules}
+                      <GlobalWeeklyScheduleGrid
+                        items={scheduleItems}
                         rows={rows}
                         timeRange={timeRange}
                       />

@@ -168,6 +168,7 @@ export interface NormalizedSchedule {
   dbId: number | null
   fechaInicioRaw: string | null
   fechaFinRaw: string | null
+  docente?: string
 }
 
 export interface GroupSummary {

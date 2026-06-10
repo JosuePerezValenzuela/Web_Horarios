@@ -52,23 +52,11 @@ export function OverlapCluster({
           </button>
         </div>
 
-        {/* Items list with proportional heights */}
+        {/* Items list with uniform heights */}
         <div className="flex w-full flex-1 flex-col items-stretch justify-start gap-1">
           {items.map((item) => {
-            const itemDuration = item.endMin - item.startMin
-            const sliceDuration = slice.endMin - slice.startMin
-            // Proportional height: item's duration relative to the cluster's total span
-            // Minimum height: 48px
-            const proportion = sliceDuration > 0 ? itemDuration / sliceDuration : 1
-            // We give each item proportional flex weight + absolute min height
             return (
-              <div
-                key={item.id}
-                className="flex min-h-[48px] flex-col"
-                style={{
-                  flex: `${Math.max(proportion, 0.3)} 1 0`,
-                }}
-              >
+              <div key={item.id} className="flex flex-1 flex-col min-h-[52px]">
                 <ScheduleCard item={item} mode="full" className="h-full" onClick={onItemClick} />
               </div>
             )

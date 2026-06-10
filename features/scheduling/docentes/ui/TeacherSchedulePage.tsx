@@ -116,7 +116,7 @@ export function TeacherSchedulePage({
               value={period}
               onChange={(event) => onPeriodChange(Number(event.target.value))}
               aria-label="Periodo de segmentacion en minutos"
-              className="h-9"
+              className="h-9 no-spinner"
             />
           </div>
 
