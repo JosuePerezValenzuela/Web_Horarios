@@ -5,30 +5,20 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import {
-  Filter,
-  Grid,
-  List,
-  Search,
-  X,
-  AlertTriangle,
-  RefreshCw,
-  Clock,
-  Calendar,
-  AlertCircle,
-  HelpCircle,
-} from "lucide-react"
+import { Filter, RefreshCw, Calendar, AlertCircle, AlertTriangle } from "lucide-react"
 
 // Stores
 import { useHorariosListStore } from "@/features/scheduling/docentes/application/useHorariosListStore"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
 import { useAsignaturasStore } from "@/shared/stores/catalogos/useAsignaturasStore"
-import { useDocentesSearchStore } from "@/shared/stores/catalogos/useDocentesSearchStore"
 import { useUIStore } from "@/shared/stores/uiStore"
 
 // Normalizadores
-import { buildRows } from "@/features/scheduling/docentes/application/normalizers"
+import {
+  buildRows,
+  resolveDefaultPeriod,
+} from "@/features/scheduling/docentes/application/normalizers"
 
 // UI Componentes
 import { Button } from "@/components/ui/button"
@@ -42,21 +32,11 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import { TimePicker } from "@/components/ui/time-picker"
 import type { DateRange } from "react-day-picker"
 import { DatePickerRange } from "@/components/ui/date-picker-range"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  TableRowEven,
-  TableRowOdd,
-} from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
 import { WeeklyScheduleGrid } from "@/features/scheduling/docentes/ui/WeeklyScheduleGrid"
 
@@ -78,15 +58,8 @@ export default function HorariosListPage() {
     setSidebarCollapsed(true)
   }, [setSidebarCollapsed])
 
-  // Búsqueda local de docentes (para debounce)
-  const [docenteInput, setDocenteInput] = useState("")
-  const [selectedDocenteName, setSelectedDocenteName] = useState("")
-  const [showDocenteSugerencias, setShowDocenteSugerencias] = useState(false)
-
   // Filtros de búsqueda locales para comboboxes
   const [facultadSearch, setFacultadSearch] = useState("")
-  const [carreraSearch, setCarreraSearch] = useState("")
-  const [asignaturaSearch, setAsignaturaSearch] = useState("")
 
   // Stores vinculados
   const {
@@ -97,24 +70,88 @@ export default function HorariosListPage() {
     loading,
     error: listError,
     setFilter,
-    setPage,
-    setSort,
     fetchHorarios,
     resetFilters,
   } = useHorariosListStore()
 
-  const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
-
-  const { carreras, loading: loadingCarreras, fetchCarreras } = useCarrerasStore()
-
-  const { asignaturas, loading: loadingAsignaturas, fetchAsignaturas } = useAsignaturasStore()
+  const {
+    facultades,
+    loading: loadingFacultades,
+    error: errorFacultades,
+    fetchFacultades,
+  } = useFacultadesStore()
 
   const {
-    docentes: docentesSugeridos,
-    loading: searchingDocentes,
-    searchDocentes,
-    clear: clearDocenteSearch,
-  } = useDocentesSearchStore()
+    carreras,
+    loading: loadingCarreras,
+    error: errorCarreras,
+    fetchCarreras,
+    clear: clearCarreras,
+  } = useCarrerasStore()
+
+  const {
+    asignaturas,
+    loading: loadingAsignaturas,
+    error: errorAsignaturas,
+    fetchAsignaturas,
+    clear: clearAsignaturas,
+  } = useAsignaturasStore()
+
+  // Toasts de error automáticos para las peticiones de catálogos y listado
+  useEffect(() => {
+    if (errorFacultades) toast.error(errorFacultades)
+  }, [errorFacultades])
+
+  useEffect(() => {
+    if (errorCarreras) toast.error(errorCarreras)
+  }, [errorCarreras])
+
+  useEffect(() => {
+    if (errorAsignaturas) toast.error(errorAsignaturas)
+  }, [errorAsignaturas])
+
+  useEffect(() => {
+    if (listError) toast.error(listError)
+  }, [listError])
+
+  // Determinar si los filtros obligatorios están establecidos
+  const isMandatoryFiltersSet = useMemo(() => {
+    return !!(
+      filters.facultad_codigo &&
+      filters.plan_estudio_codigo &&
+      filters.plan_estudio_codigo.length > 0 &&
+      filters.gestion &&
+      filters.periodo !== undefined
+    )
+  }, [filters.facultad_codigo, filters.plan_estudio_codigo, filters.gestion, filters.periodo])
+
+  // Filtrar asignaturas basadas en las carreras seleccionadas localmente
+  const filteredAsignaturasOptions = useMemo(() => {
+    if (!filters.plan_estudio_codigo || filters.plan_estudio_codigo.length === 0) {
+      return []
+    }
+
+    const selectedCarrerasIds = carreras
+      .filter((c) => filters.plan_estudio_codigo?.includes(c.codigo))
+      .map((c) => c.id.toString())
+
+    return asignaturas
+      .filter((a) => a.carrera_id && selectedCarrerasIds.includes(a.carrera_id.toString()))
+      .map((a) => ({ value: a.codigo, label: a.nombre }))
+  }, [asignaturas, carreras, filters.plan_estudio_codigo])
+
+  // Obtener grupos únicos de las asignaturas seleccionadas basándonos en los horarios cargados
+  const availableGroups = useMemo(() => {
+    if (!filters.asignatura_codigo || filters.asignatura_codigo.length === 0) return []
+
+    // Filtrar los grupos asegurándonos que pertenecen a las asignaturas seleccionadas
+    const groups = horarios
+      .filter((h) => h.asignatura && filters.asignatura_codigo?.includes(h.asignatura.codigo))
+      .map((h) => h.grupo)
+      .filter((g): g is string => !!g)
+
+    return Array.from(new Set(groups)).sort()
+  }, [horarios, filters.asignatura_codigo])
 
   // Conversión local para DatePickerRange
   const dateRangeValue = useMemo<DateRange | undefined>(() => {
@@ -131,52 +168,27 @@ export default function HorariosListPage() {
 
     setFilter("fecha_desde", fromStr)
     setFilter("fecha_hasta", toStr)
-    fetchHorarios()
+    if (isMandatoryFiltersSet) {
+      fetchHorarios()
+    }
   }
 
-  // Carga inicial de datos base
+  // Carga inicial de datos base: Únicamente Facultades al montar
   useEffect(() => {
     fetchFacultades()
-    fetchCarreras()
-    fetchAsignaturas()
-    fetchHorarios()
-  }, [fetchFacultades, fetchCarreras, fetchAsignaturas, fetchHorarios])
+  }, [fetchFacultades])
 
-  // Debounce para búsqueda de docentes
-  useEffect(() => {
-    if (!docenteInput.trim()) {
-      clearDocenteSearch()
-      return
-    }
-
-    const timer = setTimeout(() => {
-      searchDocentes(docenteInput)
-    }, 450)
-
-    return () => clearTimeout(timer)
-  }, [docenteInput, searchDocentes, clearDocenteSearch])
-
-  // Filtrado de catálogos en el cliente (Limitado a 100 elementos para rendimiento con scrollbar)
+  // Asegurar que la facultad actualmente seleccionada no sea filtrada por la búsqueda del dropdown
   const filteredFacultades = useMemo(() => {
     const term = facultadSearch.toLowerCase().trim()
+    const selectedCodigo = filters.facultad_codigo
     return facultades
-      .filter((f) => f.nombre.toLowerCase().includes(term) || f.codigo.toLowerCase().includes(term))
+      .filter((f) => {
+        if (selectedCodigo && f.codigo === selectedCodigo) return true
+        return f.nombre.toLowerCase().includes(term) || f.codigo.toLowerCase().includes(term)
+      })
       .slice(0, 100)
-  }, [facultades, facultadSearch])
-
-  const filteredCarreras = useMemo(() => {
-    const term = carreraSearch.toLowerCase().trim()
-    return carreras
-      .filter((c) => c.nombre.toLowerCase().includes(term) || c.codigo.toLowerCase().includes(term))
-      .slice(0, 100)
-  }, [carreras, carreraSearch])
-
-  const filteredAsignaturas = useMemo(() => {
-    const term = asignaturaSearch.toLowerCase().trim()
-    return asignaturas
-      .filter((a) => a.nombre.toLowerCase().includes(term) || a.codigo.toLowerCase().includes(term))
-      .slice(0, 100)
-  }, [asignaturas, asignaturaSearch])
+  }, [facultades, facultadSearch, filters.facultad_codigo])
 
   // Lógica de cálculo del rango de tiempo dinámico para la grilla semanal
   const { timeRange, rows } = useMemo(() => {
@@ -193,84 +205,60 @@ export default function HorariosListPage() {
     const endMin = Math.min(22 * 60, Math.ceil(max / 60) * 60)
 
     const range = { startMin, endMin }
+    const period = resolveDefaultPeriod(normalizedSchedules)
     return {
       timeRange: range,
-      rows: buildRows(range, 90),
+      rows: buildRows(range, period),
     }
   }, [normalizedSchedules])
+
+  // Helper local para forzar actualización solo si los obligatorios están completos
+  const triggerFetchIfValid = () => {
+    const updatedFilters = useHorariosListStore.getState().filters
+    const hasMandatory = !!(
+      updatedFilters.facultad_codigo &&
+      updatedFilters.plan_estudio_codigo &&
+      updatedFilters.plan_estudio_codigo.length > 0 &&
+      updatedFilters.gestion &&
+      updatedFilters.periodo !== undefined
+    )
+    if (hasMandatory) {
+      fetchHorarios()
+    }
+  }
 
   // Handlers de selección de filtros
   const handleFacultadChange = (value: string) => {
     if (value === "none") {
       setFilter("facultad_codigo", undefined)
-      // Refrescar carreras sin filtro de facultad
-      fetchCarreras()
+      setFilter("plan_estudio_codigo", [])
+      setFilter("asignatura_codigo", [])
+      setFilter("grupo", [])
+      clearCarreras()
+      clearAsignaturas()
     } else {
-      const fac = facultades.find((f) => f.id.toString() === value || f.codigo === value)
+      setFilter("facultad_codigo", value)
+      // Resetear filtros dependientes aguas abajo al cambiar facultad
+      setFilter("plan_estudio_codigo", [])
+      setFilter("asignatura_codigo", [])
+      setFilter("grupo", [])
+
+      const fac = facultades.find((f) => f.codigo === value)
       if (fac) {
-        setFilter("facultad_codigo", fac.codigo)
-        // Cargar carreras filtradas por esta facultad
         fetchCarreras(fac.id.toString())
+        fetchAsignaturas(undefined, fac.id.toString())
       }
     }
-    fetchHorarios()
-  }
-
-  const handleCarreraChange = (value: string) => {
-    if (value === "none") {
-      setFilter("plan_estudio_codigo", undefined)
-      fetchAsignaturas()
-    } else {
-      const car = carreras.find((c) => c.id.toString() === value || c.codigo === value)
-      if (car) {
-        setFilter("plan_estudio_codigo", car.codigo)
-        // Filtrar asignaturas vinculadas a esta carrera
-        fetchAsignaturas(car.id.toString())
-      }
-    }
-    fetchHorarios()
-  }
-
-  const handleAsignaturaChange = (value: string) => {
-    if (value === "none") {
-      setFilter("asignatura_codigo", undefined)
-    } else {
-      const asig = asignaturas.find((a) => a.id.toString() === value || a.codigo === value)
-      if (asig) {
-        setFilter("asignatura_codigo", asig.codigo)
-      }
-    }
-    fetchHorarios()
-  }
-
-  const handleDocenteSelect = (docente: { documento: string | null; nombres: string }) => {
-    if (docente.documento) {
-      setFilter("persona_documento", docente.documento)
-      setSelectedDocenteName(docente.nombres)
-      setDocenteInput("")
-      setShowDocenteSugerencias(false)
-      fetchHorarios()
-    }
-  }
-
-  const handleClearDocente = () => {
-    setFilter("persona_documento", undefined)
-    setSelectedDocenteName("")
-    setDocenteInput("")
-    fetchHorarios()
+    setFacultadSearch("")
+    triggerFetchIfValid()
   }
 
   const handleClearAllFilters = () => {
     resetFilters()
-    handleClearDocente()
+    clearCarreras()
+    clearAsignaturas()
     toast.success("Filtros limpiados exitosamente")
   }
-
-  const totalConflictosCount = useMemo(() => {
-    // Si viene solo_conflicto=true de backend todos lo son,
-    // pero calculamos los conflictos detectados localmente
-    return normalizedSchedules.length
-  }, [normalizedSchedules])
 
   return (
     <ProtectedRoute>
@@ -317,9 +305,15 @@ export default function HorariosListPage() {
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => fetchHorarios()}
+                  onClick={() => {
+                    if (isMandatoryFiltersSet) {
+                      fetchHorarios()
+                    } else {
+                      toast.error("Complete los filtros obligatorios primero")
+                    }
+                  }}
                   className="size-9 rounded-lg"
-                  disabled={loading}
+                  disabled={loading || !isMandatoryFiltersSet}
                   title="Refrescar Listado"
                 >
                   <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -348,315 +342,251 @@ export default function HorariosListPage() {
                   </Button>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-1.5 min-h-0">
-                  {/* Facultad */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Facultad</Label>
-                    <Select
-                      value={
-                        facultades
-                          .find((f) => f.codigo === filters.facultad_codigo)
-                          ?.id.toString() || "none"
-                      }
-                      onValueChange={handleFacultadChange}
-                      disabled={loadingFacultades}
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue
-                          placeholder={loadingFacultades ? "Cargando..." : "Todas las Facultades"}
-                        />
-                      </SelectTrigger>
-                      <SearchableSelectContent onFilterChange={setFacultadSearch}>
-                        <SelectItem value="none">Todas las Facultades</SelectItem>
-                        {filteredFacultades.map((f) => (
-                          <SelectItem key={f.id} value={f.id.toString()}>
-                            {f.nombre}
-                          </SelectItem>
-                        ))}
-                      </SearchableSelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Plan de Estudio / Carrera */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Plan de Estudio</Label>
-                    <Select
-                      value={
-                        carreras
-                          .find((c) => c.codigo === filters.plan_estudio_codigo)
-                          ?.id.toString() || "none"
-                      }
-                      onValueChange={handleCarreraChange}
-                      disabled={loadingCarreras}
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue
-                          placeholder={loadingCarreras ? "Cargando..." : "Todos los Planes"}
-                        />
-                      </SelectTrigger>
-                      <SearchableSelectContent onFilterChange={setCarreraSearch}>
-                        <SelectItem value="none">Todos los Planes</SelectItem>
-                        {filteredCarreras.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>
-                            {c.nombre}
-                          </SelectItem>
-                        ))}
-                      </SearchableSelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Asignatura */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
-                    <Select
-                      value={
-                        asignaturas
-                          .find((a) => a.codigo === filters.asignatura_codigo)
-                          ?.id.toString() || "none"
-                      }
-                      onValueChange={handleAsignaturaChange}
-                      disabled={loadingAsignaturas}
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue
-                          placeholder={loadingAsignaturas ? "Cargando..." : "Todas las Asignaturas"}
-                        />
-                      </SelectTrigger>
-                      <SearchableSelectContent onFilterChange={setAsignaturaSearch}>
-                        <SelectItem value="none">Todas las Asignaturas</SelectItem>
-                        {filteredAsignaturas.map((a) => (
-                          <SelectItem key={a.id} value={a.id.toString()}>
-                            {a.nombre}
-                          </SelectItem>
-                        ))}
-                      </SearchableSelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Grupo (Depende de asignatura) */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs font-semibold text-foreground">Grupo</Label>
-                      {!filters.asignatura_codigo && (
-                        <span className="text-[10px] text-muted-foreground font-normal">
-                          Requiere asignatura
-                        </span>
-                      )}
+                <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
+                  {/* Sección: Filtros Obligatorios */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
+                      Filtros Obligatorios
                     </div>
-                    <Select
-                      value={filters.grupo || "none"}
-                      onValueChange={(val) => {
-                        setFilter("grupo", val === "none" ? undefined : val)
-                        fetchHorarios()
-                      }}
-                      disabled={!filters.asignatura_codigo}
-                    >
-                      <SelectTrigger className="h-9 text-xs">
-                        <SelectValue placeholder="Seleccione Grupo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Todos los Grupos</SelectItem>
-                        {["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map((g) => (
-                          <SelectItem key={g} value={g}>
-                            Grupo {g}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
 
-                  {/* Docente (Autocompletado con Debounce) */}
-                  <div className="space-y-1.5 relative">
-                    <Label className="text-xs font-semibold text-foreground">Docente</Label>
-                    {selectedDocenteName ? (
-                      <div className="flex items-center justify-between rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs text-foreground font-medium shadow-sm">
-                        <span className="truncate">{selectedDocenteName}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleClearDocente}
-                          className="size-5 shrink-0 rounded-full hover:bg-muted"
-                        >
-                          <X className="size-3" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
-                        <Input
-                          placeholder="Buscar docente..."
-                          value={docenteInput}
-                          onChange={(e) => {
-                            setDocenteInput(e.target.value)
-                            setShowDocenteSugerencias(true)
+                    {/* Facultad */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">
+                        Facultad <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={filters.facultad_codigo || "none"}
+                        onValueChange={handleFacultadChange}
+                        disabled={loadingFacultades}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={loadingFacultades ? "Cargando..." : "Seleccione Facultad"}
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setFacultadSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
                           }}
-                          onFocus={() => setShowDocenteSugerencias(true)}
-                          className="pl-9 h-9 text-xs"
-                        />
-                        {searchingDocentes && (
-                          <div className="absolute right-3 top-2.5">
-                            <RefreshCw className="size-4 animate-spin text-muted-foreground" />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Sugerencias de docentes */}
-                    {showDocenteSugerencias && docenteInput.trim().length > 0 && (
-                      <div className="absolute z-50 w-full left-0 mt-1 bg-popover border border-border rounded-xl shadow-lg max-h-56 overflow-y-auto p-1 animate-in fade-in slide-in-from-top-1 duration-200">
-                        {docentesSugeridos.length === 0 ? (
-                          <div className="px-3 py-2.5 text-xs text-muted-foreground text-center">
-                            No se encontraron docentes
-                          </div>
-                        ) : (
-                          docentesSugeridos.map((doc) => (
-                            <button
-                              key={doc.id}
-                              onClick={() => handleDocenteSelect(doc)}
-                              className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-muted transition-colors flex flex-col gap-0.5"
-                            >
-                              <span className="font-semibold text-foreground">{doc.nombres}</span>
-                              <span className="text-[10px] text-muted-foreground">
-                                CI: {doc.documento || "No especificado"} · Cod: {doc.codigo}
-                              </span>
-                            </button>
-                          ))
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Gestión y Periodo */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Gestión</Label>
-                      <Input
-                        type="number"
-                        placeholder="Año"
-                        value={filters.gestion || ""}
-                        onChange={(e) => {
-                          const val = e.target.value ? Number(e.target.value) : undefined
-                          setFilter("gestion", val)
-                          fetchHorarios()
-                        }}
-                        className="h-9 text-xs"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Periodo</Label>
-                      <Select
-                        value={filters.periodo !== undefined ? filters.periodo.toString() : "none"}
-                        onValueChange={(val) => {
-                          setFilter("periodo", val === "none" ? undefined : Number(val))
-                          fetchHorarios()
-                        }}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Seleccione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Todos</SelectItem>
-                          {[0, 1, 2, 3, 4].map((p) => (
-                            <SelectItem key={p} value={p.toString()}>
-                              Periodo {p}
+                        >
+                          <SelectItem value="none">Seleccione Facultad</SelectItem>
+                          {filteredFacultades.map((f) => (
+                            <SelectItem key={f.id} value={f.codigo}>
+                              {f.nombre}
                             </SelectItem>
                           ))}
-                        </SelectContent>
+                        </SearchableSelectContent>
                       </Select>
                     </div>
-                  </div>
 
-                  {/* Aula y Día */}
-                  <div className="grid grid-cols-2 gap-2">
+                    {/* Plan de Estudio / Carrera */}
                     <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Aula ID</Label>
-                      <Input
-                        type="number"
-                        placeholder="ID"
-                        value={filters.aula_id || ""}
-                        onChange={(e) => {
-                          const val = e.target.value ? Number(e.target.value) : undefined
-                          setFilter("aula_id", val)
-                          fetchHorarios()
+                      <Label className="text-xs font-semibold text-foreground">
+                        Plan de Estudio <span className="text-destructive">*</span>
+                      </Label>
+                      <MultiSelect
+                        options={carreras.map((c) => ({
+                          value: c.codigo,
+                          label: c.nombre,
+                        }))}
+                        value={filters.plan_estudio_codigo || []}
+                        onValueChange={(val) => {
+                          setFilter("plan_estudio_codigo", val as string[])
+                          triggerFetchIfValid()
                         }}
-                        className="h-9 text-xs"
+                        disabled={loadingCarreras || !filters.facultad_codigo}
+                        searchable
+                        selectAll
+                        placeholder="Seleccione Planes"
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Día</Label>
-                      <Select
-                        value={filters.dia !== undefined ? filters.dia.toString() : "none"}
-                        onValueChange={(val) => {
-                          setFilter("dia", val === "none" ? undefined : Number(val))
-                          fetchHorarios()
-                        }}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue placeholder="Seleccione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Todos</SelectItem>
-                          {[1, 2, 3, 4, 5, 6].map((d) => (
-                            <SelectItem key={d} value={d.toString()}>
-                              {DIAS_MAP[d]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
 
-                  {/* Filtro Rango de Fechas */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Fechas</Label>
-                    <DatePickerRange
-                      value={dateRangeValue}
-                      onChange={handleDateRangeChange}
-                      className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
-                      placeholder="Seleccionar rango"
-                    />
-                  </div>
-
-                  {/* Filtro Rango de Horas */}
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-semibold text-foreground">Rango Horario</Label>
+                    {/* Gestión y Periodo */}
                     <div className="grid grid-cols-2 gap-2">
-                      <TimePicker
-                        value={filters.hora_desde}
-                        onChange={(val) => {
-                          setFilter("hora_desde", val || undefined)
-                          fetchHorarios()
-                        }}
-                        className="h-9 text-xs"
-                      />
-                      <TimePicker
-                        value={filters.hora_hasta}
-                        onChange={(val) => {
-                          setFilter("hora_hasta", val || undefined)
-                          fetchHorarios()
-                        }}
-                        className="h-9 text-xs"
-                      />
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">
+                          Gestión <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Año"
+                          value={filters.gestion || ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined
+                            setFilter("gestion", val)
+                            triggerFetchIfValid()
+                          }}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">
+                          Periodo <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Periodo"
+                          value={filters.periodo !== undefined ? filters.periodo : ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined
+                            setFilter("periodo", val)
+                            triggerFetchIfValid()
+                          }}
+                          className="h-9 text-xs"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  {/* Solo Conflicto Checkbox */}
-                  <div className="flex items-center space-x-2 pt-2 border-t border-border mt-1.5">
-                    <Checkbox
-                      id="solo_conflicto"
-                      checked={filters.solo_conflicto}
-                      onCheckedChange={(checked) => {
-                        setFilter("solo_conflicto", !!checked)
-                        fetchHorarios()
-                      }}
-                    />
-                    <Label
-                      htmlFor="solo_conflicto"
-                      className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1 text-destructive"
-                    >
-                      <AlertTriangle className="size-3.5 shrink-0" />
-                      Solo solapamientos / conflictos
-                    </Label>
+                  {/* Sección: Filtros Opcionales */}
+                  <div className="space-y-3 pt-2">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-1">
+                      Filtros Opcionales
+                    </div>
+
+                    {/* Asignatura */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
+                      <MultiSelect
+                        options={filteredAsignaturasOptions}
+                        value={filters.asignatura_codigo || []}
+                        onValueChange={(val) => {
+                          setFilter("asignatura_codigo", val as string[])
+                          triggerFetchIfValid()
+                        }}
+                        disabled={loadingAsignaturas || !isMandatoryFiltersSet}
+                        searchable
+                        selectAll
+                        placeholder="Seleccione Asignaturas"
+                      />
+                    </div>
+
+                    {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-foreground">Grupo</Label>
+                        {(!filters.asignatura_codigo || filters.asignatura_codigo.length === 0) && (
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            Requiere asignatura
+                          </span>
+                        )}
+                      </div>
+                      <MultiSelect
+                        options={availableGroups.map((g) => ({
+                          value: g,
+                          label: `Grupo ${g}`,
+                        }))}
+                        value={filters.grupo || []}
+                        onValueChange={(val) => {
+                          setFilter("grupo", val as string[])
+                          triggerFetchIfValid()
+                        }}
+                        disabled={
+                          !filters.asignatura_codigo || filters.asignatura_codigo.length === 0
+                        }
+                        selectAll
+                        placeholder="Seleccione Grupos"
+                      />
+                    </div>
+
+                    {/* Aula y Día */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Aula ID</Label>
+                        <Input
+                          type="text"
+                          placeholder="Aula"
+                          value={filters.aula_id || ""}
+                          onChange={(e) => {
+                            setFilter("aula_id", e.target.value || undefined)
+                            triggerFetchIfValid()
+                          }}
+                          disabled={!isMandatoryFiltersSet}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Día</Label>
+                        <Select
+                          value={filters.dia !== undefined ? filters.dia.toString() : "none"}
+                          onValueChange={(val) => {
+                            setFilter("dia", val === "none" ? undefined : Number(val))
+                            triggerFetchIfValid()
+                          }}
+                          disabled={!isMandatoryFiltersSet}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Seleccione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Todos</SelectItem>
+                            {[1, 2, 3, 4, 5, 6].map((d) => (
+                              <SelectItem key={d} value={d.toString()}>
+                                {DIAS_MAP[d]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Filtro Rango de Fechas */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Fechas</Label>
+                      <DatePickerRange
+                        value={dateRangeValue}
+                        onChange={handleDateRangeChange}
+                        disabled={!isMandatoryFiltersSet}
+                        className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
+                        placeholder="Seleccionar rango"
+                      />
+                    </div>
+
+                    {/* Filtro Rango de Horas */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Rango Horario</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <TimePicker
+                          value={filters.hora_desde}
+                          onChange={(val) => {
+                            setFilter("hora_desde", val || undefined)
+                            triggerFetchIfValid()
+                          }}
+                          disabled={!isMandatoryFiltersSet}
+                          className="h-9 text-xs"
+                        />
+                        <TimePicker
+                          value={filters.hora_hasta}
+                          onChange={(val) => {
+                            setFilter("hora_hasta", val || undefined)
+                            triggerFetchIfValid()
+                          }}
+                          disabled={!isMandatoryFiltersSet}
+                          className="h-9 text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Solo Conflicto Checkbox */}
+                    <div className="flex items-center space-x-2 pt-2 border-t border-border mt-1.5">
+                      <Checkbox
+                        id="solo_conflicto"
+                        checked={filters.solo_conflicto}
+                        onCheckedChange={(checked) => {
+                          setFilter("solo_conflicto", !!checked)
+                          triggerFetchIfValid()
+                        }}
+                        disabled={!isMandatoryFiltersSet}
+                      />
+                      <Label
+                        htmlFor="solo_conflicto"
+                        className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1 text-destructive"
+                      >
+                        <AlertTriangle className="size-3.5 shrink-0" />
+                        Solo solapamientos / conflictos
+                      </Label>
+                    </div>
                   </div>
                 </div>
               </aside>
@@ -687,7 +617,18 @@ export default function HorariosListPage() {
                 </div>
               ) : (
                 <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                  {horarios.length === 0 ? (
+                  {!isMandatoryFiltersSet ? (
+                    <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
+                      <Calendar className="size-12 text-muted-foreground/45 mb-3" />
+                      <h3 className="text-base font-bold text-foreground">
+                        Filtros obligatorios requeridos
+                      </h3>
+                      <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
+                        Por favor, establecé una Facultad, Plan de Estudio, Gestión y Periodo en el
+                        panel lateral para poder visualizar los horarios correspondientes.
+                      </p>
+                    </div>
+                  ) : horarios.length === 0 ? (
                     <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
                       <Calendar className="size-12 text-muted-foreground/40 mb-3" />
                       <h3 className="text-base font-bold text-foreground">

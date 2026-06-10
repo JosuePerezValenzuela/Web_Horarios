@@ -1,5 +1,6 @@
 import { create } from "zustand"
 import { apiClient } from "@/shared/services/api/client"
+import { assignLanes } from "./normalizers"
 import type { NormalizedSchedule, Pagination } from "../domain/types"
 
 export interface HorarioClaseItem {
@@ -43,9 +44,9 @@ interface HorariosListApiResponse {
 
 export interface HorariosListFilters {
   facultad_codigo?: string
-  plan_estudio_codigo?: string
-  asignatura_codigo?: string
-  grupo?: string
+  plan_estudio_codigo?: string[]
+  asignatura_codigo?: string[]
+  grupo?: string[]
   persona_documento?: string
   gestion?: number
   periodo?: number
@@ -54,7 +55,7 @@ export interface HorariosListFilters {
   hora_desde?: string
   hora_hasta?: string
   dia?: number
-  aula_id?: number
+  aula_id?: string
   solo_conflicto: boolean
   persona_grupo_activo: boolean
 }
@@ -78,9 +79,9 @@ interface HorariosListState {
 
 const defaultFilters: HorariosListFilters = {
   facultad_codigo: undefined,
-  plan_estudio_codigo: undefined,
-  asignatura_codigo: undefined,
-  grupo: undefined,
+  plan_estudio_codigo: [],
+  asignatura_codigo: [],
+  grupo: [],
   persona_documento: undefined,
   gestion: undefined,
   periodo: undefined,
@@ -152,8 +153,8 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
       const newFilters = { ...state.filters, [key]: value }
 
       // Regla funcional: si quitamos la asignatura, el grupo también se debe limpiar
-      if (key === "asignatura_codigo" && !value) {
-        newFilters.grupo = undefined
+      if (key === "asignatura_codigo" && (!value || (value as string[]).length === 0)) {
+        newFilters.grupo = []
       }
 
       // Al cambiar cualquier filtro, la paginación vuelve a la página 1
@@ -180,8 +181,24 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
   fetchHorarios: async () => {
     const { filters, pagination, sortField } = get()
 
+    // Validar filtros obligatorios
+    if (
+      !filters.facultad_codigo ||
+      !filters.plan_estudio_codigo ||
+      filters.plan_estudio_codigo.length === 0 ||
+      !filters.gestion ||
+      filters.periodo === undefined
+    ) {
+      set({ horarios: [], normalizedSchedules: [], loading: false, error: null })
+      return
+    }
+
     // Validaciones de negocio antes de consultar la API
-    if (filters.grupo && !filters.asignatura_codigo) {
+    if (
+      filters.grupo &&
+      filters.grupo.length > 0 &&
+      (!filters.asignatura_codigo || filters.asignatura_codigo.length === 0)
+    ) {
       set({ error: "No podés filtrar por grupo sin seleccionar una asignatura primero." })
       return
     }
@@ -202,11 +219,12 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
 
       // Filtros opcionales
       if (filters.facultad_codigo) searchParams.set("facultad_codigo", filters.facultad_codigo)
-      if (filters.plan_estudio_codigo)
-        searchParams.set("plan_estudio_codigo", filters.plan_estudio_codigo)
-      if (filters.asignatura_codigo)
-        searchParams.set("asignatura_codigo", filters.asignatura_codigo)
-      if (filters.grupo) searchParams.set("grupo", filters.grupo)
+      if (filters.plan_estudio_codigo && filters.plan_estudio_codigo.length > 0)
+        searchParams.set("plan_estudio_codigo", filters.plan_estudio_codigo.join(","))
+      if (filters.asignatura_codigo && filters.asignatura_codigo.length > 0)
+        searchParams.set("asignatura_codigo", filters.asignatura_codigo.join(","))
+      if (filters.grupo && filters.grupo.length > 0)
+        searchParams.set("grupo", filters.grupo.join(","))
       if (filters.persona_documento)
         searchParams.set("persona_documento", filters.persona_documento)
       if (filters.gestion) searchParams.set("gestion", filters.gestion.toString())
@@ -216,7 +234,7 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
       if (filters.hora_desde) searchParams.set("hora_desde", filters.hora_desde)
       if (filters.hora_hasta) searchParams.set("hora_hasta", filters.hora_hasta)
       if (filters.dia !== undefined) searchParams.set("dia", filters.dia.toString())
-      if (filters.aula_id !== undefined) searchParams.set("aula_id", filters.aula_id.toString())
+      if (filters.aula_id) searchParams.set("aula_id", filters.aula_id)
       if (filters.solo_conflicto)
         searchParams.set("solo_conflicto", filters.solo_conflicto.toString())
 
@@ -234,7 +252,8 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
       )
 
       const items = response.items || []
-      const normalizedSchedules = items.map((item, idx) => normalizeHorarioToSchedule(item, idx))
+      const rawNormalized = items.map((item, idx) => normalizeHorarioToSchedule(item, idx))
+      const normalizedSchedules = assignLanes(rawNormalized)
 
       set({
         horarios: items,

@@ -16,6 +16,7 @@ interface DatePickerRangeProps {
   placeholder?: string
   className?: string
   numberOfMonths?: number
+  disabled?: boolean
 }
 
 export function DatePickerRange({
@@ -25,6 +26,7 @@ export function DatePickerRange({
   placeholder = "Seleccionar rango",
   className,
   numberOfMonths = 2,
+  disabled,
 }: DatePickerRangeProps) {
   const displayText = value?.from
     ? value.to
@@ -37,6 +39,7 @@ export function DatePickerRange({
       <PopoverTrigger asChild>
         <Button
           variant="outline"
+          disabled={disabled}
           className={className ?? "h-9 w-full justify-start text-left font-normal"}
         >
           <CalendarIcon className="mr-2 size-4" />
