@@ -98,7 +98,7 @@ export function ScheduleCard({
       {item.subtitle && (
         <p
           className={cn(
-            "truncate font-medium text-foreground/75 mt-0.5",
+            "font-medium text-foreground/75 mt-0.5 break-words",
             mode === "compact" ? "text-[9px]" : "text-[10px]"
           )}
         >

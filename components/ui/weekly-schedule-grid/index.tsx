@@ -55,8 +55,10 @@ export function WeeklyScheduleGrid({
     [timelineSegments]
   )
 
-  // Helper to get pixel position from minute
-  const minuteToY = (minute: number) => getMinutePosition(minute, timeRange, timelineSegments)
+  // Helper to get pixel position from minute with an offset to avoid cutting off the top hour badge
+  const offsetTop = 16
+  const minuteToY = (minute: number) =>
+    getMinutePosition(minute, timeRange, timelineSegments) + offsetTop
 
   // Auto-rotation for collapsed clusters
   useEffect(() => {
@@ -71,7 +73,8 @@ export function WeeklyScheduleGrid({
         const rotated: string[] = []
 
         clusterSlices.forEach((slice) => {
-          if (expandedClusterIds.has(slice.id)) return
+          const timeKey = `${slice.startMin}-${slice.endMin}`
+          if (expandedClusterIds.has(timeKey)) return
           if (hoveredClusterIds.has(slice.id)) return
           next[slice.id] = ((current[slice.id] ?? 0) + 1) % slice.items.length
           changed = true
@@ -95,11 +98,12 @@ export function WeeklyScheduleGrid({
     return () => window.clearInterval(timer)
   }, [renderSlices, expandedClusterIds, hoveredClusterIds, overlapRotationIntervalMs])
 
-  const toggleCluster = (sliceId: string) => {
+  const toggleCluster = (startMin: number, endMin: number) => {
+    const timeKey = `${startMin}-${endMin}`
     setExpandedClusterIds((current) => {
       const next = new Set(current)
-      if (next.has(sliceId)) next.delete(sliceId)
-      else next.add(sliceId)
+      if (next.has(timeKey)) next.delete(timeKey)
+      else next.add(timeKey)
       return next
     })
   }
@@ -132,9 +136,12 @@ export function WeeklyScheduleGrid({
         <div className="min-w-[640px] lg:min-w-0">
           {/* Day header row */}
           <div
-            className="grid border-b-[2px] border-border bg-muted/35"
-            style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+            className="sticky top-0 z-40 grid border-b-[2px] border-border bg-muted/90 backdrop-blur-[4px]"
+            style={{ gridTemplateColumns: `60px repeat(${colCount}, minmax(0, 1fr))` }}
           >
+            <div className="sticky left-0 z-50 border-r-[2px] border-border bg-muted px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:px-3 md:py-3 flex items-center justify-center">
+              Hora
+            </div>
             {days.map((day) => (
               <div
                 key={day.value}
@@ -150,7 +157,7 @@ export function WeeklyScheduleGrid({
             {/* Time row lines behind the cards (z-[2]) */}
             <div
               className="pointer-events-none absolute inset-0 z-[2]"
-              style={{ height: `${totalHeight}px` }}
+              style={{ height: `${totalHeight + offsetTop}px` }}
             >
               {rows.map((row) => (
                 <div
@@ -161,44 +168,46 @@ export function WeeklyScheduleGrid({
               ))}
             </div>
 
-            {/* Time row labels on top of the cards (z-20) */}
-            <div
-              className="pointer-events-none absolute inset-0 z-20"
-              style={{ height: `${totalHeight}px` }}
-            >
-              {rows.map((row) => (
-                <div
-                  key={row.key}
-                  className="absolute left-1.5 -translate-y-1/2"
-                  style={{ top: `${minuteToY(row.startMin)}px` }}
-                >
-                  <span className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm">
-                    {row.label}
-                  </span>
-                </div>
-              ))}
-              {rows.length > 0 && (
-                <div
-                  className="absolute left-1.5 -translate-y-1/2"
-                  style={{ top: `${totalHeight}px` }}
-                >
-                  <span className="rounded-md border border-border bg-background px-1.5 py-0.5 text-[10px] font-semibold text-foreground shadow-sm">
-                    {formatTime(timeRange.endMin)}
-                  </span>
-                </div>
-              )}
-            </div>
+            {/* Hour labels are now rendered in the dedicated Hours column */}
 
             {/* Day columns */}
             <div
               className="grid"
-              style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+              style={{ gridTemplateColumns: `60px repeat(${colCount}, minmax(0, 1fr))` }}
             >
+              {/* Dedicated sticky Hours column */}
+              <div
+                className="sticky left-0 z-30 border-r-[3px] border-border bg-card/95 backdrop-blur-[2px]"
+                style={{ height: `${totalHeight + offsetTop}px` }}
+              >
+                {rows.map((row) => (
+                  <div
+                    key={row.key}
+                    className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                    style={{ top: `${minuteToY(row.startMin)}px` }}
+                  >
+                    <span className="rounded-md border border-border/80 bg-background px-2 py-1 text-[11px] font-bold text-foreground shadow-md">
+                      {row.label}
+                    </span>
+                  </div>
+                ))}
+                {rows.length > 0 && (
+                  <div
+                    className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                    style={{ top: `${minuteToY(timeRange.endMin)}px` }}
+                  >
+                    <span className="rounded-md border border-border/80 bg-background px-2 py-1 text-[11px] font-bold text-foreground shadow-md">
+                      {formatTime(timeRange.endMin)}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {days.map((day) => (
                 <div
                   key={day.value}
                   className="relative border-r-[3px] border-border last:border-r-0"
-                  style={{ height: `${totalHeight}px` }}
+                  style={{ height: `${totalHeight + offsetTop}px` }}
                 >
                   {slicesByDay[day.value]?.map((slice) => {
                     const top = minuteToY(slice.startMin)
@@ -206,18 +215,18 @@ export function WeeklyScheduleGrid({
                     const temporalSpan = bottom - top
 
                     if (slice.type === "cluster") {
-                      const isExpanded = expandedClusterIds.has(slice.id)
+                      const timeKey = `${slice.startMin}-${slice.endMin}`
+                      const isExpanded = expandedClusterIds.has(timeKey)
                       const visibleIndex = visibleIndexByCluster[slice.id] ?? 0
                       const rotationTick = rotationTickByCluster[slice.id] ?? 0
 
-                      // Fill the temporal slot the timeline allocated for this slice.
-                      // For collapsed: use content height (stack cards are fixed-size).
-                      // For expanded: stretch to fill the full slot so no blank space appears.
+                      // Determine the visual height based on collapsed or expanded state.
+                      // Collapsed/solo fill slotHeight; expanded adapts strictly to content height.
                       const collapsedHeight = getClusterCollapsedHeight(slice.items)
                       const slotHeight = Math.max(temporalSpan - GRID_CONSTANTS.VERTICAL_GAP * 2, 0)
                       const visualHeight = isExpanded
-                        ? Math.max(getClusterExpandedHeight(slice.items), slotHeight)
-                        : collapsedHeight
+                        ? getClusterExpandedHeight(slice.items)
+                        : Math.max(collapsedHeight, slotHeight)
 
                       const visualTop = top + GRID_CONSTANTS.VERTICAL_GAP
 
@@ -235,7 +244,7 @@ export function WeeklyScheduleGrid({
                             isExpanded={isExpanded}
                             visibleIndex={visibleIndex}
                             rotationTick={rotationTick}
-                            onToggle={() => toggleCluster(slice.id)}
+                            onToggle={() => toggleCluster(slice.startMin, slice.endMin)}
                             onHoverChange={(hovered) => setClusterHovered(slice.id, hovered)}
                             onItemClick={onItemClick}
                           />

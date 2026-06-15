@@ -5,13 +5,14 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { Filter, RefreshCw, Calendar, AlertCircle, AlertTriangle } from "lucide-react"
+import { Filter, RefreshCw, Calendar, AlertCircle, AlertTriangle, MapPin } from "lucide-react"
 
 // Stores
 import { useHorariosListStore } from "@/features/scheduling/docentes/application/useHorariosListStore"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
 import { useAsignaturasStore } from "@/shared/stores/catalogos/useAsignaturasStore"
+import { useInfraStore } from "@/shared/stores/catalogos/useInfraStore"
 import { useUIStore } from "@/shared/stores/uiStore"
 
 // Normalizadores
@@ -48,6 +49,7 @@ export default function HorariosListPage() {
   // Filtros de búsqueda locales para comboboxes
   const [facultadSearch, setFacultadSearch] = useState("")
   const [carreraSearch, setCarreraSearch] = useState("")
+  const [asignaturaSearch, setAsignaturaSearch] = useState("")
 
   // Stores vinculados
   const {
@@ -85,6 +87,33 @@ export default function HorariosListPage() {
     clear: clearAsignaturas,
   } = useAsignaturasStore()
 
+  const {
+    campus,
+    facultades: facultadesInfra,
+    bloques,
+    ambientes,
+    loading: loadingInfra,
+    error: errorInfra,
+    fetchCampus,
+    fetchFacultades: fetchFacultadesInfra,
+    fetchBloques,
+    fetchAmbientes,
+    clearBloques,
+    clearAmbientes,
+  } = useInfraStore()
+
+  // Local states for infrastructure filters
+  const [selectedCampus, setSelectedCampus] = useState<string>("none")
+  const [selectedFacultadInfra, setSelectedFacultadInfra] = useState<string>("none")
+  const [selectedBloque, setSelectedBloque] = useState<string>("none")
+  const [selectedAmbiente, setSelectedAmbiente] = useState<string>("none")
+
+  // Local search query for infrastructure select elements
+  const [campusSearch, setCampusSearch] = useState("")
+  const [facultadInfraSearch, setFacultadInfraSearch] = useState("")
+  const [bloqueSearch, setBloqueSearch] = useState("")
+  const [ambienteSearch, setAmbienteSearch] = useState("")
+
   // Toasts de error automáticos para las peticiones de catálogos y listado
   useEffect(() => {
     if (errorFacultades) toast.error(errorFacultades)
@@ -99,33 +128,29 @@ export default function HorariosListPage() {
   }, [errorAsignaturas])
 
   useEffect(() => {
+    if (errorInfra) toast.error(errorInfra)
+  }, [errorInfra])
+
+  useEffect(() => {
     if (listError) toast.error(listError)
   }, [listError])
 
   // Determinar si los filtros obligatorios están establecidos
   const isMandatoryFiltersSet = useMemo(() => {
-    return !!(
-      filters.facultad_codigo &&
-      filters.plan_estudio_codigo &&
-      filters.gestion &&
-      filters.periodo !== undefined
-    )
-  }, [filters.facultad_codigo, filters.plan_estudio_codigo, filters.gestion, filters.periodo])
+    return !!(filters.facultad_codigo && filters.gestion && filters.periodo !== undefined)
+  }, [filters.facultad_codigo, filters.gestion, filters.periodo])
 
-  // Filtrar asignaturas basadas en las carreras seleccionadas localmente
-  const filteredAsignaturasOptions = useMemo(() => {
-    if (!filters.plan_estudio_codigo) {
-      return []
-    }
-
-    const selectedCarrerasIds = carreras
-      .filter((c) => c.codigo === filters.plan_estudio_codigo)
-      .map((c) => c.id.toString())
-
+  // Asegurar que la asignatura actualmente seleccionada no sea filtrada por la búsqueda del dropdown
+  const filteredAsignaturas = useMemo(() => {
+    const term = asignaturaSearch.toLowerCase().trim()
+    const selectedCodigo = filters.asignatura_codigo?.[0]
     return asignaturas
-      .filter((a) => a.carrera_id && selectedCarrerasIds.includes(a.carrera_id.toString()))
-      .map((a) => ({ value: a.codigo, label: a.nombre }))
-  }, [asignaturas, carreras, filters.plan_estudio_codigo])
+      .filter((a) => {
+        if (selectedCodigo && a.codigo === selectedCodigo) return true
+        return a.nombre.toLowerCase().includes(term) || a.codigo.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [asignaturas, asignaturaSearch, filters.asignatura_codigo])
 
   // Obtener grupos únicos de las asignaturas seleccionadas basándonos en los horarios cargados
   const availableGroups = useMemo(() => {
@@ -165,6 +190,14 @@ export default function HorariosListPage() {
     fetchFacultades()
   }, [fetchFacultades])
 
+  // Carga inicial de infraestructura al montar o mostrar filtros
+  useEffect(() => {
+    if (showFilters) {
+      fetchCampus()
+      fetchFacultadesInfra()
+    }
+  }, [showFilters, fetchCampus, fetchFacultadesInfra])
+
   // Asegurar que la facultad actualmente seleccionada no sea filtrada por la búsqueda del dropdown
   const filteredFacultades = useMemo(() => {
     const term = facultadSearch.toLowerCase().trim()
@@ -188,6 +221,50 @@ export default function HorariosListPage() {
       })
       .slice(0, 100)
   }, [carreras, carreraSearch, filters.plan_estudio_codigo])
+
+  // Asegurar que el campus seleccionado no se filtre
+  const filteredCampus = useMemo(() => {
+    const term = campusSearch.toLowerCase().trim()
+    return campus
+      .filter((c) => {
+        if (selectedCampus && c.id.toString() === selectedCampus) return true
+        return c.nombre.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [campus, campusSearch, selectedCampus])
+
+  // Asegurar que la facultad de infraestructura seleccionada no se filtre
+  const filteredFacultadesInfra = useMemo(() => {
+    const term = facultadInfraSearch.toLowerCase().trim()
+    return facultadesInfra
+      .filter((f) => {
+        if (selectedFacultadInfra && f.id.toString() === selectedFacultadInfra) return true
+        return f.nombre.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [facultadesInfra, facultadInfraSearch, selectedFacultadInfra])
+
+  // Asegurar que el bloque seleccionado no se filtre
+  const filteredBloques = useMemo(() => {
+    const term = bloqueSearch.toLowerCase().trim()
+    return bloques
+      .filter((b) => {
+        if (selectedBloque && b.id.toString() === selectedBloque) return true
+        return b.nombre.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [bloques, bloqueSearch, selectedBloque])
+
+  // Asegurar que el ambiente seleccionado no se filtre
+  const filteredAmbientes = useMemo(() => {
+    const term = ambienteSearch.toLowerCase().trim()
+    return ambientes
+      .filter((a) => {
+        if (selectedAmbiente && a.id.toString() === selectedAmbiente) return true
+        return a.nombre.toLowerCase().includes(term)
+      })
+      .slice(0, 100)
+  }, [ambientes, ambienteSearch, selectedAmbiente])
 
   const [customPeriod, setCustomPeriod] = useState<number | "">("")
 
@@ -236,7 +313,6 @@ export default function HorariosListPage() {
     const updatedFilters = useHorariosListStore.getState().filters
     const hasMandatory = !!(
       updatedFilters.facultad_codigo &&
-      updatedFilters.plan_estudio_codigo &&
       updatedFilters.gestion &&
       updatedFilters.periodo !== undefined
     )
@@ -268,6 +344,21 @@ export default function HorariosListPage() {
       }
     }
     setFacultadSearch("")
+    triggerFetchIfValid()
+  }
+
+  const handleCarreraChange = (value: string) => {
+    const nextCarreraCodigo = value === "none" ? undefined : value
+    setFilter("plan_estudio_codigo", nextCarreraCodigo)
+    setFilter("asignatura_codigo", []) // reset asignatura
+    setFilter("grupo", []) // reset group
+
+    const fac = facultades.find((f) => f.codigo === filters.facultad_codigo)
+    const carr = carreras.find((c) => c.codigo === nextCarreraCodigo)
+
+    if (fac) {
+      fetchAsignaturas(carr?.id.toString(), fac.id.toString())
+    }
     triggerFetchIfValid()
   }
 
@@ -420,42 +511,6 @@ export default function HorariosListPage() {
                       </Select>
                     </div>
 
-                    {/* Plan de Estudio / Carrera */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">
-                        Plan de Estudio <span className="text-destructive">*</span>
-                      </Label>
-                      <Select
-                        value={filters.plan_estudio_codigo || "none"}
-                        onValueChange={(val) => {
-                          setFilter("plan_estudio_codigo", val === "none" ? undefined : val)
-                          triggerFetchIfValid()
-                        }}
-                        disabled={loadingCarreras || !filters.facultad_codigo}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue
-                            placeholder={
-                              loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SearchableSelectContent
-                          onFilterChange={setCarreraSearch}
-                          onKeyDownCapture={(e) => {
-                            if (e.key === "Escape") e.stopPropagation()
-                          }}
-                        >
-                          <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
-                          {filteredCarreras.map((c) => (
-                            <SelectItem key={c.id} value={c.codigo}>
-                              {c.nombre}
-                            </SelectItem>
-                          ))}
-                        </SearchableSelectContent>
-                      </Select>
-                    </div>
-
                     {/* Gestión y Periodo */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
@@ -499,21 +554,71 @@ export default function HorariosListPage() {
                       Filtros Opcionales
                     </div>
 
+                    {/* Plan de Estudio / Carrera */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">
+                        Plan de Estudio
+                      </Label>
+                      <Select
+                        value={filters.plan_estudio_codigo || "none"}
+                        onValueChange={handleCarreraChange}
+                        disabled={loadingCarreras || !filters.facultad_codigo}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setCarreraSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
+                          {filteredCarreras.map((c) => (
+                            <SelectItem key={c.id} value={c.codigo}>
+                              {c.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
                     {/* Asignatura */}
                     <div className="space-y-1.5">
                       <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
-                      <MultiSelect
-                        options={filteredAsignaturasOptions}
-                        value={filters.asignatura_codigo || []}
+                      <Select
+                        value={filters.asignatura_codigo?.[0] || "none"}
                         onValueChange={(val) => {
-                          setFilter("asignatura_codigo", val as string[])
+                          setFilter("asignatura_codigo", val === "none" ? [] : [val])
                           triggerFetchIfValid()
                         }}
                         disabled={loadingAsignaturas || !isMandatoryFiltersSet}
-                        searchable
-                        selectAll
-                        placeholder="Seleccione Asignaturas"
-                      />
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              loadingAsignaturas ? "Cargando..." : "Seleccione Asignatura"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setAsignaturaSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Asignatura</SelectItem>
+                          {filteredAsignaturas.map((a) => (
+                            <SelectItem key={a.id} value={a.codigo}>
+                              {a.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
                     </div>
 
                     {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
@@ -637,8 +742,8 @@ export default function HorariosListPage() {
                         Filtros obligatorios requeridos
                       </h3>
                       <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
-                        Por favor, establecé una Facultad, Plan de Estudio, Gestión y Periodo en el
-                        panel lateral para poder visualizar los horarios correspondientes.
+                        Por favor, establecé una Facultad, Gestión y Periodo en el panel lateral
+                        para poder visualizar los horarios correspondientes.
                       </p>
                     </div>
                   ) : horarios.length === 0 ? (

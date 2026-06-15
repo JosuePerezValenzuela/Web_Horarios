@@ -1,7 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import { GRID_CONSTANTS } from "./schedule-utils"
+import { GRID_CONSTANTS, getItemHeight } from "./schedule-utils"
 import { ScheduleCard } from "./schedule-card"
 import type { RenderSlice, ScheduleItem } from "./types"
 
@@ -27,6 +27,7 @@ export function OverlapCluster({
   const { items } = slice
   const totalCount = items.length
   const visibleItem = items[visibleIndex % totalCount]
+  const maxItemHeight = Math.max(...items.map(getItemHeight))
 
   const previewCount = Math.min(totalCount - 1, GRID_CONSTANTS.STACK_PREVIEW_COUNT)
   const previewItems = Array.from(
@@ -36,7 +37,7 @@ export function OverlapCluster({
 
   if (isExpanded) {
     return (
-      <div className="relative flex h-full w-full flex-col rounded-2xl border-2 border-border/85 bg-background p-1 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)]">
+      <div className="relative flex h-full w-full flex-col rounded-2xl border-2 border-border bg-muted/95 dark:bg-muted/90 p-1 shadow-lg dark:shadow-2xl">
         {/* Header */}
         <div className="mb-1 flex w-full shrink-0 items-center justify-between px-1">
           <div className="text-[10px] font-medium text-foreground/70">
@@ -56,7 +57,11 @@ export function OverlapCluster({
         <div className="flex w-full flex-1 flex-col items-stretch justify-start gap-1">
           {items.map((item) => {
             return (
-              <div key={item.id} className="flex flex-1 flex-col min-h-[52px]">
+              <div
+                key={item.id}
+                style={{ minHeight: `${maxItemHeight}px` }}
+                className="w-full flex-1 flex flex-col"
+              >
                 <ScheduleCard item={item} mode="full" className="h-full" onClick={onItemClick} />
               </div>
             )
@@ -120,11 +125,11 @@ export function OverlapCluster({
       >
         <div
           key={`${visibleItem.id}-${rotationTick}`}
-          className="flex animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
+          className="flex h-full w-full animate-in fade-in-0 slide-in-from-top-2 zoom-in-95 duration-500"
         >
           <ScheduleCard
             item={visibleItem}
-            className="w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
+            className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
             onClick={undefined}
           />
         </div>

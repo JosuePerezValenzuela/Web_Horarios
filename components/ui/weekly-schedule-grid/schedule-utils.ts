@@ -1,7 +1,7 @@
 import type { ScheduleItem, RenderSlice, TimelineSegment, TimeRange } from "./types"
 
-const PX_PER_MINUTE = 0.95
-const MIN_BLOCK_HEIGHT = 52
+const PX_PER_MINUTE = 1.2
+const MIN_BLOCK_HEIGHT = 60
 const VERTICAL_GAP = 4
 
 export const GRID_CONSTANTS = {
@@ -27,10 +27,21 @@ export function formatTime(minutes: number): string {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`
 }
 
-function getItemHeight(item: ScheduleItem): number {
-  const isLongText = item.title.length > 22
-  const textPenalty = isLongText ? 16 : 0
-  return Math.max(MIN_BLOCK_HEIGHT + textPenalty, MIN_BLOCK_HEIGHT)
+export function getItemHeight(item: ScheduleItem): number {
+  const titleLines = Math.max(1, Math.ceil(item.title.length / 20))
+  const subtitleLines = item.subtitle ? Math.max(1, Math.ceil(item.subtitle.length / 24)) : 0
+  const badgeLines = item.badge ? 1 : 0
+
+  let height = 14 // Padding top/bottom + borders
+  height += titleLines * 15 // Title text lines
+  if (subtitleLines > 0) {
+    height += subtitleLines * 14 + 2 // Subtitle lines + gap mt-0.5
+  }
+  if (badgeLines > 0) {
+    height += 18 + 4 // Badge + gap mt-1
+  }
+
+  return Math.max(height, MIN_BLOCK_HEIGHT)
 }
 
 export function getClusterCollapsedHeight(items: ScheduleItem[]): number {
@@ -41,12 +52,12 @@ export function getClusterCollapsedHeight(items: ScheduleItem[]): number {
 }
 
 export function getClusterExpandedHeight(items: ScheduleItem[]): number {
-  const totalHeight = items.reduce((sum, item) => sum + getItemHeight(item), 0)
+  const maxItemHeight = Math.max(...items.map(getItemHeight))
   return (
     GRID_CONSTANTS.EXPANDED_PADDING * 2 +
     GRID_CONSTANTS.EXPANDED_HEADER_HEIGHT +
     Math.max(items.length - 1, 0) * GRID_CONSTANTS.EXPANDED_GAP +
-    totalHeight
+    maxItemHeight * items.length
   )
 }
 
@@ -161,7 +172,8 @@ function buildTimelineBands(
     let requiredHeight: number
 
     if (slice.type === "cluster") {
-      requiredHeight = expandedClusterIds.has(slice.id)
+      const timeKey = `${slice.startMin}-${slice.endMin}`
+      requiredHeight = expandedClusterIds.has(timeKey)
         ? getClusterExpandedHeight(slice.items)
         : getClusterCollapsedHeight(slice.items)
     } else {

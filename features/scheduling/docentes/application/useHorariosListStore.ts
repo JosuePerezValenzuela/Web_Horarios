@@ -183,12 +183,7 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
     const { filters, pagination, sortField } = get()
 
     // Validar filtros obligatorios
-    if (
-      !filters.facultad_codigo ||
-      !filters.plan_estudio_codigo ||
-      !filters.gestion ||
-      filters.periodo === undefined
-    ) {
+    if (!filters.facultad_codigo || !filters.gestion || filters.periodo === undefined) {
       set({ horarios: [], normalizedSchedules: [], loading: false, error: null })
       return
     }
