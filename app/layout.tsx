@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 import { cn } from "@/lib/utils"
 import { ThemeProvider } from "@/core/providers/ThemeProvider"
+import { AuthInitializer } from "@/features/auth/ui/AuthInitializer"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -48,7 +49,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
+          <AuthInitializer>{children}</AuthInitializer>
           <Toaster richColors position="top-right" closeButton />
         </ThemeProvider>
       </body>

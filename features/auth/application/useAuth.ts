@@ -1,21 +1,18 @@
-/**
- * Convenience hook for authentication
- */
-
 import { useAuthStore } from "./authStore"
 import type { User } from "../domain/types"
 
 interface AuthState {
   isAuthenticated: boolean
-  token: string | null
+  isLoading: boolean
   user: User | null
 }
 
 interface AuthActions {
-  login: (token: string, user: User) => void
+  setUser: (user: User | null) => void
+  setIsAuthenticated: (isAuthenticated: boolean) => void
+  setLoading: (isLoading: boolean) => void
+  checkAuth: () => Promise<void>
   logout: () => void
-  setToken: (token: string) => void
-  setUser: (user: User) => void
 }
 
 export function useAuth(): AuthState & AuthActions {

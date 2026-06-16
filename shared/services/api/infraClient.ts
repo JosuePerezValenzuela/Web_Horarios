@@ -22,20 +22,6 @@ class InfraApiClient {
     this.baseUrl = baseUrl
   }
 
-  private getAuthToken(): string | null {
-    if (typeof window === "undefined") return null
-
-    const stored = localStorage.getItem("auth_token")
-    if (!stored) return null
-
-    try {
-      const parsed = JSON.parse(stored)
-      return parsed.state?.token || null
-    } catch {
-      return stored
-    }
-  }
-
   private handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const error: InfraError = new Error(
@@ -56,20 +42,16 @@ class InfraApiClient {
   }
 
   async request<T>(endpoint: string, options: InfraApiClientOptions = {}): Promise<T> {
-    const token = this.getAuthToken()
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
-    }
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: options.method ?? "GET",
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
+      credentials: "include",
     })
 
     return this.handleResponse<T>(response)
@@ -85,3 +67,68 @@ class InfraApiClient {
 }
 
 export const infraApiClient = new InfraApiClient()
+
+export interface Campus {
+  id: number | string
+  nombre: string
+}
+
+export interface FacultadInfra {
+  id: number | string
+  nombre: string
+}
+
+export interface Bloque {
+  id: number | string
+  nombre: string
+  facultadId?: number | string
+  campusId?: number | string
+}
+
+export interface Ambiente {
+  id: number | string
+  nombre: string
+  bloqueId?: number | string
+}
+
+export const infraService = {
+  getCampus: async () => {
+    return infraApiClient.get<{ success: boolean; data: Campus[] }>(
+      "/campus?page=1&limit=1000&orderBy=nombre&orderDir=asc&activo=true"
+    )
+  },
+
+  getFacultades: async () => {
+    return infraApiClient.get<{ success: boolean; data: FacultadInfra[] }>(
+      "/facultad?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true"
+    )
+  },
+
+  getBloques: async (facultadId?: string, campusId?: string) => {
+    const params = new URLSearchParams({
+      page: "1",
+      limit: "1000",
+      activo: "true",
+      orderBy: "nombre",
+      orderDir: "asc",
+    })
+    if (facultadId) params.append("facultadId", facultadId)
+    if (campusId) params.append("campusId", campusId)
+    return infraApiClient.get<{ success: boolean; data: Bloque[] }>(`/bloques?${params.toString()}`)
+  },
+
+  getAmbientes: async (bloqueId?: string) => {
+    const params = new URLSearchParams({
+      page: "1",
+      limit: "1000",
+      orderBy: "nombre",
+      orderDir: "asc",
+      activo: "true",
+      clases: "true",
+    })
+    if (bloqueId) params.append("bloquesId", bloqueId)
+    return infraApiClient.get<{ success: boolean; data: Ambiente[] }>(
+      `/ambientes?${params.toString()}`
+    )
+  },
+}

@@ -2,7 +2,7 @@
  * API client using native fetch
  */
 
-import type { LoginRequest, LoginResponse } from "@/features/auth/domain/types"
+import type { User } from "@/features/auth/domain/types"
 import type {
   EliminarHorariosBatchRequest,
   EliminarHorariosBatchResponse,
@@ -30,22 +30,6 @@ class ApiClient {
     this.baseUrl = baseUrl
   }
 
-  private getAuthToken(): string | null {
-    if (typeof window === "undefined") return null
-
-    // Zustand persist stores: { state: { token: "...", ... }, version: 0 }
-    const stored = localStorage.getItem("auth_token")
-    if (!stored) return null
-
-    try {
-      const parsed = JSON.parse(stored)
-      return parsed.state?.token || null
-    } catch {
-      // Fallback for direct token storage
-      return stored
-    }
-  }
-
   private handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const error: ApiError = new Error(
@@ -66,27 +50,21 @@ class ApiClient {
   }
 
   async request<T>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
-    const token = this.getAuthToken()
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       ...(options.headers ?? {}),
-    }
-
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`
     }
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       method: options.method ?? "GET",
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
+      credentials: "include",
     })
 
     if (response.status === 401) {
-      // Handle unauthorized - clear token and redirect to login
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("auth_token")
-        window.location.href = "/login"
+      if (typeof window !== "undefined" && !endpoint.includes("/auth/me")) {
+        window.location.href = "/"
       }
       const error: ApiError = new Error("Unauthorized") as ApiError
       error.status = 401
@@ -212,8 +190,8 @@ export interface AsignarHorariosBatchResponse {
 
 // Auth-specific methods
 export const authApi = {
-  login: (credentials: LoginRequest): Promise<LoginResponse> => {
-    return apiClient.post<LoginResponse>("/auth/login", credentials)
+  me: (): Promise<User> => {
+    return apiClient.get<User>("/auth/me")
   },
 }
 

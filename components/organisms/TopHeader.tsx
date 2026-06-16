@@ -25,7 +25,8 @@ export function TopHeader({ className, breadcrumbs = [] }: TopHeaderProps) {
 
   const handleLogout = () => {
     logout()
-    window.location.href = "/login"
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+    window.location.href = `${backendUrl}/auth/logout`
   }
 
   return (

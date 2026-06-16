@@ -1,71 +1,63 @@
-/**
- * Authentication store with Zustand and persist middleware
- */
-
 import { create } from "zustand"
-import { persist, createJSONStorage } from "zustand/middleware"
 import type { User } from "../domain/types"
+import { authApi } from "@/shared/services/api/client"
 
 interface AuthState {
-  token: string | null
   user: User | null
   isAuthenticated: boolean
+  isLoading: boolean
 }
 
 interface AuthActions {
-  login: (token: string, user: User) => void
+  setUser: (user: User | null) => void
+  setIsAuthenticated: (isAuthenticated: boolean) => void
+  setLoading: (isLoading: boolean) => void
+  checkAuth: () => Promise<void>
   logout: () => void
-  setToken: (token: string) => void
-  setUser: (user: User) => void
 }
 
 type AuthStore = AuthState & AuthActions
 
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      token: null,
+export const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  isAuthenticated: false,
+  isLoading: true,
+
+  setUser: (user: User | null) => {
+    set({ user, isAuthenticated: !!user })
+  },
+
+  setIsAuthenticated: (isAuthenticated: boolean) => {
+    set({ isAuthenticated })
+  },
+
+  setLoading: (isLoading: boolean) => {
+    set({ isLoading })
+  },
+
+  checkAuth: async () => {
+    set({ isLoading: true })
+    try {
+      const user = await authApi.me()
+      set({
+        user,
+        isAuthenticated: true,
+        isLoading: false,
+      })
+    } catch {
+      set({
+        user: null,
+        isAuthenticated: false,
+        isLoading: false,
+      })
+    }
+  },
+
+  logout: () => {
+    set({
       user: null,
       isAuthenticated: false,
-
-      login: (token: string, user: User) => {
-        set({
-          token,
-          user,
-          isAuthenticated: true,
-        })
-      },
-
-      logout: () => {
-        set({
-          token: null,
-          user: null,
-          isAuthenticated: false,
-        })
-      },
-
-      setToken: (token: string) => {
-        set((state) => ({
-          token,
-          isAuthenticated: !!token && !!state.user,
-        }))
-      },
-
-      setUser: (user: User) => {
-        set((state) => ({
-          user,
-          isAuthenticated: !!state.token && !!user,
-        }))
-      },
-    }),
-    {
-      name: "auth_token",
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({
-        token: state.token,
-        user: state.user,
-        isAuthenticated: state.isAuthenticated,
-      }),
-    }
-  )
-)
+      isLoading: false,
+    })
+  },
+}))

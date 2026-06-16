@@ -26,8 +26,8 @@ export function DocentesTable() {
   const { docentes = [], loadingDocentes } = useDocentesStore()
   const { user } = useAuthStore()
 
-  // Check if user has CREAR_DOCENTE permission
-  const canCreateDocente = user?.permissions.includes("CREAR_DOCENTE")
+  // Check if user has permission to create a docente (Administrador role)
+  const canCreateDocente = user?.role === "Administrador"
 
   // Empty state
   if (!loadingDocentes && docentes.length === 0) {

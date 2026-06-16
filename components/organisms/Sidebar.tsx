@@ -8,6 +8,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useUIStore } from "@/shared/stores/uiStore"
+import { useAuth } from "@/features/auth/application/useAuth"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -67,6 +68,7 @@ const bottomNavItems = [
 export function Sidebar({ className }: SidebarProps) {
   const pathname = usePathname()
   const { sidebarCollapsed } = useUIStore()
+  const { logout } = useAuth()
 
   return (
     <aside
@@ -125,6 +127,28 @@ export function Sidebar({ className }: SidebarProps) {
           <nav className="flex flex-col space-y-1">
             {bottomNavItems.map((item) => {
               const Icon = item.icon
+              if (item.name === "Cerrar sesión") {
+                const handleLogout = (e: React.MouseEvent) => {
+                  e.preventDefault()
+                  logout()
+                  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+                  window.location.href = `${backendUrl}/auth/logout`
+                }
+                return (
+                  <button
+                    key={item.name}
+                    onClick={handleLogout}
+                    className={cn(
+                      "transition-all flex items-center gap-3 rounded-lg w-full text-left",
+                      "text-muted-foreground hover:text-primary hover:bg-muted",
+                      sidebarCollapsed ? "justify-center px-2 py-3" : "px-4 py-3 mx-2"
+                    )}
+                  >
+                    <Icon className="w-5 h-5 shrink-0" />
+                    {!sidebarCollapsed && <span>{item.name}</span>}
+                  </button>
+                )
+              }
               return (
                 <Link
                   key={item.name}
