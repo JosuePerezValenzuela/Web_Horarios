@@ -58,6 +58,12 @@ export interface HorariosListFilters {
   aula_id?: string
   solo_conflicto: boolean
   persona_grupo_activo: boolean
+
+  // Nuevos filtros de infraestructura
+  infra_campus_id?: string
+  infra_facultad_id?: string
+  infra_bloque_id?: string
+  infra_ambiente_id?: string
 }
 
 interface HorariosListState {
@@ -93,6 +99,10 @@ const defaultFilters: HorariosListFilters = {
   aula_id: undefined,
   solo_conflicto: false,
   persona_grupo_activo: true, // Fijo por defecto
+  infra_campus_id: undefined,
+  infra_facultad_id: undefined,
+  infra_bloque_id: undefined,
+  infra_ambiente_id: undefined,
 }
 
 const defaultPagination: Pagination = {
@@ -232,6 +242,14 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
       if (filters.aula_id) searchParams.set("aula_id", filters.aula_id)
       if (filters.solo_conflicto)
         searchParams.set("solo_conflicto", filters.solo_conflicto.toString())
+
+      // Filtros de infraestructura
+      if (filters.infra_campus_id) searchParams.set("infra_campus_id", filters.infra_campus_id)
+      if (filters.infra_facultad_id)
+        searchParams.set("infra_facultad_id", filters.infra_facultad_id)
+      if (filters.infra_bloque_id) searchParams.set("infra_bloque_id", filters.infra_bloque_id)
+      if (filters.infra_ambiente_id)
+        searchParams.set("infra_ambiente_id", filters.infra_ambiente_id)
 
       // Filtros fijos
       searchParams.set("persona_grupo_activo", filters.persona_grupo_activo.toString())

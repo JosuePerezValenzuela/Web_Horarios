@@ -102,12 +102,6 @@ export default function HorariosListPage() {
     clearAmbientes,
   } = useInfraStore()
 
-  // Local states for infrastructure filters
-  const [selectedCampus, setSelectedCampus] = useState<string>("none")
-  const [selectedFacultadInfra, setSelectedFacultadInfra] = useState<string>("none")
-  const [selectedBloque, setSelectedBloque] = useState<string>("none")
-  const [selectedAmbiente, setSelectedAmbiente] = useState<string>("none")
-
   // Local search query for infrastructure select elements
   const [campusSearch, setCampusSearch] = useState("")
   const [facultadInfraSearch, setFacultadInfraSearch] = useState("")
@@ -225,46 +219,50 @@ export default function HorariosListPage() {
   // Asegurar que el campus seleccionado no se filtre
   const filteredCampus = useMemo(() => {
     const term = campusSearch.toLowerCase().trim()
+    const selectedId = filters.infra_campus_id
     return campus
       .filter((c) => {
-        if (selectedCampus && c.id.toString() === selectedCampus) return true
+        if (selectedId && c.id.toString() === selectedId) return true
         return c.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [campus, campusSearch, selectedCampus])
+  }, [campus, campusSearch, filters.infra_campus_id])
 
   // Asegurar que la facultad de infraestructura seleccionada no se filtre
   const filteredFacultadesInfra = useMemo(() => {
     const term = facultadInfraSearch.toLowerCase().trim()
+    const selectedId = filters.infra_facultad_id
     return facultadesInfra
       .filter((f) => {
-        if (selectedFacultadInfra && f.id.toString() === selectedFacultadInfra) return true
+        if (selectedId && f.id.toString() === selectedId) return true
         return f.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [facultadesInfra, facultadInfraSearch, selectedFacultadInfra])
+  }, [facultadesInfra, facultadInfraSearch, filters.infra_facultad_id])
 
   // Asegurar que el bloque seleccionado no se filtre
   const filteredBloques = useMemo(() => {
     const term = bloqueSearch.toLowerCase().trim()
+    const selectedId = filters.infra_bloque_id
     return bloques
       .filter((b) => {
-        if (selectedBloque && b.id.toString() === selectedBloque) return true
+        if (selectedId && b.id.toString() === selectedId) return true
         return b.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [bloques, bloqueSearch, selectedBloque])
+  }, [bloques, bloqueSearch, filters.infra_bloque_id])
 
   // Asegurar que el ambiente seleccionado no se filtre
   const filteredAmbientes = useMemo(() => {
     const term = ambienteSearch.toLowerCase().trim()
+    const selectedId = filters.infra_ambiente_id
     return ambientes
       .filter((a) => {
-        if (selectedAmbiente && a.id.toString() === selectedAmbiente) return true
+        if (selectedId && a.id.toString() === selectedId) return true
         return a.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [ambientes, ambienteSearch, selectedAmbiente])
+  }, [ambientes, ambienteSearch, filters.infra_ambiente_id])
 
   const [customPeriod, setCustomPeriod] = useState<number | "">("")
 
@@ -362,11 +360,103 @@ export default function HorariosListPage() {
     triggerFetchIfValid()
   }
 
+  const handleClearAcademicFilters = () => {
+    setFilter("facultad_codigo", undefined)
+    setFilter("plan_estudio_codigo", undefined)
+    setFilter("asignatura_codigo", [])
+    setFilter("grupo", [])
+    setFilter("fecha_desde", undefined)
+    setFilter("fecha_hasta", undefined)
+    setFilter("hora_desde", undefined)
+    setFilter("hora_hasta", undefined)
+    setFilter("solo_conflicto", false)
+    clearCarreras()
+    clearAsignaturas()
+    triggerFetchIfValid()
+    toast.success("Filtros académicos limpiados")
+  }
+
+  const handleCampusChange = (value: string) => {
+    const campusId = value === "none" ? undefined : value
+    setFilter("infra_campus_id", campusId)
+    setFilter("infra_bloque_id", undefined)
+    setFilter("infra_ambiente_id", undefined)
+    setFilter("aula_id", undefined)
+    clearBloques()
+    clearAmbientes()
+
+    const facId = filters.infra_facultad_id
+
+    if (campusId || facId) {
+      fetchBloques(facId, campusId)
+    }
+    triggerFetchIfValid()
+  }
+
+  const handleFacultadInfraChange = (value: string) => {
+    const facId = value === "none" ? undefined : value
+    setFilter("infra_facultad_id", facId)
+    setFilter("infra_bloque_id", undefined)
+    setFilter("infra_ambiente_id", undefined)
+    setFilter("aula_id", undefined)
+    clearBloques()
+    clearAmbientes()
+
+    const campusId = filters.infra_campus_id
+
+    if (facId || campusId) {
+      fetchBloques(facId, campusId)
+    }
+    triggerFetchIfValid()
+  }
+
+  const handleBloqueChange = (value: string) => {
+    const bloqueId = value === "none" ? undefined : value
+    setFilter("infra_bloque_id", bloqueId)
+    setFilter("infra_ambiente_id", undefined)
+    setFilter("aula_id", undefined)
+    clearAmbientes()
+
+    if (bloqueId) {
+      fetchAmbientes(bloqueId)
+    }
+    triggerFetchIfValid()
+  }
+
+  const handleAmbienteChange = (value: string) => {
+    const ambienteId = value === "none" ? undefined : value
+    setFilter("infra_ambiente_id", ambienteId)
+    setFilter("aula_id", ambienteId)
+    triggerFetchIfValid()
+  }
+
+  const handleClearInfraFilters = () => {
+    setFilter("infra_campus_id", undefined)
+    setFilter("infra_facultad_id", undefined)
+    setFilter("infra_bloque_id", undefined)
+    setFilter("infra_ambiente_id", undefined)
+    setFilter("aula_id", undefined)
+    clearBloques()
+    clearAmbientes()
+    setCampusSearch("")
+    setFacultadInfraSearch("")
+    setBloqueSearch("")
+    setAmbienteSearch("")
+    triggerFetchIfValid()
+    toast.success("Filtros de infraestructura limpiados")
+  }
+
   const handleClearAllFilters = () => {
     resetFilters()
     clearCarreras()
     clearAsignaturas()
-    toast.success("Filtros limpiados exitosamente")
+    clearBloques()
+    clearAmbientes()
+    setCampusSearch("")
+    setFacultadInfraSearch("")
+    setBloqueSearch("")
+    setAmbienteSearch("")
+    toast.success("Todos los filtros han sido limpiados")
   }
 
   return (
@@ -455,255 +545,414 @@ export default function HorariosListPage() {
 
           {/* Área de Filtros y Contenido Principal */}
           <div className="flex min-h-0 flex-1 gap-4 overflow-hidden items-stretch relative">
-            {/* Panel de Filtros */}
             {showFilters && (
-              <aside className="w-80 shrink-0 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden h-full">
-                <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                    <Filter className="size-3.5" />
-                    Filtros de Búsqueda
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="xs"
-                    onClick={handleClearAllFilters}
-                    className="text-[10px] h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground"
-                  >
-                    Limpiar todo
-                  </Button>
-                </div>
+              <aside className="w-80 shrink-0 flex flex-col gap-4 h-full min-h-0">
+                {/* Tarjeta 1: Filtros Académicos */}
+                <div className="flex-1 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0">
+                  <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Filter className="size-3.5" />
+                      Filtros Académicos
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleClearAcademicFilters}
+                      className="text-[10px] h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground"
+                    >
+                      Limpiar
+                    </Button>
+                  </div>
 
-                <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
-                  {/* Sección: Filtros Obligatorios */}
-                  <div className="space-y-3">
-                    <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
-                      Filtros Obligatorios
-                    </div>
+                  <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
+                    {/* Sección: Filtros Obligatorios */}
+                    <div className="space-y-3">
+                      <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
+                        Filtros Obligatorios
+                      </div>
 
-                    {/* Facultad */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">
-                        Facultad <span className="text-destructive">*</span>
-                      </Label>
-                      <Select
-                        value={filters.facultad_codigo || "none"}
-                        onValueChange={handleFacultadChange}
-                        disabled={loadingFacultades}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue
-                            placeholder={loadingFacultades ? "Cargando..." : "Seleccione Facultad"}
-                          />
-                        </SelectTrigger>
-                        <SearchableSelectContent
-                          onFilterChange={setFacultadSearch}
-                          onKeyDownCapture={(e) => {
-                            if (e.key === "Escape") e.stopPropagation()
-                          }}
-                        >
-                          <SelectItem value="none">Seleccione Facultad</SelectItem>
-                          {filteredFacultades.map((f) => (
-                            <SelectItem key={f.id} value={f.codigo}>
-                              {f.nombre}
-                            </SelectItem>
-                          ))}
-                        </SearchableSelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Gestión y Periodo */}
-                    <div className="grid grid-cols-2 gap-2">
+                      {/* Facultad */}
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">
-                          Gestión <span className="text-destructive">*</span>
+                          Facultad <span className="text-destructive">*</span>
                         </Label>
-                        <Input
-                          type="number"
-                          placeholder="Año"
-                          value={filters.gestion || ""}
-                          onChange={(e) => {
-                            const val = e.target.value ? Number(e.target.value) : undefined
-                            setFilter("gestion", val)
+                        <Select
+                          value={filters.facultad_codigo || "none"}
+                          onValueChange={handleFacultadChange}
+                          disabled={loadingFacultades}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={
+                                loadingFacultades ? "Cargando..." : "Seleccione Facultad"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setFacultadSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Facultad</SelectItem>
+                            {filteredFacultades.map((f) => (
+                              <SelectItem key={f.id} value={f.codigo}>
+                                {f.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Gestión y Periodo */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-foreground">
+                            Gestión <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="Año"
+                            value={filters.gestion || ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : undefined
+                              setFilter("gestion", val)
+                              triggerFetchIfValid()
+                            }}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold text-foreground">
+                            Periodo <span className="text-destructive">*</span>
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="Periodo"
+                            value={filters.periodo !== undefined ? filters.periodo : ""}
+                            onChange={(e) => {
+                              const val = e.target.value ? Number(e.target.value) : undefined
+                              setFilter("periodo", val)
+                              triggerFetchIfValid()
+                            }}
+                            className="h-9 text-xs no-spinner"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Sección: Filtros Opcionales */}
+                    <div className="space-y-3 pt-2">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-1">
+                        Filtros Opcionales
+                      </div>
+
+                      {/* Plan de Estudio / Carrera */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">
+                          Plan de Estudio
+                        </Label>
+                        <Select
+                          value={filters.plan_estudio_codigo || "none"}
+                          onValueChange={handleCarreraChange}
+                          disabled={loadingCarreras || !filters.facultad_codigo}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={
+                                loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setCarreraSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
+                            {filteredCarreras.map((c) => (
+                              <SelectItem key={c.id} value={c.codigo}>
+                                {c.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Asignatura */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
+                        <Select
+                          value={filters.asignatura_codigo?.[0] || "none"}
+                          onValueChange={(val) => {
+                            setFilter("asignatura_codigo", val === "none" ? [] : [val])
                             triggerFetchIfValid()
                           }}
-                          className="h-9 text-xs"
+                          disabled={loadingAsignaturas || !isMandatoryFiltersSet}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={
+                                loadingAsignaturas ? "Cargando..." : "Seleccione Asignatura"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setAsignaturaSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Asignatura</SelectItem>
+                            {filteredAsignaturas.map((a) => (
+                              <SelectItem key={a.id} value={a.codigo}>
+                                {a.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-foreground">Grupo</Label>
+                          {(!filters.asignatura_codigo ||
+                            filters.asignatura_codigo.length === 0) && (
+                            <span className="text-[10px] text-muted-foreground font-normal">
+                              Requiere asignatura
+                            </span>
+                          )}
+                        </div>
+                        <MultiSelect
+                          options={availableGroups.map((g) => ({
+                            value: g,
+                            label: `Grupo ${g}`,
+                          }))}
+                          value={filters.grupo || []}
+                          onValueChange={(val) => {
+                            setFilter("grupo", val as string[])
+                            triggerFetchIfValid()
+                          }}
+                          disabled={
+                            !filters.asignatura_codigo || filters.asignatura_codigo.length === 0
+                          }
+                          selectAll
+                          placeholder="Seleccione Grupos"
                         />
                       </div>
+
+                      {/* Filtro Rango de Fechas */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Fechas</Label>
+                        <DatePickerRange
+                          value={dateRangeValue}
+                          onChange={handleDateRangeChange}
+                          disabled={!isMandatoryFiltersSet}
+                          className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
+                          placeholder="Seleccionar rango"
+                        />
+                      </div>
+
+                      {/* Filtro Rango de Horas */}
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">
-                          Periodo <span className="text-destructive">*</span>
+                          Rango Horario
                         </Label>
-                        <Input
-                          type="number"
-                          placeholder="Periodo"
-                          value={filters.periodo !== undefined ? filters.periodo : ""}
-                          onChange={(e) => {
-                            const val = e.target.value ? Number(e.target.value) : undefined
-                            setFilter("periodo", val)
+                        <div className="grid grid-cols-2 gap-2">
+                          <TimePicker
+                            value={filters.hora_desde}
+                            onChange={(val) => {
+                              setFilter("hora_desde", val || undefined)
+                              triggerFetchIfValid()
+                            }}
+                            disabled={!isMandatoryFiltersSet}
+                            className="h-9 text-xs"
+                          />
+                          <TimePicker
+                            value={filters.hora_hasta}
+                            onChange={(val) => {
+                              setFilter("hora_hasta", val || undefined)
+                              triggerFetchIfValid()
+                            }}
+                            disabled={!isMandatoryFiltersSet}
+                            className="h-9 text-xs"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Solo Conflicto Checkbox */}
+                      <div className="flex items-center space-x-2 pt-2 border-t border-border mt-1.5">
+                        <Checkbox
+                          id="solo_conflicto"
+                          checked={filters.solo_conflicto}
+                          onCheckedChange={(checked) => {
+                            setFilter("solo_conflicto", !!checked)
                             triggerFetchIfValid()
                           }}
-                          className="h-9 text-xs no-spinner"
+                          disabled={!isMandatoryFiltersSet}
                         />
+                        <Label
+                          htmlFor="solo_conflicto"
+                          className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1 text-destructive"
+                        >
+                          <AlertTriangle className="size-3.5 shrink-0" />
+                          Solo solapamientos / conflictos
+                        </Label>
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Sección: Filtros Opcionales */}
-                  <div className="space-y-3 pt-2">
-                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-1">
-                      Filtros Opcionales
-                    </div>
+                {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
+                <div className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden h-80 shrink-0 min-h-0">
+                  <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <MapPin className="size-3.5" />
+                      Espacios Físicos
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      onClick={handleClearInfraFilters}
+                      className="text-[10px] h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground"
+                    >
+                      Limpiar
+                    </Button>
+                  </div>
 
-                    {/* Plan de Estudio / Carrera */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">
-                        Plan de Estudio
-                      </Label>
-                      <Select
-                        value={filters.plan_estudio_codigo || "none"}
-                        onValueChange={handleCarreraChange}
-                        disabled={loadingCarreras || !filters.facultad_codigo}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue
-                            placeholder={
-                              loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SearchableSelectContent
-                          onFilterChange={setCarreraSearch}
-                          onKeyDownCapture={(e) => {
-                            if (e.key === "Escape") e.stopPropagation()
-                          }}
+                  <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
+                    <div className="space-y-3 pb-2">
+                      {/* Campus */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Campus</Label>
+                        <Select
+                          value={filters.infra_campus_id || "none"}
+                          onValueChange={handleCampusChange}
+                          disabled={loadingInfra}
                         >
-                          <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
-                          {filteredCarreras.map((c) => (
-                            <SelectItem key={c.id} value={c.codigo}>
-                              {c.nombre}
-                            </SelectItem>
-                          ))}
-                        </SearchableSelectContent>
-                      </Select>
-                    </div>
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={loadingInfra ? "Cargando..." : "Seleccione Campus"}
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setCampusSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Campus</SelectItem>
+                            {filteredCampus.map((c) => (
+                              <SelectItem key={c.id} value={c.id.toString()}>
+                                {c.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
+                      </div>
 
-                    {/* Asignatura */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
-                      <Select
-                        value={filters.asignatura_codigo?.[0] || "none"}
-                        onValueChange={(val) => {
-                          setFilter("asignatura_codigo", val === "none" ? [] : [val])
-                          triggerFetchIfValid()
-                        }}
-                        disabled={loadingAsignaturas || !isMandatoryFiltersSet}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue
-                            placeholder={
-                              loadingAsignaturas ? "Cargando..." : "Seleccione Asignatura"
-                            }
-                          />
-                        </SelectTrigger>
-                        <SearchableSelectContent
-                          onFilterChange={setAsignaturaSearch}
-                          onKeyDownCapture={(e) => {
-                            if (e.key === "Escape") e.stopPropagation()
-                          }}
+                      {/* Facultad de Infraestructura */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Facultad</Label>
+                        <Select
+                          value={filters.infra_facultad_id || "none"}
+                          onValueChange={handleFacultadInfraChange}
+                          disabled={loadingInfra}
                         >
-                          <SelectItem value="none">Seleccione Asignatura</SelectItem>
-                          {filteredAsignaturas.map((a) => (
-                            <SelectItem key={a.id} value={a.codigo}>
-                              {a.nombre}
-                            </SelectItem>
-                          ))}
-                        </SearchableSelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-xs font-semibold text-foreground">Grupo</Label>
-                        {(!filters.asignatura_codigo || filters.asignatura_codigo.length === 0) && (
-                          <span className="text-[10px] text-muted-foreground font-normal">
-                            Requiere asignatura
-                          </span>
-                        )}
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={loadingInfra ? "Cargando..." : "Seleccione Facultad"}
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setFacultadInfraSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Facultad</SelectItem>
+                            {filteredFacultadesInfra.map((f) => (
+                              <SelectItem key={f.id} value={f.id.toString()}>
+                                {f.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
                       </div>
-                      <MultiSelect
-                        options={availableGroups.map((g) => ({
-                          value: g,
-                          label: `Grupo ${g}`,
-                        }))}
-                        value={filters.grupo || []}
-                        onValueChange={(val) => {
-                          setFilter("grupo", val as string[])
-                          triggerFetchIfValid()
-                        }}
-                        disabled={
-                          !filters.asignatura_codigo || filters.asignatura_codigo.length === 0
-                        }
-                        selectAll
-                        placeholder="Seleccione Grupos"
-                      />
-                    </div>
 
-                    {/* Filtro Rango de Fechas */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Fechas</Label>
-                      <DatePickerRange
-                        value={dateRangeValue}
-                        onChange={handleDateRangeChange}
-                        disabled={!isMandatoryFiltersSet}
-                        className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
-                        placeholder="Seleccionar rango"
-                      />
-                    </div>
-
-                    {/* Filtro Rango de Horas */}
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-semibold text-foreground">Rango Horario</Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <TimePicker
-                          value={filters.hora_desde}
-                          onChange={(val) => {
-                            setFilter("hora_desde", val || undefined)
-                            triggerFetchIfValid()
-                          }}
-                          disabled={!isMandatoryFiltersSet}
-                          className="h-9 text-xs"
-                        />
-                        <TimePicker
-                          value={filters.hora_hasta}
-                          onChange={(val) => {
-                            setFilter("hora_hasta", val || undefined)
-                            triggerFetchIfValid()
-                          }}
-                          disabled={!isMandatoryFiltersSet}
-                          className="h-9 text-xs"
-                        />
+                      {/* Bloque */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Bloque</Label>
+                        <Select
+                          value={filters.infra_bloque_id || "none"}
+                          onValueChange={handleBloqueChange}
+                          disabled={
+                            loadingInfra || !filters.infra_campus_id || !filters.infra_facultad_id
+                          }
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={
+                                loadingInfra
+                                  ? "Cargando..."
+                                  : !filters.infra_campus_id || !filters.infra_facultad_id
+                                    ? "Seleccione Campus y Facultad"
+                                    : "Seleccione Bloque"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setBloqueSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Bloque</SelectItem>
+                            {filteredBloques.map((b) => (
+                              <SelectItem key={b.id} value={b.id.toString()}>
+                                {b.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
                       </div>
-                    </div>
 
-                    {/* Solo Conflicto Checkbox */}
-                    <div className="flex items-center space-x-2 pt-2 border-t border-border mt-1.5">
-                      <Checkbox
-                        id="solo_conflicto"
-                        checked={filters.solo_conflicto}
-                        onCheckedChange={(checked) => {
-                          setFilter("solo_conflicto", !!checked)
-                          triggerFetchIfValid()
-                        }}
-                        disabled={!isMandatoryFiltersSet}
-                      />
-                      <Label
-                        htmlFor="solo_conflicto"
-                        className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1 text-destructive"
-                      >
-                        <AlertTriangle className="size-3.5 shrink-0" />
-                        Solo solapamientos / conflictos
-                      </Label>
+                      {/* Ambiente */}
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Ambiente</Label>
+                        <Select
+                          value={filters.infra_ambiente_id || "none"}
+                          onValueChange={handleAmbienteChange}
+                          disabled={loadingInfra || !filters.infra_bloque_id}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue
+                              placeholder={
+                                loadingInfra
+                                  ? "Cargando..."
+                                  : !filters.infra_bloque_id
+                                    ? "Seleccione Bloque primero"
+                                    : "Seleccione Ambiente"
+                              }
+                            />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            onFilterChange={setAmbienteSearch}
+                            onKeyDownCapture={(e) => {
+                              if (e.key === "Escape") e.stopPropagation()
+                            }}
+                          >
+                            <SelectItem value="none">Seleccione Ambiente</SelectItem>
+                            {filteredAmbientes.map((a) => (
+                              <SelectItem key={a.id} value={a.id.toString()}>
+                                {a.nombre}
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </div>

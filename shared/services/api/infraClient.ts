@@ -100,7 +100,7 @@ export const infraService = {
 
   getFacultades: async () => {
     return infraApiClient.get<{ success: boolean; data: FacultadInfra[] }>(
-      "/facultad?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true"
+      "/facultades?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true"
     )
   },
 
