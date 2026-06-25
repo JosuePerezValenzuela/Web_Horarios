@@ -1,172 +1,237 @@
 "use client"
 
-/**
- * Sidebar Component
- * Navigation sidebar with collapse functionality
- */
-
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useUIStore } from "@/shared/stores/uiStore"
-import { useAuth } from "@/features/auth/application/useAuth"
-import { cn } from "@/lib/utils"
+import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
 import {
   LayoutDashboard,
   Users,
+  Calendar,
   FileText,
   FileBarChart,
-  User,
   LogOut,
-  Calendar,
+  LayoutGrid,
 } from "lucide-react"
 
-interface SidebarProps {
-  className?: string
+interface SidebarItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
 }
 
-const navItems = [
+const defaultSidebarItems: SidebarItem[] = [
   {
-    name: "Dashboard",
+    title: "Dashboard",
     href: "/dashboard",
     icon: LayoutDashboard,
   },
   {
-    name: "Docentes",
+    title: "Docentes",
     href: "/docentes",
     icon: Users,
   },
   {
-    name: "Horarios",
+    title: "Horarios",
     href: "/horarios",
     icon: Calendar,
   },
   {
-    name: "Partes Diarias",
+    title: "Partes Diarias",
     href: "/partes-diarias",
     icon: FileText,
   },
   {
-    name: "Partes Consolidadas",
+    title: "Partes Consolidadas",
     href: "/partes-consolidadas",
     icon: FileBarChart,
   },
 ]
 
-const bottomNavItems = [
-  {
-    name: "Perfil",
-    href: "/perfil",
-    icon: User,
-  },
-  {
-    name: "Cerrar sesión",
-    href: "/login",
-    icon: LogOut,
-  },
-]
+interface SidebarProps {
+  sidebarItems?: SidebarItem[]
+  pathname?: string // 🔧 Ruta activa enviada por el framework
+  useAuth?: () => {
+    hasToken: boolean
+    cargando: boolean
+    cerrarSesion: () => void
+  }
+  systemName?: string // 🔧 Opcional por si quieren cambiar el nombre del sistema por prop
+  SystemIcon?: React.ComponentType<{ className?: string }> // 🔧 Permite inyectar el icono del sistema
+  LinkComponent?: React.ElementType
+}
 
-export function Sidebar({ className }: SidebarProps) {
-  const pathname = usePathname()
-  const { sidebarCollapsed } = useUIStore()
-  const { logout } = useAuth()
+export function Sidebar({
+  sidebarItems = defaultSidebarItems,
+  pathname: propPathname,
+  useAuth: propUseAuth,
+  systemName = "Horarios",
+  SystemIcon = LayoutGrid,
+  LinkComponent = Link,
+}: SidebarProps) {
+  const localPathname = usePathname()
+  const pathname = propPathname ?? localPathname
+
+  const { isAuthenticated, isLoading, logout } = useAppAuth()
+
+  const defaultUseAuth = () => {
+    return {
+      hasToken: isAuthenticated,
+      cargando: isLoading,
+      cerrarSesion: async () => {
+        try {
+          const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+          await fetch(`${backendUrl}/auth/logout`, { credentials: "include" })
+        } catch (error) {
+          console.error("Error en logout:", error)
+        }
+        logout()
+        window.location.href = "/"
+      },
+    }
+  }
+
+  const { hasToken, cargando, cerrarSesion } = propUseAuth ? propUseAuth() : defaultUseAuth()
+
+  const [isHovered, setIsHovered] = useState(false)
+  const NavigationLink = LinkComponent
+
+  if (cargando || !hasToken) return null
 
   return (
-    <aside
-      className={cn(
-        "h-full pt-6 bg-muted flex flex-col border-r border-border font-sans transition-all duration-300 overflow-hidden",
-        sidebarCollapsed ? "w-16" : "w-64",
-        className
-      )}
-    >
-      <div
-        className={cn("flex flex-col h-full justify-between", sidebarCollapsed ? "px-1" : "px-3")}
-      >
-        {/* Brand */}
-        <div>
-          <div className={cn("px-3", sidebarCollapsed ? "px-2 text-center" : "")}>
-            <h1
-              className={cn(
-                "font-bold tracking-tighter text-primary uppercase",
-                sidebarCollapsed ? "text-xs" : "text-lg"
-              )}
+    <>
+      {/* 1. COMPORTAMIENTO MÓVIL */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-umss-side-bg border-t border-border z-50 flex justify-around items-center px-2 shadow-lg">
+        {sidebarItems.map((item) => {
+          const Icon = item.icon
+          const isActive = pathname === item.href
+
+          return (
+            <NavigationLink
+              key={item.title}
+              href={item.href}
+              target={item.href.startsWith("http") ? "_blank" : "_self"}
+              className={`flex flex-col items-center justify-center grow py-1 rounded-xl transition-all ${
+                isActive
+                  ? "text-[#002855] dark:text-blue-400 font-bold scale-105"
+                  : "text-gray-500 dark:text-gray-400"
+              }`}
             >
-              UMSS
-            </h1>
-            {!sidebarCollapsed && (
-              <p className="text-sm text-muted-foreground">Sistema de Horarios</p>
-            )}
+              <Icon className={`w-5 h-5 ${isActive ? "stroke-[2.5]" : "stroke-2"}`} />
+              <span className="text-[10px] mt-1 tracking-tight truncate max-w-17.5">
+                {item.title.split(" ")[0]}
+              </span>
+            </NavigationLink>
+          )
+        })}
+
+        <button
+          onClick={cerrarSesion}
+          className="flex flex-col items-center justify-center grow py-1 text-[#BC000C] rounded-xl cursor-pointer"
+          title="Cerrar Sesión"
+        >
+          <LogOut className="w-5 h-5 stroke-2" />
+          <span className="text-[10px] mt-1 tracking-tight">Salir</span>
+        </button>
+      </div>
+
+      {/* 2. COMPORTAMIENTO ESCRITORIO */}
+      <div className="hidden md:block w-16 shrink-0 transition-all duration-300 ease-in-out" />
+
+      <aside
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`hidden md:block fixed top-16 left-0 z-40 h-[calc(100vh-4rem)] overflow-hidden transition-all duration-300 ease-in-out bg-umss-side-bg border-r border-border ${
+          isHovered ? "w-64 shadow-2xl" : "w-16"
+        }`}
+      >
+        <div className="h-full px-3 py-4 flex flex-col justify-between">
+          <div className="flex flex-col">
+            {/* 💻 Identidad Dinámica del Sistema */}
+            <div
+              className={`flex items-center border-b border-border pb-2 transition-all duration-300 ${
+                isHovered ? "gap-3 px-3" : "justify-center px-0"
+              }`}
+            >
+              <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-[#eff6ff] dark:bg-slate-800 text-[#003770] dark:text-blue-400">
+                <SystemIcon className="w-5 h-5 stroke-[2.5]" />
+              </div>
+              <div
+                className={`flex flex-col whitespace-nowrap transition-all duration-300 ${
+                  isHovered
+                    ? "opacity-100 translate-x-0"
+                    : "opacity-0 -translate-x-4 pointer-events-none absolute"
+                }`}
+              >
+                <span className="text-xs font-black text-[#001B47] dark:text-white leading-none uppercase tracking-wide">
+                  {systemName}
+                </span>
+                <span className="text-[11px] font-bold text-[#BC000C]">SAN SIMÓN</span>
+              </div>
+            </div>
+
+            {/* Links del Menú */}
+            <div className="mt-4">
+              <p
+                className={`px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider transition-all duration-200 ${
+                  isHovered ? "opacity-100 max-h-6 mb-2" : "opacity-0 max-h-0 overflow-hidden mb-0"
+                }`}
+              >
+                Menú
+              </p>
+              <ul className="space-y-1">
+                {sidebarItems.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href
+
+                  return (
+                    <li key={item.title}>
+                      <NavigationLink
+                        href={item.href}
+                        target={item.href.startsWith("http") ? "_blank" : "_self"}
+                        className={`w-full flex items-center text-sm font-bold rounded-lg transition-all duration-200 group py-3 ${
+                          isHovered ? "px-3 justify-start gap-3" : "px-0 justify-center"
+                        } ${isActive ? "bg-[#002855] text-white" : "text-[#001B47] dark:text-gray-300 hover:bg-umss-side-hover"}`}
+                      >
+                        <Icon
+                          className={`w-5 h-5 shrink-0 transition-colors ${
+                            isActive
+                              ? "text-white"
+                              : "text-[#003770] dark:text-blue-400 group-hover:text-[#BC000C]"
+                          }`}
+                        />
+                        <span
+                          className={`whitespace-nowrap transition-all duration-300 ${isHovered ? "opacity-100" : "opacity-0 absolute pointer-events-none"}`}
+                        >
+                          {item.title}
+                        </span>
+                      </NavigationLink>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           </div>
 
-          {/* Navigation Links */}
-          <nav className={cn("flex flex-col space-y-1 mt-4", sidebarCollapsed ? "px-1" : "px-2")}>
-            {navItems.map((item) => {
-              const isActive = pathname === item.href
-              const Icon = item.icon
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "transition-all flex items-center gap-3 rounded-lg",
-                    isActive
-                      ? "bg-muted text-primary font-semibold border-l-4 border-primary"
-                      : "text-muted-foreground hover:text-primary hover:bg-muted",
-                    sidebarCollapsed ? "justify-center px-2 py-3" : "px-4 py-3 mx-2"
-                  )}
-                >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {!sidebarCollapsed && <span>{item.name}</span>}
-                </Link>
-              )
-            })}
-          </nav>
+          {/* Footer del Sidebar con Logout */}
+          <div className="pt-4 border-t border-border flex flex-col gap-2">
+            {/* Botón de Logout estilizado de forma nativa */}
+            <button
+              onClick={cerrarSesion}
+              className={`w-full flex items-center text-sm font-bold text-[#BC000C] hover:text-[#870009] hover:bg-red-50 dark:hover:bg-red-950/30 py-3 rounded-lg transition-all cursor-pointer ${
+                isHovered ? "px-3 justify-start gap-3" : "px-0 justify-center"
+              }`}
+            >
+              <LogOut className="w-5 h-5 shrink-0" />
+              <span
+                className={`whitespace-nowrap ${isHovered ? "opacity-100" : "opacity-0 absolute"}`}
+              >
+                CERRAR SESIÓN
+              </span>
+            </button>
+          </div>
         </div>
-
-        {/* Footer Links */}
-        <div className={cn("border-t border-border pt-4", sidebarCollapsed ? "px-1" : "px-2")}>
-          <nav className="flex flex-col space-y-1">
-            {bottomNavItems.map((item) => {
-              const Icon = item.icon
-              if (item.name === "Cerrar sesión") {
-                const handleLogout = (e: React.MouseEvent) => {
-                  e.preventDefault()
-                  logout()
-                  const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
-                  window.location.href = `${backendUrl}/auth/logout`
-                }
-                return (
-                  <button
-                    key={item.name}
-                    onClick={handleLogout}
-                    className={cn(
-                      "transition-all flex items-center gap-3 rounded-lg w-full text-left",
-                      "text-muted-foreground hover:text-primary hover:bg-muted",
-                      sidebarCollapsed ? "justify-center px-2 py-3" : "px-4 py-3 mx-2"
-                    )}
-                  >
-                    <Icon className="w-5 h-5 shrink-0" />
-                    {!sidebarCollapsed && <span>{item.name}</span>}
-                  </button>
-                )
-              }
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={cn(
-                    "transition-all flex items-center gap-3 rounded-lg",
-                    "text-muted-foreground hover:text-primary hover:bg-muted",
-                    sidebarCollapsed ? "justify-center px-2 py-3" : "px-4 py-3 mx-2"
-                  )}
-                >
-                  <Icon className="w-5 h-5 shrink-0" />
-                  {!sidebarCollapsed && <span>{item.name}</span>}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   )
 }
