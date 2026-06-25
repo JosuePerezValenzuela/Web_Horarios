@@ -371,7 +371,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
             ) : (
               <div className="max-h-75 overflow-auto rounded-xl border border-border/50 shadow-sm">
                 <table className="w-full caption-bottom text-sm">
-                  <thead className="sticky top-0 z-10 bg-secondary">
+                  <thead className="sticky top-0 z-10 bg-muted">
                     <tr className="border-b-2 border-border/80">
                       <th className="h-10 w-8 px-2 text-left align-middle text-xs font-semibold text-foreground">
                         #
