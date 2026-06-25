@@ -18,6 +18,7 @@ interface OverlapClusterProps {
   onToggle: () => void
   onHoverChange: (hovered: boolean) => void
   onItemClick?: (item: ScheduleItem) => void
+  onHoverTimeRangeChange?: (range: { startMin: number; endMin: number } | null) => void
 }
 
 export function OverlapCluster({
@@ -28,6 +29,7 @@ export function OverlapCluster({
   onToggle,
   onHoverChange,
   onItemClick,
+  onHoverTimeRangeChange,
 }: OverlapClusterProps) {
   const { items } = slice
   const totalCount = items.length
@@ -70,7 +72,13 @@ export function OverlapCluster({
                 style={{ minHeight: `${maxItemHeight}px` }}
                 className="w-full flex-1 flex flex-col"
               >
-                <ScheduleCard item={item} mode="full" className="h-full" onClick={onItemClick} />
+                <ScheduleCard
+                  item={item}
+                  mode="full"
+                  className="h-full"
+                  onClick={onItemClick}
+                  onHoverTimeRangeChange={onHoverTimeRangeChange}
+                />
               </div>
             )
           })}
@@ -143,6 +151,7 @@ export function OverlapCluster({
               item={visibleItem}
               className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
               onClick={undefined}
+              onHoverTimeRangeChange={onHoverTimeRangeChange}
             />
           </div>
         </div>

@@ -14,6 +14,7 @@ interface ScheduleCardProps {
   className?: string
   style?: React.CSSProperties
   onClick?: (item: ScheduleItem) => void
+  onHoverTimeRangeChange?: (range: { startMin: number; endMin: number } | null) => void
 }
 
 export function ScheduleCard({
@@ -23,17 +24,20 @@ export function ScheduleCard({
   className,
   style,
   onClick,
+  onHoverTimeRangeChange,
 }: ScheduleCardProps) {
   const token = resolveColorToken(item.colorIndex)
   const accentColor = resolveAccentColor(item.colorIndex)
   const isClickable = onClick !== undefined && mode !== "peek"
 
-  // Hover Popover state
+  // Hover Popover & Card Highlight state
   const [isOpen, setIsOpen] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
   const openTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   const handleMouseEnter = () => {
+    setIsHovered(true)
     if (mode !== "full") return
     if (closeTimeoutRef.current) {
       clearTimeout(closeTimeoutRef.current)
@@ -48,6 +52,7 @@ export function ScheduleCard({
   }
 
   const handleMouseLeave = () => {
+    setIsHovered(false)
     if (mode !== "full") return
     if (openTimeoutRef.current) {
       clearTimeout(openTimeoutRef.current)
@@ -85,12 +90,26 @@ export function ScheduleCard({
     }
   }, [])
 
+  // Call onHoverTimeRangeChange when hovered or popover opens
+  useEffect(() => {
+    if (mode !== "full") return
+    if (onHoverTimeRangeChange) {
+      if (isHovered || isOpen) {
+        onHoverTimeRangeChange({ startMin: item.startMin, endMin: item.endMin })
+      } else {
+        onHoverTimeRangeChange(null)
+      }
+    }
+  }, [isHovered, isOpen, item.startMin, item.endMin, mode, onHoverTimeRangeChange])
+
   const baseStyle = mode === "peek" ? token.peekStyle : token.blockStyle
 
   const combinedStyle = {
     ...baseStyle,
     ...style,
   }
+
+  const isActive = isOpen || isHovered
 
   const commonClassName = cn(
     "relative flex w-full overflow-hidden rounded-lg border shadow-sm transition-all duration-200",
@@ -99,8 +118,10 @@ export function ScheduleCard({
       : mode === "compact"
         ? "flex-col justify-center gap-0.5 px-2 py-1.5 text-[10px] leading-tight"
         : "flex-col justify-center gap-0.5 px-2 py-1.5 text-[11px] leading-tight",
-    "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
-    (isClickable || mode === "full") && "cursor-pointer hover:shadow-md hover:-translate-y-[1px]",
+    isActive
+      ? "ring-2 ring-ring ring-offset-1 shadow-md -translate-y-[1px] border-primary/50"
+      : "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
+    (isClickable || mode === "full") && "cursor-pointer",
     className
   )
 

@@ -40,6 +40,10 @@ export function WeeklyScheduleGrid({
   const [hoveredClusterIds, setHoveredClusterIds] = useState<Set<string>>(new Set())
   const [visibleIndexByCluster, setVisibleIndexByCluster] = useState<Record<string, number>>({})
   const [rotationTickByCluster, setRotationTickByCluster] = useState<Record<string, number>>({})
+  const [activeTimeRange, setActiveTimeRange] = useState<{
+    startMin: number
+    endMin: number
+  } | null>(null)
 
   // Build render slices (fractional overlap splitting)
   const renderSlices = useMemo(() => buildRenderSlices(items), [items])
@@ -187,6 +191,30 @@ export function WeeklyScheduleGrid({
                   style={{ top: `${minuteToY(row.startMin)}px` }}
                 />
               ))}
+
+              {/* Dynamic Hovered/Active Schedule Lines Highlight Overlay */}
+              {activeTimeRange && (
+                <div className="absolute inset-0 transition-all duration-200">
+                  {/* Highlight band overlay */}
+                  <div
+                    className="absolute inset-x-0 bg-primary/5 dark:bg-primary/10 transition-all duration-200"
+                    style={{
+                      top: `${minuteToY(activeTimeRange.startMin)}px`,
+                      height: `${minuteToY(activeTimeRange.endMin) - minuteToY(activeTimeRange.startMin)}px`,
+                    }}
+                  />
+                  {/* Start Line */}
+                  <div
+                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                    style={{ top: `${minuteToY(activeTimeRange.startMin)}px` }}
+                  />
+                  {/* End Line */}
+                  <div
+                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                    style={{ top: `${minuteToY(activeTimeRange.endMin)}px` }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Hour labels are now rendered in the dedicated Hours column */}
@@ -201,27 +229,56 @@ export function WeeklyScheduleGrid({
                 className="sticky left-0 z-30 border-r-[3px] border-border bg-card/95 backdrop-blur-[2px]"
                 style={{ height: `${totalHeight + offsetTop}px` }}
               >
-                {rows.map((row) => (
-                  <div
-                    key={row.key}
-                    className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                    style={{ top: `${minuteToY(row.startMin)}px` }}
-                  >
-                    <span className="rounded-md border border-border/80 bg-background px-2 py-1 text-[11px] font-bold text-foreground shadow-md">
-                      {row.label}
-                    </span>
-                  </div>
-                ))}
-                {rows.length > 0 && (
-                  <div
-                    className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                    style={{ top: `${minuteToY(timeRange.endMin)}px` }}
-                  >
-                    <span className="rounded-md border border-border/80 bg-background px-2 py-1 text-[11px] font-bold text-foreground shadow-md">
-                      {formatTime(timeRange.endMin)}
-                    </span>
-                  </div>
-                )}
+                {rows.map((row) => {
+                  const isStartActive = activeTimeRange && row.startMin === activeTimeRange.startMin
+                  const isEndActive = activeTimeRange && row.startMin === activeTimeRange.endMin
+                  const isActive = isStartActive || isEndActive
+
+                  return (
+                    <div
+                      key={row.key}
+                      className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                      style={{ top: `${minuteToY(row.startMin)}px` }}
+                    >
+                      <span
+                        className={cn(
+                          "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                          isActive
+                            ? "bg-primary border-primary text-primary-foreground scale-105"
+                            : "border-border/80 bg-background text-foreground"
+                        )}
+                      >
+                        {row.label}
+                      </span>
+                    </div>
+                  )
+                })}
+                {rows.length > 0 &&
+                  (() => {
+                    const isStartActive =
+                      activeTimeRange && timeRange.endMin === activeTimeRange.startMin
+                    const isEndActive =
+                      activeTimeRange && timeRange.endMin === activeTimeRange.endMin
+                    const isActive = isStartActive || isEndActive
+
+                    return (
+                      <div
+                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                        style={{ top: `${minuteToY(timeRange.endMin)}px` }}
+                      >
+                        <span
+                          className={cn(
+                            "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                            isActive
+                              ? "bg-primary border-primary text-primary-foreground scale-105"
+                              : "border-border/80 bg-background text-foreground"
+                          )}
+                        >
+                          {formatTime(timeRange.endMin)}
+                        </span>
+                      </div>
+                    )
+                  })()}
               </div>
 
               {days.map((day) => (
@@ -270,6 +327,7 @@ export function WeeklyScheduleGrid({
                             onToggle={() => toggleCluster(slice.startMin, slice.endMin)}
                             onHoverChange={(hovered) => setClusterHovered(slice.id, hovered)}
                             onItemClick={onItemClick}
+                            onHoverTimeRangeChange={setActiveTimeRange}
                           />
                         </div>
                       )
@@ -300,6 +358,7 @@ export function WeeklyScheduleGrid({
                           isContinuation={slice.isContinuation}
                           className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
                           onClick={onItemClick}
+                          onHoverTimeRangeChange={setActiveTimeRange}
                         />
                       </div>
                     )
