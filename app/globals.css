@@ -4,121 +4,395 @@
 
 @custom-variant dark (&:is(.dark *));
 
+:root {
+  /* --- UMSS Institutional Base Colors --- */
+  --theme-dark-modifier: 0;
+  --background: #fdfdfd;
+  --foreground: #2c3e50;
+  --card: #ffffff;
+  --card-foreground: #2c3e50;
+  --popover: #ffffff;
+  --popover-foreground: #2c3e50;
+  
+  /* Brand Colors */
+  --primary: #003770;
+  --primary-foreground: #ffffff;
+  --secondary: #BC000C;
+  --secondary-foreground: #ffffff;
+  --muted: #f0f4f8;
+  --muted-foreground: #6b7280;
+  --accent: #BC000C;
+  --accent-foreground: #ffffff;
+  --destructive: #BC000C;
+  --destructive-foreground: #ffffff;
+  --border: #e5e7eb;
+  --input: #f3f4f6;
+  --ring: #BC000C;
+  
+  /* UMSS Custom Brand Variants */
+  --umss-dark-blue: #001B47;
+  --umss-btn-blue: #002855;
+  --umss-btn-blue-hover: #001b3a;
+  --umss-btn-red-hover: #90000a;
+  --umss-bg-light-hero: #f8f9ff;
+  --umss-brand-red: #BC000C;
+  
+  /* Form Specific Colors */
+  --form-focus-blue: #175676;
+  --form-success-green: #2D5A27;
+
+  /* Layout Backgrounds */
+  --umss-nav-bg: #ffffff;
+  --umss-side-bg: #ffffff;
+  --umss-side-hover-bg: #eff6ff;
+
+  /* Charts & Sidebar (Originals preserved) */
+  --chart-1: #003770;
+  --chart-2: #BC000C;
+  --chart-3: #003265;
+  --chart-4: #0051a8;
+  --chart-5: #f0f4f8;
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.18 0 0);
+  --sidebar-primary: oklch(0.205 0.159 308.5);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.51 0.263 24.2);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.92 0.008 81.8);
+  --sidebar-ring: oklch(0.51 0.263 24.2);
+}
+
+.dark {
+  /* Dark Mode Variants — Fondo Base (#121212) */
+  --theme-dark-modifier: 1;
+  --background: #121212;
+  --foreground: #e0e0e0;
+  
+  /* Elevamos las tarjetas y dropdowns (#1e1e1e) */
+  --card: #1e1e1e;
+  --card-foreground: #e0e0e0;
+  --popover: #1e1e1e;
+  --popover-foreground: #e0e0e0;
+  
+  /* 🛡️ CORRECCIÓN: Colores institucionales puros en Dark Mode */
+  --primary: #003770; 
+  --primary-foreground: #ffffff;
+  --secondary: #BC000C; 
+  --secondary-foreground: #ffffff;
+  
+  /* Muted es el hover del dropdown */
+  --muted: #2a2a2a;
+  --muted-foreground: #9ca3af;
+  
+  --accent: #BC000C;
+  --accent-foreground: #ffffff;
+  --destructive: #BC000C;
+  --destructive-foreground: #ffffff;
+  --border: #333333;
+  --input: #2a2a2a;
+  --ring: #BC000C;
+  
+  /* UMSS Custom Dark Variants (Ajustados para consistencia) */
+  --umss-dark-blue: #ffffff; 
+  --umss-btn-blue: #003770;
+  --umss-btn-blue-hover: #0051a8;
+  --umss-bg-light-hero: #121212;
+  --umss-brand-red: #BC000C;
+
+  /* Layout Backgrounds Dark */
+  --umss-nav-bg: #1a1a1a;
+  --umss-side-bg: #1a1a1a;
+  --umss-side-hover-bg: #2a2a2a;
+
+  /* Charts & Sidebar unificados sin celeste */
+  --chart-1: #003770;
+  --chart-2: #BC000C;
+  --chart-3: #002855;
+  --chart-4: #0051a8;
+  --chart-5: #2a2a2a;
+  --sidebar: #1a1a1a;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-primary: #003770;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2a2a2a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #333333;
+  --sidebar-ring: #BC000C;
+}
+
 @theme inline {
+  /* Fonts */
+  --font-sans: 'Inter', 'Inter Fallback';
+  --font-roboto: 'Roboto', 'Roboto Fallback';
+  --font-mono: 'Inter Mono', 'Inter Mono Fallback';
+  
+  /* Default Color Mapping */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  /* UMSS Custom Tokens Mapping */
+  --color-umss-dark-blue: var(--umss-dark-blue);
+  --color-umss-btn-blue: var(--umss-btn-blue);
+  --color-umss-btn-blue-hover: var(--umss-btn-blue-hover);
+  --color-umss-btn-red-hover: var(--umss-btn-red-hover);
+  --color-umss-brand-red: var(--umss-brand-red);
+  --color-umss-bg-light-hero: var(--umss-bg-light-hero);
+  --color-form-focus: var(--form-focus-blue);
+  --color-form-success: var(--form-success-green);
+  
+  /* Layout Colors Mapping */
+  --color-umss-nav-bg: var(--umss-nav-bg);
+  --color-umss-side-bg: var(--umss-side-bg);
+  --color-umss-side-hover: var(--umss-side-hover-bg);
+
+  /* Charts & Sidebar Mapping */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Radius Scales */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-:root {
-  --theme-dark-modifier: 0;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+/* --- UMSS UTILITIES: TIPOGRAFÍA --- */
+@utility umss-title-h1 {
+  @apply font-roboto text-4xl md:text-5xl font-black tracking-tight text-umss-dark-blue;
 }
 
-.dark {
-  --theme-dark-modifier: 1;
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+@utility umss-title-h2 {
+  @apply font-roboto text-2xl font-bold text-umss-dark-blue;
 }
 
+@utility umss-title-h3 {
+  @apply font-roboto text-lg font-semibold text-gray-800 dark:text-gray-200;
+}
+
+@utility umss-data-mono {
+  @apply font-mono tracking-wider text-sm;
+}
+
+/* --- UMSS UTILITIES: BOTONES --- */
+@utility umss-btn-primary {
+  @apply bg-umss-btn-blue hover:bg-umss-btn-blue-hover text-white font-bold rounded-lg px-5 py-2.5 text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer;
+}
+
+@utility umss-btn-outline {
+  @apply border-2 border-umss-btn-blue dark:border-white text-umss-btn-blue dark:text-white bg-white/50 dark:bg-transparent hover:bg-white dark:hover:bg-white/10 hover:text-umss-btn-blue-hover font-bold rounded-lg px-5 py-2.5 text-sm transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer;
+}
+
+@utility umss-btn-danger {
+  @apply bg-secondary hover:bg-umss-btn-red-hover text-white font-bold rounded-lg px-5 py-2.5 text-sm shadow-md transition-all active:scale-98 flex items-center justify-center gap-2 cursor-pointer;
+}
+
+@utility umss-btn-login {
+  @apply bg-umss-btn-blue hover:bg-umss-btn-blue-hover text-white font-bold rounded-lg py-8 text-lg shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3;
+}
+
+@utility umss-btn-logout {
+  @apply bg-secondary hover:bg-umss-btn-red-hover text-white font-bold rounded-lg py-8 text-lg transition-all active:scale-95 flex items-center justify-center gap-3;
+}
+
+/* --- UMSS UTILITIES: LAYOUT & CARDS --- */
+@utility umss-hero-section {
+  @apply relative min-h-screen flex flex-col items-center overflow-hidden pt-24 pb-12 bg-umss-bg-light-hero transition-colors duration-300;
+}
+
+@utility umss-card-service {
+  @apply relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-8 rounded-4xl shadow-sm border border-gray-100 dark:border-[#333333] hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex items-start gap-6 overflow-hidden;
+}
+
+/* --- UMSS UTILITIES: FORMULARIOS --- */
+@utility umss-input {
+  @apply w-full px-4 py-3 border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] rounded-lg focus:ring-2 focus:ring-form-focus focus:outline-none transition-all uppercase placeholder-gray-400 text-gray-800 dark:text-gray-100;
+}
+
+@utility umss-select {
+  @apply w-full rounded-lg border border-gray-300 dark:border-[#333333] pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-form-focus bg-white dark:bg-[#242424] text-gray-800 dark:text-gray-100 appearance-none cursor-pointer transition-all;
+}
+
+/* --- UMSS UTILITIES: NAVEGACIÓN --- */
+@utility umss-navbar {
+  @apply fixed top-0 left-0 w-full h-16 z-50 bg-umss-nav-bg border-b border-border transition-all duration-300;
+}
+
+@utility umss-navbar-link {
+  @apply text-sm text-gray-600 dark:text-gray-400 font-medium hover:text-umss-dark-blue dark:hover:text-white transition-colors pb-1;
+}
+
+@utility umss-navbar-link-active {
+  @apply text-sm text-umss-dark-blue dark:text-white font-bold border-b-2 border-secondary pb-1;
+}
+
+@utility umss-sidebar-item {
+  @apply w-full flex items-center text-sm font-bold rounded-lg transition-all duration-200 py-3 text-umss-dark-blue dark:text-gray-300 hover:bg-umss-side-hover hover:text-primary;
+}
+
+@utility umss-sidebar-item-active {
+  @apply bg-umss-btn-blue !text-white dark:bg-umss-btn-blue dark:!text-white;
+}
+
+/* --- VARIACIONES POR TIPO (MODO CLARO) --- */
+[data-sonner-toast][data-type="success"] {
+  background-color: #f0fdf4 !important;
+  border-color: #bbf7d0 !important;    
+  color: #166534 !important;            
+}
+[data-sonner-toast][data-type="success"] [data-description] {
+  color: #15803d !important;
+}
+[data-sonner-toast][data-type="success"] [data-close-button] {
+  background-color: #e2fbe9 !important;
+  border-color: #bbf7d0 !important;
+  color: #166534 !important;
+}
+[data-sonner-toast][data-type="success"] [data-close-button]:hover {
+  background-color: #bbf7d0 !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  background-color: #f0f7fa !important; 
+  border-color: #b3d1e0 !important;     
+  color: #175676 !important;            
+}
+[data-sonner-toast][data-type="info"] [data-description] {
+  color: #1c668c !important;
+}
+[data-sonner-toast][data-type="info"] [data-close-button] {
+  background-color: #e1eff6 !important;
+  border-color: #b3d1e0 !important;
+  color: #175676 !important;
+}
+[data-sonner-toast][data-type="info"] [data-close-button]:hover {
+  background-color: #b3d1e0 !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  background-color: #fef2f2 !important; 
+  border-color: #fecaca !important;     
+  color: #991b1b !important;            
+}
+[data-sonner-toast][data-type="error"] [data-description] {
+  color: #b91c1c !important;
+}
+[data-sonner-toast][data-type="error"] [data-close-button] {
+  background-color: #fee2e2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
+}
+[data-sonner-toast][data-type="error"] [data-close-button]:hover {
+  background-color: #fecaca !important;
+}
+
+/* --- VARIACIONES POR TIPO (MODO DARK) --- */
+.dark [data-sonner-toast] {
+  background-color: #242424 !important;
+  color: #e0e0e0 !important;
+  border-color: #333333 !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark [data-sonner-toast] [data-description] {
+  color: #a3a3a3 !important;
+}
+
+.dark [data-sonner-toast][data-type="success"] {
+  background-color: #062f17 !important; 
+  border-color: #14532d !important;
+  color: #4ade80 !important;            
+}
+.dark [data-sonner-toast][data-type="success"] [data-description] {
+  color: #86efac !important;
+}
+.dark [data-sonner-toast][data-type="success"] [data-close-button] {
+  background-color: #14532d !important;
+  border-color: #166534 !important;
+  color: #4ade80 !important;
+}
+.dark [data-sonner-toast][data-type="success"] [data-close-button]:hover {
+  background-color: #166534 !important;
+}
+
+.dark [data-sonner-toast][data-type="info"] {
+  background-color: #0d2735 !important; 
+  border-color: #1a4358 !important;
+  color: #3a8fb7 !important;            
+}
+.dark [data-sonner-toast][data-type="info"] [data-description] {
+  color: #70b0d0 !important;
+}
+.dark [data-sonner-toast][data-type="info"] [data-close-button] {
+  background-color: #1a4358 !important;
+  border-color: #1c668c !important;
+  color: #3a8fb7 !important;
+}
+.dark [data-sonner-toast][data-type="info"] [data-close-button]:hover {
+  background-color: #1c668c !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] {
+  background-color: #450a0a !important; 
+  border-color: #7f1d1d !important;
+  color: #f87171 !important;            
+}
+.dark [data-sonner-toast][data-type="error"] [data-description] {
+  color: #fca5a5 !important;
+}
+.dark [data-sonner-toast][data-type="error"] [data-close-button] {
+  background-color: #7f1d1d !important;
+  border-color: #991b1b !important;
+  color: #f87171 !important;
+}
+.dark [data-sonner-toast][data-type="error"] [data-close-button]:hover {
+  background-color: #991b1b !important;
+}
+
+[data-sonner-toast] [data-close-button] svg {
+  color: inherit !important;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 640px) {
+  [data-sonner-toast] {
+    width: 92vw !important;
+    margin: 0 auto !important;
+  }
+}
+
+/* --- BASE STYLES --- */
 @layer base {
   * {
     @apply border-border outline-ring/50;
