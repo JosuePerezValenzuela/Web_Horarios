@@ -44,6 +44,27 @@ export function WeeklyScheduleGrid({
   // Build render slices (fractional overlap splitting)
   const renderSlices = useMemo(() => buildRenderSlices(items), [items])
 
+  // For each time range (timeKey), calculate the max collapsed and expanded heights across all days.
+  const maxHeightsByTimeKey = useMemo(() => {
+    const map: Record<string, { collapsed: number; expanded: number }> = {}
+
+    renderSlices.forEach((slice) => {
+      if (slice.type !== "cluster") return
+      const timeKey = `${slice.startMin}-${slice.endMin}`
+      const collapsed = getClusterCollapsedHeight(slice.items)
+      const expanded = getClusterExpandedHeight(slice.items)
+
+      if (!map[timeKey]) {
+        map[timeKey] = { collapsed, expanded }
+      } else {
+        map[timeKey].collapsed = Math.max(map[timeKey].collapsed, collapsed)
+        map[timeKey].expanded = Math.max(map[timeKey].expanded, expanded)
+      }
+    })
+
+    return map
+  }, [renderSlices])
+
   // Build timeline segments (adaptive height)
   const timelineSegments = useMemo(
     () => buildTimelineSegments(renderSlices, expandedClusterIds, timeRange),
@@ -220,13 +241,15 @@ export function WeeklyScheduleGrid({
                       const visibleIndex = visibleIndexByCluster[slice.id] ?? 0
                       const rotationTick = rotationTickByCluster[slice.id] ?? 0
 
-                      // Determine the visual height based on collapsed or expanded state.
-                      // Collapsed/solo fill slotHeight; expanded adapts strictly to content height.
-                      const collapsedHeight = getClusterCollapsedHeight(slice.items)
+                      // Determine the visual height based on collapsed or expanded state across all days for this time key.
+                      const maxHeights = maxHeightsByTimeKey[timeKey] ?? {
+                        collapsed: getClusterCollapsedHeight(slice.items),
+                        expanded: getClusterExpandedHeight(slice.items),
+                      }
                       const slotHeight = Math.max(temporalSpan - GRID_CONSTANTS.VERTICAL_GAP * 2, 0)
                       const visualHeight = isExpanded
-                        ? getClusterExpandedHeight(slice.items)
-                        : Math.max(collapsedHeight, slotHeight)
+                        ? maxHeights.expanded
+                        : Math.max(maxHeights.collapsed, slotHeight)
 
                       const visualTop = top + GRID_CONSTANTS.VERTICAL_GAP
 
