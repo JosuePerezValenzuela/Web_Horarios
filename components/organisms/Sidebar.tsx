@@ -2,17 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
-import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  FileText,
-  FileBarChart,
-  LogOut,
-  LayoutGrid,
-} from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut } from "lucide-react"
 
 interface SidebarItem {
   title: string
@@ -22,8 +15,8 @@ interface SidebarItem {
 
 const defaultSidebarItems: SidebarItem[] = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: "Inicio",
+    href: "/",
     icon: LayoutDashboard,
   },
   {
@@ -35,16 +28,6 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Horarios",
     href: "/horarios",
     icon: Calendar,
-  },
-  {
-    title: "Partes Diarias",
-    href: "/partes-diarias",
-    icon: FileText,
-  },
-  {
-    title: "Partes Consolidadas",
-    href: "/partes-consolidadas",
-    icon: FileBarChart,
   },
 ]
 
@@ -66,7 +49,6 @@ export function Sidebar({
   pathname: propPathname,
   useAuth: propUseAuth,
   systemName = "Horarios",
-  SystemIcon = LayoutGrid,
   LinkComponent = Link,
 }: SidebarProps) {
   const localPathname = usePathname()
@@ -153,8 +135,15 @@ export function Sidebar({
                 isHovered ? "gap-3 px-3" : "justify-center px-0"
               }`}
             >
-              <div className="w-8 h-8 shrink-0 flex items-center justify-center rounded-lg bg-[#eff6ff] dark:bg-slate-800 text-[#003770] dark:text-blue-400">
-                <SystemIcon className="w-5 h-5 stroke-[2.5]" />
+              <div className="relative w-8 h-8 shrink-0 flex items-center justify-center">
+                <Image
+                  src="/umss1.png"
+                  alt="Escudo UMSS"
+                  width={32}
+                  height={32}
+                  className="object-contain"
+                  priority
+                />
               </div>
               <div
                 className={`flex flex-col whitespace-nowrap transition-all duration-300 ${

@@ -130,8 +130,8 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Grilla de Tarjetas Compactas en 4 Columnas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full mt-2">
+        {/* Grilla de Tarjetas Compactas en 2 Columnas */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mx-auto mt-2">
           {/* Tarjeta 1: Horarios de Docentes */}
           <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
             <div className="flex flex-col gap-2">
@@ -148,72 +148,29 @@ export default function Home() {
             </div>
             <a
               href="/docentes"
-              className="umss-btn-primary py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm"
+              className="umss-btn-primary py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm text-center"
             >
               Abrir
             </a>
           </div>
 
-          {/* Tarjeta 2: Consulta de Ambientes */}
+          {/* Tarjeta 2: Horarios */}
           <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
             <div className="flex flex-col gap-2">
               <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/20 text-[#BC000C] dark:text-red-400">
-                <MapPin className="h-5 w-5 stroke-[2]" />
+                <Calendar className="h-5 w-5 stroke-[2]" />
               </div>
               <h3 className="font-roboto text-sm font-bold text-umss-dark-blue dark:text-gray-100 uppercase tracking-tight">
-                Ambientes
+                Horarios
               </h3>
               <p className="text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                Búsqueda de aulas libres y consulta de infraestructura física de campus y bloques.
+                Visualización integral y filtros de horarios de clases por facultad, plan de
+                estudios y espacios físicos.
               </p>
             </div>
             <a
               href="/horarios"
-              className="umss-btn-outline py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm"
-            >
-              Abrir
-            </a>
-          </div>
-
-          {/* Tarjeta 3: Partes Diarios */}
-          <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
-                <FileSpreadsheet className="h-5 w-5 stroke-[2]" />
-              </div>
-              <h3 className="font-roboto text-sm font-bold text-umss-dark-blue dark:text-gray-100 uppercase tracking-tight">
-                Partes Diarios
-              </h3>
-              <p className="text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                Seguimiento y control del avance de materias y firmas de planillas de asistencia
-                diaria.
-              </p>
-            </div>
-            <a
-              href="/partes-diarias"
-              className="umss-btn-outline py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm"
-            >
-              Abrir
-            </a>
-          </div>
-
-          {/* Tarjeta 4: Reportes Consolidados */}
-          <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-yellow-50 dark:bg-yellow-950/20 text-yellow-600 dark:text-yellow-500">
-                <FileSpreadsheet className="h-5 w-5 stroke-[2]" />
-              </div>
-              <h3 className="font-roboto text-sm font-bold text-umss-dark-blue dark:text-gray-100 uppercase tracking-tight">
-                Reportes
-              </h3>
-              <p className="text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                Consolidación mensual de horas docentes y estadísticas administrativas de la
-                facultad.
-              </p>
-            </div>
-            <a
-              href="/partes-consolidadas"
-              className="umss-btn-outline py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm"
+              className="umss-btn-primary py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm text-center"
             >
               Abrir
             </a>

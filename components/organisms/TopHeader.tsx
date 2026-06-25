@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
+import { usePathname } from "next/navigation"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
 import { User, LogOut, ChevronDown, ShieldAlert, Check, Settings } from "lucide-react"
 
@@ -27,6 +28,7 @@ export function TopHeader({
   logoSrc = "/umss1.png",
   LinkComponent = Link,
 }: TopHeaderProps) {
+  const pathname = usePathname()
   const { isAuthenticated, user, logout } = useAppAuth()
 
   const defaultUseAuth = () => {
@@ -126,7 +128,7 @@ export function TopHeader({
           {/* Breadcrumbs (si existen) */}
           {hasToken && breadcrumbs && breadcrumbs.length > 0 && (
             <div className="hidden lg:flex items-center text-xs border-l border-border pl-4 gap-2 text-gray-400 font-sans ml-4">
-              <NavigationLink href="/dashboard" className="hover:text-primary transition-colors">
+              <NavigationLink href="/" className="hover:text-primary transition-colors">
                 Inicio
               </NavigationLink>
               {breadcrumbs.map((crumb, index) => (
@@ -154,8 +156,12 @@ export function TopHeader({
         <div className="flex items-center gap-4 sm:gap-6">
           <div className="hidden md:flex items-center gap-6">
             <NavigationLink
-              href="/dashboard"
-              className="text-sm text-gray-700 dark:text-gray-300 font-medium hover:text-[#001B47] dark:hover:text-white transition-colors border-b-2 border-[#BC000C] pb-1"
+              href="/"
+              className={`text-sm font-medium hover:text-[#001B47] dark:hover:text-white transition-colors pb-1 ${
+                pathname === "/"
+                  ? "text-[#001B47] dark:text-white border-b-2 border-[#BC000C]"
+                  : "text-gray-700 dark:text-gray-300"
+              }`}
             >
               Inicio
             </NavigationLink>
@@ -251,7 +257,7 @@ export function TopHeader({
 
                   <div className="px-2 py-1.5">
                     <NavigationLink
-                      href="/dashboard"
+                      href="/"
                       onClick={() => setIsDropdownOpen(false)}
                       className="w-full flex items-center gap-3 text-sm font-bold text-[#001B47] dark:text-gray-300 rounded-lg px-3 py-2.5 transition-all hover:bg-umss-side-hover hover:text-[#003770] dark:hover:text-white"
                     >
@@ -260,7 +266,7 @@ export function TopHeader({
                     </NavigationLink>
 
                     <NavigationLink
-                      href="/dashboard"
+                      href="/"
                       onClick={() => setIsDropdownOpen(false)}
                       className="w-full flex items-center gap-3 text-sm font-bold text-[#001B47] dark:text-gray-300 rounded-lg px-3 py-2.5 transition-all hover:bg-umss-side-hover hover:text-[#003770] dark:hover:text-white"
                     >

@@ -516,7 +516,10 @@ export default function HorariosListPage() {
                   <h1 className="font-roboto text-xl font-bold tracking-tight text-umss-dark-blue md:text-2xl">
                     Horarios de Clases
                   </h1>
-                  <Badge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
+                  <Badge
+                    variant="outline"
+                    className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border-border"
+                  >
                     {pagination.totalRecords} registros
                   </Badge>
                   {filters.solo_conflicto && (
@@ -838,9 +841,9 @@ export default function HorariosListPage() {
                         />
                         <Label
                           htmlFor="solo_conflicto"
-                          className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1 text-destructive"
+                          className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1.5"
                         >
-                          <AlertTriangle className="size-3.5 shrink-0" />
+                          <AlertTriangle className="size-3.5 shrink-0 text-destructive" />
                           Solo solapamientos / conflictos
                         </Label>
                       </div>
