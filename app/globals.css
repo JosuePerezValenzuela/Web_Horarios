@@ -13,33 +13,33 @@
   --card-foreground: #2c3e50;
   --popover: #ffffff;
   --popover-foreground: #2c3e50;
-  
+
   /* Brand Colors */
   --primary: #003770;
   --primary-foreground: #ffffff;
-  --secondary: #BC000C;
+  --secondary: #bc000c;
   --secondary-foreground: #ffffff;
   --muted: #f0f4f8;
   --muted-foreground: #6b7280;
-  --accent: #BC000C;
+  --accent: #bc000c;
   --accent-foreground: #ffffff;
-  --destructive: #BC000C;
+  --destructive: #bc000c;
   --destructive-foreground: #ffffff;
   --border: #e5e7eb;
   --input: #f3f4f6;
-  --ring: #BC000C;
-  
+  --ring: #175676;
+
   /* UMSS Custom Brand Variants */
-  --umss-dark-blue: #001B47;
+  --umss-dark-blue: #001b47;
   --umss-btn-blue: #002855;
   --umss-btn-blue-hover: #001b3a;
   --umss-btn-red-hover: #90000a;
   --umss-bg-light-hero: #f8f9ff;
-  --umss-brand-red: #BC000C;
-  
+  --umss-brand-red: #bc000c;
+
   /* Form Specific Colors */
   --form-focus-blue: #175676;
-  --form-success-green: #2D5A27;
+  --form-success-green: #2d5a27;
 
   /* Layout Backgrounds */
   --umss-nav-bg: #ffffff;
@@ -48,7 +48,7 @@
 
   /* Charts & Sidebar (Originals preserved) */
   --chart-1: #003770;
-  --chart-2: #BC000C;
+  --chart-2: #bc000c;
   --chart-3: #003265;
   --chart-4: #0051a8;
   --chart-5: #f0f4f8;
@@ -68,37 +68,37 @@
   --theme-dark-modifier: 1;
   --background: #121212;
   --foreground: #e0e0e0;
-  
+
   /* Elevamos las tarjetas y dropdowns (#1e1e1e) */
   --card: #1e1e1e;
   --card-foreground: #e0e0e0;
   --popover: #1e1e1e;
   --popover-foreground: #e0e0e0;
-  
+
   /* 🛡️ CORRECCIÓN: Colores institucionales puros en Dark Mode */
-  --primary: #003770; 
+  --primary: #003770;
   --primary-foreground: #ffffff;
-  --secondary: #BC000C; 
+  --secondary: #bc000c;
   --secondary-foreground: #ffffff;
-  
+
   /* Muted es el hover del dropdown */
   --muted: #2a2a2a;
   --muted-foreground: #9ca3af;
-  
-  --accent: #BC000C;
+
+  --accent: #bc000c;
   --accent-foreground: #ffffff;
-  --destructive: #BC000C;
+  --destructive: #bc000c;
   --destructive-foreground: #ffffff;
   --border: #333333;
   --input: #2a2a2a;
-  --ring: #BC000C;
-  
+  --ring: #175676;
+
   /* UMSS Custom Dark Variants (Ajustados para consistencia) */
-  --umss-dark-blue: #ffffff; 
+  --umss-dark-blue: #ffffff;
   --umss-btn-blue: #003770;
   --umss-btn-blue-hover: #0051a8;
   --umss-bg-light-hero: #121212;
-  --umss-brand-red: #BC000C;
+  --umss-brand-red: #bc000c;
 
   /* Layout Backgrounds Dark */
   --umss-nav-bg: #1a1a1a;
@@ -107,7 +107,7 @@
 
   /* Charts & Sidebar unificados sin celeste */
   --chart-1: #003770;
-  --chart-2: #BC000C;
+  --chart-2: #bc000c;
   --chart-3: #002855;
   --chart-4: #0051a8;
   --chart-5: #2a2a2a;
@@ -118,15 +118,15 @@
   --sidebar-accent: #2a2a2a;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: #333333;
-  --sidebar-ring: #BC000C;
+  --sidebar-ring: #bc000c;
 }
 
 @theme inline {
   /* Fonts */
-  --font-sans: 'Inter', 'Inter Fallback';
-  --font-roboto: 'Roboto', 'Roboto Fallback';
-  --font-mono: 'Inter Mono', 'Inter Mono Fallback';
-  
+  --font-sans: "Inter", "Inter Fallback";
+  --font-roboto: "Roboto", "Roboto Fallback";
+  --font-mono: "Inter Mono", "Inter Mono Fallback";
+
   /* Default Color Mapping */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -147,7 +147,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  
+
   /* UMSS Custom Tokens Mapping */
   --color-umss-dark-blue: var(--umss-dark-blue);
   --color-umss-btn-blue: var(--umss-btn-blue);
@@ -157,7 +157,7 @@
   --color-umss-bg-light-hero: var(--umss-bg-light-hero);
   --color-form-focus: var(--form-focus-blue);
   --color-form-success: var(--form-success-green);
-  
+
   /* Layout Colors Mapping */
   --color-umss-nav-bg: var(--umss-nav-bg);
   --color-umss-side-bg: var(--umss-side-bg);
@@ -268,8 +268,8 @@
 /* --- VARIACIONES POR TIPO (MODO CLARO) --- */
 [data-sonner-toast][data-type="success"] {
   background-color: #f0fdf4 !important;
-  border-color: #bbf7d0 !important;    
-  color: #166534 !important;            
+  border-color: #bbf7d0 !important;
+  color: #166534 !important;
 }
 [data-sonner-toast][data-type="success"] [data-description] {
   color: #15803d !important;
@@ -284,9 +284,9 @@
 }
 
 [data-sonner-toast][data-type="info"] {
-  background-color: #f0f7fa !important; 
-  border-color: #b3d1e0 !important;     
-  color: #175676 !important;            
+  background-color: #f0f7fa !important;
+  border-color: #b3d1e0 !important;
+  color: #175676 !important;
 }
 [data-sonner-toast][data-type="info"] [data-description] {
   color: #1c668c !important;
@@ -301,9 +301,9 @@
 }
 
 [data-sonner-toast][data-type="error"] {
-  background-color: #fef2f2 !important; 
-  border-color: #fecaca !important;     
-  color: #991b1b !important;            
+  background-color: #fef2f2 !important;
+  border-color: #fecaca !important;
+  color: #991b1b !important;
 }
 [data-sonner-toast][data-type="error"] [data-description] {
   color: #b91c1c !important;
@@ -330,9 +330,9 @@
 }
 
 .dark [data-sonner-toast][data-type="success"] {
-  background-color: #062f17 !important; 
+  background-color: #062f17 !important;
   border-color: #14532d !important;
-  color: #4ade80 !important;            
+  color: #4ade80 !important;
 }
 .dark [data-sonner-toast][data-type="success"] [data-description] {
   color: #86efac !important;
@@ -347,9 +347,9 @@
 }
 
 .dark [data-sonner-toast][data-type="info"] {
-  background-color: #0d2735 !important; 
+  background-color: #0d2735 !important;
   border-color: #1a4358 !important;
-  color: #3a8fb7 !important;            
+  color: #3a8fb7 !important;
 }
 .dark [data-sonner-toast][data-type="info"] [data-description] {
   color: #70b0d0 !important;
@@ -364,9 +364,9 @@
 }
 
 .dark [data-sonner-toast][data-type="error"] {
-  background-color: #450a0a !important; 
+  background-color: #450a0a !important;
   border-color: #7f1d1d !important;
-  color: #f87171 !important;            
+  color: #f87171 !important;
 }
 .dark [data-sonner-toast][data-type="error"] [data-description] {
   color: #fca5a5 !important;
