@@ -63,8 +63,13 @@ class ApiClient {
     })
 
     if (response.status === 401) {
-      if (typeof window !== "undefined" && !endpoint.includes("/auth/me")) {
-        window.location.href = "/"
+      if (typeof window !== "undefined") {
+        const { useAuthStore } = await import("@/features/auth/application/authStore")
+        useAuthStore.getState().logout()
+
+        if (window.location.pathname !== "/") {
+          window.location.href = "/"
+        }
       }
       const error: ApiError = new Error("Unauthorized") as ApiError
       error.status = 401
