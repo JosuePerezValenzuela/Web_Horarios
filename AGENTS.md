@@ -195,6 +195,11 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
   - `shared/services/api/infraClient.ts` → infrastructure/physical resources API (`NEXT_PUBLIC_INFRA_URL`)
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
+### 6. Unified UMSS Design System (CRITICAL)
+
+- Toda implementación de vistas, pantallas o componentes visuales debe seguir estrictamente las reglas tipográficas, de paleta de colores, atmósfera y utilidades definidas en la guía de estilos [design-system-umss.md](file:///home/josue/dev/Web_Horarios/design-system-umss.md) (referenciado como design-style.md en la raíz).
+- Priorizar el uso de las clases de utilidad provistas en dicho archivo (como `umss-btn-primary`, `umss-title-h1`, `umss-input`, etc.) para asegurar una experiencia institucional coherente y uniforme.
+
 ## Formatting Workflow (IMPORTANT)
 
 When writing code, agents should follow this workflow:
