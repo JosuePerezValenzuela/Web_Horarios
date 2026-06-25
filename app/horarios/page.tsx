@@ -36,6 +36,41 @@ import { DatePickerRange } from "@/components/ui/date-picker-range"
 import { Checkbox } from "@/components/ui/checkbox"
 import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
 import type { ScheduleItem } from "@/components/ui/weekly-schedule-grid/types"
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
+
+// Formateador y normalizador de errores en español
+const formatErrorMessage = (error: string | null): string | null => {
+  if (!error) return null
+  const errorLower = error.toLowerCase()
+  if (
+    errorLower.includes("failed to fetch") ||
+    errorLower.includes("fetch") ||
+    errorLower.includes("network") ||
+    errorLower.includes("api key") ||
+    errorLower.includes("unexpected token") ||
+    errorLower.includes("networkerror")
+  ) {
+    return "No se pudo conectar con el servidor. Por favor, verifique su conexión o intente más tarde."
+  }
+
+  if (errorLower.includes("unauthorized") || errorLower.includes("401")) {
+    return "Sesión no autorizada o expirada. Por favor, inicie sesión nuevamente."
+  }
+
+  if (errorLower.includes("forbidden") || errorLower.includes("403")) {
+    return "No tiene permisos para acceder a esta información."
+  }
+
+  if (errorLower.includes("internal server error") || errorLower.includes("500")) {
+    return "Ocurrió un error en el servidor. Por favor, intente más tarde."
+  }
+
+  if (errorLower.includes("not found") || errorLower.includes("404")) {
+    return "El recurso o listado solicitado no fue encontrado en el servidor."
+  }
+
+  return error
+}
 
 export default function HorariosListPage() {
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore()
@@ -110,23 +145,28 @@ export default function HorariosListPage() {
 
   // Toasts de error automáticos para las peticiones de catálogos y listado
   useEffect(() => {
-    if (errorFacultades) toast.error(errorFacultades)
+    const formatted = formatErrorMessage(errorFacultades)
+    if (formatted) toast.error(formatted)
   }, [errorFacultades])
 
   useEffect(() => {
-    if (errorCarreras) toast.error(errorCarreras)
+    const formatted = formatErrorMessage(errorCarreras)
+    if (formatted) toast.error(formatted)
   }, [errorCarreras])
 
   useEffect(() => {
-    if (errorAsignaturas) toast.error(errorAsignaturas)
+    const formatted = formatErrorMessage(errorAsignaturas)
+    if (formatted) toast.error(formatted)
   }, [errorAsignaturas])
 
   useEffect(() => {
-    if (errorInfra) toast.error(errorInfra)
+    const formatted = formatErrorMessage(errorInfra)
+    if (formatted) toast.error(formatted)
   }, [errorInfra])
 
   useEffect(() => {
-    if (listError) toast.error(listError)
+    const formatted = formatErrorMessage(listError)
+    if (formatted) toast.error(formatted)
   }, [listError])
 
   // Determinar si los filtros obligatorios están establecidos
@@ -548,7 +588,10 @@ export default function HorariosListPage() {
             {showFilters && (
               <aside className="w-80 shrink-0 flex flex-col gap-4 h-full min-h-0">
                 {/* Tarjeta 1: Filtros Académicos */}
-                <div className="flex-1 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0">
+                <div
+                  className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                  style={{ flex: "7 1 0%" }}
+                >
                   <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <Filter className="size-3.5" />
@@ -806,7 +849,10 @@ export default function HorariosListPage() {
                 </div>
 
                 {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
-                <div className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden h-80 shrink-0 min-h-0">
+                <div
+                  className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                  style={{ flex: "3 1 0%" }}
+                >
                   <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <MapPin className="size-3.5" />
@@ -963,12 +1009,12 @@ export default function HorariosListPage() {
             <main className="flex-1 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-w-0">
               {/* Avisos de Error */}
               {listError && (
-                <div className="m-4 flex items-start gap-2.5 rounded-2xl border border-amber-200 bg-amber-50/70 p-3 text-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-400">
-                  <AlertCircle className="size-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">Atención: </span>
-                    {listError}
-                  </div>
+                <div className="m-4">
+                  <Alert variant="destructive">
+                    <AlertCircle className="size-4" />
+                    <AlertTitle>Atención</AlertTitle>
+                    <AlertDescription>{formatErrorMessage(listError)}</AlertDescription>
+                  </Alert>
                 </div>
               )}
 
