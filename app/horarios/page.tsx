@@ -513,7 +513,7 @@ export default function HorariosListPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                  <h1 className="font-roboto text-xl font-bold tracking-tight text-umss-dark-blue md:text-2xl">
                     Horarios de Clases
                   </h1>
                   <Badge variant="secondary" className="px-2 py-0.5 text-xs font-semibold">
