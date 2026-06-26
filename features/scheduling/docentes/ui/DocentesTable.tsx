@@ -73,13 +73,13 @@ export function DocentesTable() {
                   className="hover:bg-umss-side-hover/75 transition-colors cursor-pointer border-b border-border/60 last:border-0"
                   onClick={() => handleRowClick(docente.id)}
                 >
-                  {/* Código SIS en Fuente Mono */}
-                  <TableCell className="px-4 py-3 font-mono text-[11px] text-gray-700 dark:text-gray-300 font-medium">
+                  {/* Código SIS */}
+                  <TableCell className="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
                     {docente.codigo}
                   </TableCell>
 
-                  {/* Carnet de Identidad en Fuente Mono */}
-                  <TableCell className="px-4 py-3 font-mono text-[11px] text-gray-700 dark:text-gray-300">
+                  {/* Carnet de Identidad */}
+                  <TableCell className="px-4 py-3 text-xs font-medium text-gray-700 dark:text-gray-300">
                     {docente.documento || "—"}
                   </TableCell>
 
