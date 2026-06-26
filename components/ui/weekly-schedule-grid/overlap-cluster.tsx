@@ -1,12 +1,7 @@
 "use client"
 
 import { X } from "lucide-react"
-import {
-  GRID_CONSTANTS,
-  getItemHeight,
-  getClusterCollapsedHeight,
-  getClusterExpandedHeight,
-} from "./schedule-utils"
+import { GRID_CONSTANTS } from "./schedule-utils"
 import { ScheduleCard } from "./schedule-card"
 import type { RenderSlice, ScheduleItem } from "./types"
 
@@ -15,6 +10,7 @@ interface OverlapClusterProps {
   isExpanded: boolean
   visibleIndex: number
   rotationTick: number
+  maxItemHeight: number
   onToggle: () => void
   onHoverChange: (hovered: boolean) => void
   onItemClick?: (item: ScheduleItem) => void
@@ -26,6 +22,7 @@ export function OverlapCluster({
   isExpanded,
   visibleIndex,
   rotationTick,
+  maxItemHeight,
   onToggle,
   onHoverChange,
   onItemClick,
@@ -34,7 +31,6 @@ export function OverlapCluster({
   const { items } = slice
   const totalCount = items.length
   const visibleItem = items[visibleIndex % totalCount]
-  const maxItemHeight = Math.max(...items.map(getItemHeight))
 
   const previewCount = Math.min(totalCount - 1, GRID_CONSTANTS.STACK_PREVIEW_COUNT)
   const previewItems = Array.from(
@@ -44,10 +40,7 @@ export function OverlapCluster({
 
   if (isExpanded) {
     return (
-      <div
-        style={{ height: `${getClusterExpandedHeight(items)}px` }}
-        className="relative flex w-full flex-col rounded-2xl border-2 border-dashed border-border/80 bg-slate-50/60 dark:bg-slate-900/40 p-1.5 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)] transition-all duration-200"
-      >
+      <div className="relative flex h-full w-full flex-col rounded-2xl border-2 border-dashed border-border/80 bg-slate-50/60 dark:bg-slate-900/40 p-1.5 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.45)] transition-all duration-200">
         {/* Header */}
         <div className="mb-1.5 flex w-full shrink-0 items-center justify-between px-1">
           <div className="text-[10px] font-bold tracking-wide text-foreground/70 uppercase">
@@ -69,8 +62,8 @@ export function OverlapCluster({
             return (
               <div
                 key={item.id}
-                style={{ minHeight: `${maxItemHeight}px` }}
-                className="w-full flex-1 flex flex-col"
+                style={{ height: `${maxItemHeight}px` }}
+                className="w-full shrink-0 flex flex-col"
               >
                 <ScheduleCard
                   item={item}
@@ -87,12 +80,9 @@ export function OverlapCluster({
     )
   }
 
-  // Collapsed stack wrapped in a styled dashed container
+  // Collapsed stack wrapped in a transparent container
   return (
-    <div
-      style={{ height: `${getClusterCollapsedHeight(items)}px` }}
-      className="relative w-full rounded-xl border-2 border-dashed border-border/80 bg-slate-50/30 dark:bg-slate-900/20 p-1 transition-all duration-200 hover:border-border/100"
-    >
+    <div className="relative h-full w-full transition-all duration-200">
       <button
         type="button"
         onClick={onToggle}
@@ -149,9 +139,10 @@ export function OverlapCluster({
           >
             <ScheduleCard
               item={visibleItem}
+              mode="compact"
               className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
               onClick={undefined}
-              onHoverTimeRangeChange={onHoverTimeRangeChange}
+              onHoverTimeRangeChange={undefined}
             />
           </div>
         </div>

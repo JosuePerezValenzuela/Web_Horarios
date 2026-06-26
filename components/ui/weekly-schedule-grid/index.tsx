@@ -7,6 +7,7 @@ import {
   buildTimelineSegments,
   getMinutePosition,
   formatTime,
+  getItemHeight,
   getClusterCollapsedHeight,
   getClusterExpandedHeight,
   getSoloSliceHeight,
@@ -50,19 +51,21 @@ export function WeeklyScheduleGrid({
 
   // For each time range (timeKey), calculate the max collapsed and expanded heights across all days.
   const maxHeightsByTimeKey = useMemo(() => {
-    const map: Record<string, { collapsed: number; expanded: number }> = {}
+    const map: Record<string, { collapsed: number; expanded: number; maxItemHeight: number }> = {}
 
     renderSlices.forEach((slice) => {
       if (slice.type !== "cluster") return
       const timeKey = `${slice.startMin}-${slice.endMin}`
       const collapsed = getClusterCollapsedHeight(slice.items)
       const expanded = getClusterExpandedHeight(slice.items)
+      const maxItemHeight = Math.max(...slice.items.map(getItemHeight))
 
       if (!map[timeKey]) {
-        map[timeKey] = { collapsed, expanded }
+        map[timeKey] = { collapsed, expanded, maxItemHeight }
       } else {
         map[timeKey].collapsed = Math.max(map[timeKey].collapsed, collapsed)
         map[timeKey].expanded = Math.max(map[timeKey].expanded, expanded)
+        map[timeKey].maxItemHeight = Math.max(map[timeKey].maxItemHeight, maxItemHeight)
       }
     })
 
@@ -324,6 +327,7 @@ export function WeeklyScheduleGrid({
                             isExpanded={isExpanded}
                             visibleIndex={visibleIndex}
                             rotationTick={rotationTick}
+                            maxItemHeight={maxHeights.maxItemHeight}
                             onToggle={() => toggleCluster(slice.startMin, slice.endMin)}
                             onHoverChange={(hovered) => setClusterHovered(slice.id, hovered)}
                             onItemClick={onItemClick}

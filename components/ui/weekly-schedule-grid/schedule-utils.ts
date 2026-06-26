@@ -28,11 +28,11 @@ export function formatTime(minutes: number): string {
 }
 
 export function getItemHeight(item: ScheduleItem): number {
-  const titleLines = Math.max(1, Math.ceil(item.title.length / 20))
-  const subtitleLines = item.subtitle ? Math.max(1, Math.ceil(item.subtitle.length / 24)) : 0
+  const titleLines = Math.max(1, Math.ceil(item.title.length / 18))
+  const subtitleLines = item.subtitle ? Math.max(1, Math.ceil(item.subtitle.length / 22)) : 0
   const badgeLines = item.badge ? 1 : 0
 
-  let height = 14 // Padding top/bottom + borders
+  let height = 16 // Padding top/bottom + borders (with safety margin)
   height += titleLines * 15 // Title text lines
   if (subtitleLines > 0) {
     height += subtitleLines * 14 + 2 // Subtitle lines + gap mt-0.5
