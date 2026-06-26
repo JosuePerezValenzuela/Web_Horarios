@@ -126,7 +126,7 @@ export const infraService = {
       activo: "true",
       clases: "true",
     })
-    if (bloqueId) params.append("bloquesId", bloqueId)
+    if (bloqueId) params.append("bloqueId", bloqueId)
     return infraApiClient.get<{ success: boolean; data: Ambiente[] }>(
       `/ambientes?${params.toString()}`
     )
