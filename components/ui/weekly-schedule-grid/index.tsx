@@ -113,21 +113,8 @@ export function WeeklyScheduleGrid({
 
   // Filter rows (hour markings) to only include visible/non-collapsed times
   const visibleRows = useMemo(() => {
-    const filtered = rows.filter((row) => isMinuteVisible(row.startMin))
-
-    const result: typeof rows = []
-    let lastY: number | null = null
-
-    filtered.forEach((row) => {
-      const y = minuteToY(row.startMin)
-      if (lastY === null || Math.abs(y - lastY) >= 20) {
-        result.push(row)
-        lastY = y
-      }
-    })
-
-    return result
-  }, [rows, isMinuteVisible, minuteToY])
+    return rows.filter((row) => isMinuteVisible(row.startMin))
+  }, [rows, isMinuteVisible])
 
   // Collect all start/end minutes from classes and admin schedules (for compact mode)
   const activeHours = useMemo(() => {
@@ -141,22 +128,8 @@ export function WeeklyScheduleGrid({
       mins.add(admin.endMin)
     })
 
-    const sorted = Array.from(mins).sort((a, b) => a - b)
-
-    // Apply distance filter to avoid overlapping labels (min 20px gap)
-    const result: number[] = []
-    let lastY: number | null = null
-
-    sorted.forEach((minute) => {
-      const y = minuteToY(minute)
-      if (lastY === null || Math.abs(y - lastY) >= 20) {
-        result.push(minute)
-        lastY = y
-      }
-    })
-
-    return result
-  }, [items, adminSchedules, minuteToY])
+    return Array.from(mins).sort((a, b) => a - b)
+  }, [items, adminSchedules])
 
   // Auto-rotation for collapsed clusters
   useEffect(() => {
@@ -364,12 +337,6 @@ export function WeeklyScheduleGrid({
                     {rows.length > 0 &&
                       isMinuteVisible(timeRange.endMin) &&
                       (() => {
-                        const endY = minuteToY(timeRange.endMin)
-                        const overlaps = visibleRows.some(
-                          (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
-                        )
-                        if (overlaps) return null
-
                         const isStartActive =
                           activeTimeRange && timeRange.endMin === activeTimeRange.startMin
                         const isEndActive =
@@ -379,7 +346,7 @@ export function WeeklyScheduleGrid({
                         return (
                           <div
                             className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                            style={{ top: `${endY}px` }}
+                            style={{ top: `${minuteToY(timeRange.endMin)}px` }}
                           >
                             <span
                               className={cn(
@@ -401,16 +368,6 @@ export function WeeklyScheduleGrid({
                       const showEnd = isMinuteVisible(admin.endMin)
                       if (!showStart && !showEnd) return null
 
-                      const startY = minuteToY(admin.startMin)
-                      const endY = minuteToY(admin.endMin)
-
-                      const isStartOverlapping = visibleRows.some(
-                        (row) => Math.abs(minuteToY(row.startMin) - startY) < 20
-                      )
-                      const isEndOverlapping = visibleRows.some(
-                        (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
-                      )
-
                       const isStartActive =
                         activeTimeRange && admin.startMin === activeTimeRange.startMin
                       const isEndActive = activeTimeRange && admin.endMin === activeTimeRange.endMin
@@ -418,10 +375,10 @@ export function WeeklyScheduleGrid({
                       return (
                         <div key={`admin-label-${admin.id}`}>
                           {/* Start Hour */}
-                          {showStart && !isStartOverlapping && (
+                          {showStart && (
                             <div
                               className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                              style={{ top: `${startY}px` }}
+                              style={{ top: `${minuteToY(admin.startMin)}px` }}
                             >
                               <span
                                 className={cn(
@@ -436,10 +393,10 @@ export function WeeklyScheduleGrid({
                             </div>
                           )}
                           {/* End Hour */}
-                          {showEnd && !isEndOverlapping && (
+                          {showEnd && (
                             <div
                               className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                              style={{ top: `${endY}px` }}
+                              style={{ top: `${minuteToY(admin.endMin)}px` }}
                             >
                               <span
                                 className={cn(

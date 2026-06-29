@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { X } from "lucide-react"
 import { GRID_CONSTANTS } from "./schedule-utils"
 import { ScheduleCard } from "./schedule-card"
@@ -31,6 +32,17 @@ export function OverlapCluster({
   const { items } = slice
   const totalCount = items.length
   const visibleItem = items[visibleIndex % totalCount]
+
+  const [hovered, setHovered] = useState(false)
+
+  useEffect(() => {
+    if (hovered && onHoverTimeRangeChange) {
+      onHoverTimeRangeChange({
+        startMin: visibleItem.startMin,
+        endMin: visibleItem.endMin,
+      })
+    }
+  }, [visibleItem, hovered, onHoverTimeRangeChange])
 
   const previewCount = Math.min(totalCount - 1, GRID_CONSTANTS.STACK_PREVIEW_COUNT)
   const previewItems = Array.from(
@@ -86,8 +98,15 @@ export function OverlapCluster({
       <button
         type="button"
         onClick={onToggle}
-        onMouseEnter={() => onHoverChange(true)}
-        onMouseLeave={() => onHoverChange(false)}
+        onMouseEnter={() => {
+          onHoverChange(true)
+          setHovered(true)
+        }}
+        onMouseLeave={() => {
+          onHoverChange(false)
+          setHovered(false)
+          onHoverTimeRangeChange?.(null)
+        }}
         className="group relative flex h-full w-full items-start justify-start overflow-visible rounded-lg p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={`${totalCount} horarios solapados. Clic para expandir`}
       >
