@@ -162,12 +162,14 @@ function normalizeCarreras(carreras: unknown): string[] {
 
 function normalizeAmbienteLabel(value: unknown): string {
   if (typeof value === "string") {
-    return value.trim() || FALLBACK_AMBIENTE
+    const val = value.trim()
+    return val ? (val.startsWith("Ambiente: ") ? val : `Ambiente: ${val}`) : FALLBACK_AMBIENTE
   }
 
   if (value && typeof value === "object") {
     const ambiente = value as { nombre?: unknown }
-    return toStringValue(ambiente.nombre, FALLBACK_AMBIENTE)
+    const name = toStringValue(ambiente.nombre, "").trim()
+    return name ? (name.startsWith("Ambiente: ") ? name : `Ambiente: ${name}`) : FALLBACK_AMBIENTE
   }
 
   return FALLBACK_AMBIENTE
@@ -271,7 +273,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
   const rawAulaCodigo = schedule.aula_codigo ?? schedule.aulaCodigo
   const ambienteLabel =
     rawAulaCodigo != null && String(rawAulaCodigo).trim().length > 0
-      ? String(rawAulaCodigo).trim()
+      ? `Ambiente: ${String(rawAulaCodigo).trim()}`
       : normalizeAmbienteLabel(schedule.ambiente)
 
   return {
