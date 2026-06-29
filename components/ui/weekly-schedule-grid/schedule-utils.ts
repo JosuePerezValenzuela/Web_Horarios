@@ -228,18 +228,8 @@ export function buildTimelineSegments(
       density = activeBands.reduce((max, band) => Math.max(max, band.density), PX_PER_MINUTE)
     } else if (isCompactMode) {
       if (activeAdmins.length > 0) {
-        // Check if this administrative schedule has any classes at all in its entire span
-        const admin = activeAdmins[0]
-        const hasAnyClassInAdminRange = slices.some(
-          (s) => s.startMin < admin.endMin && s.endMin > admin.startMin
-        )
-        if (!hasAnyClassInAdminRange) {
-          // Compact the admin segment
-          density = 0.18 // 480 mins becomes ~86px
-        } else {
-          // Keep normal density because there are classes in other parts of this admin shift
-          density = PX_PER_MINUTE
-        }
+        // Administrative schedule but no classes in this specific segment: compact vertically to save space
+        density = 0.18
       } else {
         // Completely empty segment -> collapse to 0 height
         density = 0
