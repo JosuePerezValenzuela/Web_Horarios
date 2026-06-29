@@ -77,14 +77,23 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
         }
       }
 
+      // Adjust timeRange to incorporate administrative hours
+      let startMin = normalized.timeRange.startMin
+      let endMin = normalized.timeRange.endMin
+      adminSchedules.forEach((admin) => {
+        startMin = Math.min(startMin, admin.startMin)
+        endMin = Math.max(endMin, admin.endMin)
+      })
+      const adjustedTimeRange = { startMin, endMin }
+
       set({
         docente: normalized.docente,
         schedules: hydratedSchedules,
         groups: normalized.groups,
         adminSchedules,
         period,
-        timeRange: normalized.timeRange,
-        rows: buildRows(normalized.timeRange, period),
+        timeRange: adjustedTimeRange,
+        rows: buildRows(adjustedTimeRange, period),
         loading: false,
       })
     } catch (error) {

@@ -283,6 +283,50 @@ export function WeeklyScheduleGrid({
                       </div>
                     )
                   })()}
+
+                {/* Admin hours labels in Hours column */}
+                {adminSchedules?.map((admin) => {
+                  const isStartActive =
+                    activeTimeRange && admin.startMin === activeTimeRange.startMin
+                  const isEndActive = activeTimeRange && admin.endMin === activeTimeRange.endMin
+
+                  return (
+                    <div key={`admin-label-${admin.id}`}>
+                      {/* Start Hour */}
+                      <div
+                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                        style={{ top: `${minuteToY(admin.startMin)}px` }}
+                      >
+                        <span
+                          className={cn(
+                            "rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold shadow-sm transition-all duration-200",
+                            isStartActive
+                              ? "bg-blue-600 border-blue-600 text-white scale-105 shadow-md"
+                              : "border-blue-500/20 bg-blue-50/90 text-blue-700 dark:border-blue-400/20 dark:bg-blue-950/90 dark:text-blue-300"
+                          )}
+                        >
+                          {formatTime(admin.startMin)}
+                        </span>
+                      </div>
+                      {/* End Hour */}
+                      <div
+                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                        style={{ top: `${minuteToY(admin.endMin)}px` }}
+                      >
+                        <span
+                          className={cn(
+                            "rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold shadow-sm transition-all duration-200",
+                            isEndActive
+                              ? "bg-blue-600 border-blue-600 text-white scale-105 shadow-md"
+                              : "border-blue-500/20 bg-blue-50/90 text-blue-700 dark:border-blue-400/20 dark:bg-blue-950/90 dark:text-blue-300"
+                          )}
+                        >
+                          {formatTime(admin.endMin)}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               {days.map((day) => (
@@ -301,19 +345,16 @@ export function WeeklyScheduleGrid({
                       return (
                         <div
                           key={`admin-${admin.id}`}
-                          className="absolute inset-x-0 pointer-events-none border-y border-dashed border-muted-foreground/15 flex items-start justify-end p-2"
+                          className="absolute inset-x-0 pointer-events-auto cursor-help transition-all duration-200 bg-blue-500/[0.06] dark:bg-blue-400/[0.04] hover:bg-blue-500/[0.09] dark:hover:bg-blue-400/[0.07] border-y border-dashed border-blue-500/10 dark:border-blue-400/10"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
-                            backgroundColor: "hsl(var(--muted) / 0.12)",
-                            backgroundImage:
-                              "repeating-linear-gradient(45deg, transparent, transparent 8px, hsl(var(--border) / 0.25) 8px, hsl(var(--border) / 0.25) 9px)",
                           }}
-                        >
-                          <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-wider select-none">
-                            {admin.label}
-                          </span>
-                        </div>
+                          onMouseEnter={() =>
+                            setActiveTimeRange({ startMin: admin.startMin, endMin: admin.endMin })
+                          }
+                          onMouseLeave={() => setActiveTimeRange(null)}
+                        />
                       )
                     })}
 
