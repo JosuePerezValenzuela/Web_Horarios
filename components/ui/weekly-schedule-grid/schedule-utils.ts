@@ -223,26 +223,33 @@ export function buildTimelineSegments(
     )
 
     let density = PX_PER_MINUTE
+    let height = duration * PX_PER_MINUTE
 
     if (activeBands.length > 0) {
       density = activeBands.reduce((max, band) => Math.max(max, band.density), PX_PER_MINUTE)
+      height = duration * density
     } else if (isCompactMode) {
       if (activeAdmins.length > 0) {
         // Administrative schedule but no classes in this specific segment: compact vertically to save space
         density = 0.18
+        height = duration * density
       } else {
-        // Completely empty segment -> collapse to 0 height
-        density = 0
+        // Completely empty segment -> collapse to a tiny visual gap of 24px instead of 0px
+        // to prevent overlapping labels and visual continuous block bugs.
+        const COLLAPSED_GAP_HEIGHT = 24
+        density = COLLAPSED_GAP_HEIGHT / duration
+        height = COLLAPSED_GAP_HEIGHT
       }
     } else {
       density = PX_PER_MINUTE
+      height = duration * density
     }
 
     segments.push({
       startMin,
       endMin,
       density,
-      height: duration * density,
+      height,
     })
   }
 
