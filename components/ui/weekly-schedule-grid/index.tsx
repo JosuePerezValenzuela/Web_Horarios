@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useCallback } from "react"
 import { cn } from "@/lib/utils"
 import {
   buildRenderSlices,
@@ -37,6 +37,7 @@ export function WeeklyScheduleGrid({
   onItemClick,
   className,
   adminSchedules,
+  isCompactMode = false,
 }: WeeklyScheduleGridProps) {
   const [expandedClusterIds, setExpandedClusterIds] = useState<Set<string>>(new Set())
   const [hoveredClusterIds, setHoveredClusterIds] = useState<Set<string>>(new Set())
@@ -76,14 +77,37 @@ export function WeeklyScheduleGrid({
 
   // Build timeline segments (adaptive height)
   const timelineSegments = useMemo(
-    () => buildTimelineSegments(renderSlices, expandedClusterIds, timeRange),
-    [renderSlices, expandedClusterIds, timeRange]
+    () =>
+      buildTimelineSegments(
+        renderSlices,
+        expandedClusterIds,
+        timeRange,
+        adminSchedules,
+        isCompactMode
+      ),
+    [renderSlices, expandedClusterIds, timeRange, adminSchedules, isCompactMode]
   )
 
   const totalHeight = useMemo(
     () => timelineSegments.reduce((acc, seg) => acc + seg.height, 0) || 220,
     [timelineSegments]
   )
+
+  // Helper to determine if a minute is inside a visible segment
+  const isMinuteVisible = useCallback(
+    (minute: number) => {
+      if (timelineSegments.length === 0) return true
+      return timelineSegments.some(
+        (s) => s.density > 0 && minute >= s.startMin && minute <= s.endMin
+      )
+    },
+    [timelineSegments]
+  )
+
+  // Filter rows (hour markings) to only include visible/non-collapsed times
+  const visibleRows = useMemo(() => {
+    return rows.filter((row) => isMinuteVisible(row.startMin))
+  }, [rows, isMinuteVisible])
 
   // Helper to get pixel position from minute with an offset to avoid cutting off the top hour badge
   const offsetTop = 16
@@ -234,7 +258,7 @@ export function WeeklyScheduleGrid({
                 className="sticky left-0 z-30 border-r-[3px] border-border bg-card/95 backdrop-blur-[2px]"
                 style={{ height: `${totalHeight + offsetTop}px` }}
               >
-                {rows.map((row) => {
+                {visibleRows.map((row) => {
                   const isStartActive = activeTimeRange && row.startMin === activeTimeRange.startMin
                   const isEndActive = activeTimeRange && row.startMin === activeTimeRange.endMin
                   const isActive = isStartActive || isEndActive
@@ -259,6 +283,7 @@ export function WeeklyScheduleGrid({
                   )
                 })}
                 {rows.length > 0 &&
+                  isMinuteVisible(timeRange.endMin) &&
                   (() => {
                     const isStartActive =
                       activeTimeRange && timeRange.endMin === activeTimeRange.startMin
@@ -286,6 +311,9 @@ export function WeeklyScheduleGrid({
                   })()}
                 {/* Admin hours labels in Hours column */}
                 {adminSchedules?.map((admin) => {
+                  const showStart = isMinuteVisible(admin.startMin)
+                  const showEnd = isMinuteVisible(admin.endMin)
+                  if (!showStart && !showEnd) return null
                   const isStartActive =
                     activeTimeRange && admin.startMin === activeTimeRange.startMin
                   const isEndActive = activeTimeRange && admin.endMin === activeTimeRange.endMin
@@ -293,37 +321,41 @@ export function WeeklyScheduleGrid({
                   return (
                     <div key={`admin-label-${admin.id}`}>
                       {/* Start Hour */}
-                      <div
-                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                        style={{ top: `${minuteToY(admin.startMin)}px` }}
-                      >
-                        <span
-                          className={cn(
-                            "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
-                            isStartActive
-                              ? "bg-primary border-primary text-primary-foreground scale-105"
-                              : "border-border/80 bg-background text-foreground"
-                          )}
+                      {showStart && (
+                        <div
+                          className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                          style={{ top: `${minuteToY(admin.startMin)}px` }}
                         >
-                          {formatTime(admin.startMin)}
-                        </span>
-                      </div>
+                          <span
+                            className={cn(
+                              "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                              isStartActive
+                                ? "bg-primary border-primary text-primary-foreground scale-105"
+                                : "border-border/80 bg-background text-foreground"
+                            )}
+                          >
+                            {formatTime(admin.startMin)}
+                          </span>
+                        </div>
+                      )}
                       {/* End Hour */}
-                      <div
-                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                        style={{ top: `${minuteToY(admin.endMin)}px` }}
-                      >
-                        <span
-                          className={cn(
-                            "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
-                            isEndActive
-                              ? "bg-primary border-primary text-primary-foreground scale-105"
-                              : "border-border/80 bg-background text-foreground"
-                          )}
+                      {showEnd && (
+                        <div
+                          className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                          style={{ top: `${minuteToY(admin.endMin)}px` }}
                         >
-                          {formatTime(admin.endMin)}
-                        </span>
-                      </div>
+                          <span
+                            className={cn(
+                              "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                              isEndActive
+                                ? "bg-primary border-primary text-primary-foreground scale-105"
+                                : "border-border/80 bg-background text-foreground"
+                            )}
+                          >
+                            {formatTime(admin.endMin)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )
                 })}

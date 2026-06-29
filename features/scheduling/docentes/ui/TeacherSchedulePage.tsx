@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -59,6 +60,7 @@ export function TeacherSchedulePage({
   adminSchedules,
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
+  const [isCompactMode, setIsCompactMode] = useState(false)
 
   const handleAddClick = (group: GroupSummary) => {
     onAddClick?.(group)
@@ -123,6 +125,28 @@ export function TeacherSchedulePage({
             />
           </div>
 
+          {/* Vista Compacta Toggle */}
+          <div className="mt-3 flex items-center justify-between rounded-2xl border border-border bg-muted/20 px-3.5 py-2.5 shadow-sm transition hover:bg-muted/30">
+            <div className="flex flex-col gap-0.5">
+              <Label
+                htmlFor="compact-mode"
+                className="text-xs font-semibold text-foreground cursor-pointer select-none"
+              >
+                Vista compacta
+              </Label>
+              <span className="text-[10px] text-muted-foreground select-none">
+                Ocultar horas vacías
+              </span>
+            </div>
+            <input
+              id="compact-mode"
+              type="checkbox"
+              checked={isCompactMode}
+              onChange={(e) => setIsCompactMode(e.target.checked)}
+              className="h-4 w-4 rounded-md border-border/80 bg-background text-primary focus:ring-primary cursor-pointer transition accent-primary"
+            />
+          </div>
+
           <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Resumen por grupo
@@ -167,6 +191,7 @@ export function TeacherSchedulePage({
                 overlapRotationIntervalMs={overlapRotationIntervalMs}
                 onEditSchedule={onEditSchedule}
                 adminSchedules={adminSchedules}
+                isCompactMode={isCompactMode}
               />
             </div>
           ) : (

@@ -74,4 +74,5 @@ export interface WeeklyScheduleGridProps {
   onItemClick?: (item: ScheduleItem) => void
   className?: string
   adminSchedules?: AdminSchedule[]
+  isCompactMode?: boolean
 }

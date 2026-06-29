@@ -1,4 +1,4 @@
-import type { ScheduleItem, RenderSlice, TimelineSegment, TimeRange } from "./types"
+import type { ScheduleItem, RenderSlice, TimelineSegment, TimeRange, AdminSchedule } from "./types"
 
 const PX_PER_MINUTE = 1.2
 const MIN_BLOCK_HEIGHT = 60
@@ -191,7 +191,9 @@ function buildTimelineBands(
 export function buildTimelineSegments(
   slices: RenderSlice[],
   expandedClusterIds: Set<string>,
-  timeRange: TimeRange
+  timeRange: TimeRange,
+  adminSchedules: AdminSchedule[] = [],
+  isCompactMode: boolean = false
 ): TimelineSegment[] {
   const bands = buildTimelineBands(slices, expandedClusterIds)
 
@@ -200,6 +202,7 @@ export function buildTimelineSegments(
       timeRange.startMin,
       timeRange.endMin,
       ...bands.flatMap((band) => [band.startMin, band.endMin]),
+      ...adminSchedules.flatMap((a) => [a.startMin, a.endMin]),
     ])
   ).sort((a, b) => a - b)
 
@@ -215,7 +218,35 @@ export function buildTimelineSegments(
     if (duration <= 0) continue
 
     const activeBands = bands.filter((band) => band.startMin < endMin && band.endMin > startMin)
-    const density = activeBands.reduce((max, band) => Math.max(max, band.density), PX_PER_MINUTE)
+    const activeAdmins = adminSchedules.filter(
+      (admin) => admin.startMin < endMin && admin.endMin > startMin
+    )
+
+    let density = PX_PER_MINUTE
+
+    if (activeBands.length > 0) {
+      density = activeBands.reduce((max, band) => Math.max(max, band.density), PX_PER_MINUTE)
+    } else if (isCompactMode) {
+      if (activeAdmins.length > 0) {
+        // Check if this administrative schedule has any classes at all in its entire span
+        const admin = activeAdmins[0]
+        const hasAnyClassInAdminRange = slices.some(
+          (s) => s.startMin < admin.endMin && s.endMin > admin.startMin
+        )
+        if (!hasAnyClassInAdminRange) {
+          // Compact the admin segment
+          density = 0.18 // 480 mins becomes ~86px
+        } else {
+          // Keep normal density because there are classes in other parts of this admin shift
+          density = PX_PER_MINUTE
+        }
+      } else {
+        // Completely empty segment -> collapse to 0 height
+        density = 0
+      }
+    } else {
+      density = PX_PER_MINUTE
+    }
 
     segments.push({
       startMin,
