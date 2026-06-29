@@ -36,6 +36,7 @@ export function WeeklyScheduleGrid({
   overlapRotationIntervalMs = DEFAULT_ROTATION_INTERVAL_MS,
   onItemClick,
   className,
+  adminSchedules,
 }: WeeklyScheduleGridProps) {
   const [expandedClusterIds, setExpandedClusterIds] = useState<Set<string>>(new Set())
   const [hoveredClusterIds, setHoveredClusterIds] = useState<Set<string>>(new Set())
@@ -290,6 +291,32 @@ export function WeeklyScheduleGrid({
                   className="relative border-r-[3px] border-border last:border-r-0"
                   style={{ height: `${totalHeight + offsetTop}px` }}
                 >
+                  {/* Administrative schedule background bands */}
+                  {adminSchedules
+                    ?.filter((admin) => admin.days.includes(day.value))
+                    .map((admin) => {
+                      const top = minuteToY(admin.startMin)
+                      const bottom = minuteToY(admin.endMin)
+                      const height = Math.max(bottom - top, 0)
+                      return (
+                        <div
+                          key={`admin-${admin.id}`}
+                          className="absolute inset-x-0 pointer-events-none border-y border-dashed border-muted-foreground/15 flex items-start justify-end p-2"
+                          style={{
+                            top: `${top}px`,
+                            height: `${height}px`,
+                            backgroundColor: "hsl(var(--muted) / 0.12)",
+                            backgroundImage:
+                              "repeating-linear-gradient(45deg, transparent, transparent 8px, hsl(var(--border) / 0.25) 8px, hsl(var(--border) / 0.25) 9px)",
+                          }}
+                        >
+                          <span className="text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-wider select-none">
+                            {admin.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+
                   {slicesByDay[day.value]?.map((slice) => {
                     const top = minuteToY(slice.startMin)
                     const bottom = minuteToY(slice.endMin)

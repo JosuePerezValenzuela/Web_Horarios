@@ -3,7 +3,12 @@
  */
 
 import { apiClient } from "@/shared/services/api/client"
-import type { ApiResponse, DocenteHorariosApiResponse, DocentesFilters } from "../domain/types"
+import type {
+  ApiResponse,
+  DocenteHorariosApiResponse,
+  DocentesFilters,
+  AdminScheduleApiResponse,
+} from "../domain/types"
 import type { NormalizedSchedule } from "../domain/types"
 
 export interface Facultad {
@@ -136,4 +141,25 @@ export async function hydrateSchedulesWithAmbienteDetails(
   schedules: NormalizedSchedule[]
 ): Promise<NormalizedSchedule[]> {
   return schedules
+}
+
+export async function fetchDocenteAdminHorarios(
+  codigoPersona: string
+): Promise<AdminScheduleApiResponse> {
+  const infraUrl = process.env.NEXT_PUBLIC_INFRA_URL ?? "http://localhost:3002/api"
+  const infraOrigin = infraUrl.endsWith("/api") ? infraUrl.slice(0, -4) : infraUrl
+  const url = `${infraOrigin}/asignacion-horario?codigo_persona=${encodeURIComponent(codigoPersona)}`
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  })
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch administrative schedule: ${response.statusText}`)
+  }
+
+  return response.json() as Promise<AdminScheduleApiResponse>
 }

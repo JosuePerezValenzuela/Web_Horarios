@@ -427,12 +427,21 @@ export interface ScheduleBlockProps {
   onClick?: (schedule: NormalizedSchedule) => void
 }
 
+export interface AdminSchedule {
+  id: string | number
+  startMin: number
+  endMin: number
+  label: string
+  days: number[]
+}
+
 export interface WeeklyScheduleGridProps {
   schedules: NormalizedSchedule[]
   rows: TimeRow[]
   timeRange: TimeRange
   overlapRotationIntervalMs?: number
   onEditSchedule?: (schedule: NormalizedSchedule) => void
+  adminSchedules?: AdminSchedule[]
 }
 
 export interface TeacherSchedulePageProps {
@@ -454,4 +463,26 @@ export interface TeacherSchedulePageProps {
   onDeleteClick?: (group: GroupSummary) => void
   onEditSchedule?: (schedule: NormalizedSchedule) => void
   onAssigned?: () => void | Promise<void>
+  adminSchedules?: AdminSchedule[]
+}
+
+export interface AdminScheduleApiResponse {
+  success: boolean
+  data: {
+    persona?: {
+      codigo?: string
+      nombres?: string
+    }
+    horarios: Array<{
+      id: number
+      horario_catalogo: {
+        id: number
+        descripcion: string
+        hora_entrada: string
+        hora_salida: string
+      }
+      fecha_inicio: string
+      fecha_fin: string | null
+    }>
+  }
 }

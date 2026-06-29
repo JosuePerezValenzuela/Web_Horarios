@@ -57,6 +57,7 @@ export default function DocenteHorariosRoutePage() {
     docente,
     groups,
     schedules,
+    adminSchedules,
     period,
     rows,
     timeRange,
@@ -192,6 +193,7 @@ export default function DocenteHorariosRoutePage() {
           onDeleteClick={handleDeleteClick}
           onEditSchedule={handleEditSchedule}
           onAssigned={() => fetchByDocenteId(docenteId)}
+          adminSchedules={adminSchedules}
         />
 
         <AlertDialog

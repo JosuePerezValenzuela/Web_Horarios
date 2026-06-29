@@ -1,5 +1,5 @@
 import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
-import type { NormalizedSchedule, TimeRange, TimeRow } from "../domain/types"
+import type { NormalizedSchedule, TimeRange, TimeRow, AdminSchedule } from "../domain/types"
 import type { ScheduleItem } from "@/components/ui/weekly-schedule-grid/types"
 
 interface WeeklyScheduleGridProps {
@@ -8,6 +8,7 @@ interface WeeklyScheduleGridProps {
   timeRange: TimeRange
   overlapRotationIntervalMs?: number
   onEditSchedule?: (schedule: NormalizedSchedule) => void
+  adminSchedules?: AdminSchedule[]
 }
 
 function toScheduleItem(schedule: NormalizedSchedule): ScheduleItem {
@@ -31,6 +32,7 @@ export function WeeklyScheduleGrid({
   timeRange,
   overlapRotationIntervalMs,
   onEditSchedule,
+  adminSchedules,
 }: WeeklyScheduleGridProps) {
   const items: ScheduleItem[] = schedules.map(toScheduleItem)
 
@@ -40,6 +42,7 @@ export function WeeklyScheduleGrid({
       rows={rows}
       timeRange={timeRange}
       overlapRotationIntervalMs={overlapRotationIntervalMs}
+      adminSchedules={adminSchedules}
       onItemClick={
         onEditSchedule
           ? (item) => {

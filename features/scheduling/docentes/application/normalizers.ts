@@ -7,6 +7,8 @@ import type {
   NormalizedSchedule,
   TimeRange,
   TimeRow,
+  AdminSchedule,
+  AdminScheduleApiResponse,
 } from "../domain/types"
 
 const FALLBACK_AMBIENTE = "Sin ambiente"
@@ -538,4 +540,29 @@ export function normalizeDocenteHorarios(
     groups: withStableColors.groups,
     timeRange,
   }
+}
+
+export function normalizeAdminSchedules(payload: AdminScheduleApiResponse): AdminSchedule[] {
+  if (!payload?.success || !payload?.data?.horarios) return []
+
+  return payload.data.horarios
+    .map((h): AdminSchedule | null => {
+      const entrada = h.horario_catalogo?.hora_entrada
+      const salida = h.horario_catalogo?.hora_salida
+      const startMin = parseTimeToMinutes(entrada)
+      const endMin = parseTimeToMinutes(salida)
+
+      if (startMin === null || endMin === null || endMin <= startMin) {
+        return null
+      }
+
+      return {
+        id: h.id,
+        startMin,
+        endMin,
+        label: h.horario_catalogo.descripcion || `Turno ${entrada}-${salida}`,
+        days: [1, 2, 3, 4, 5], // default Mon-Fri
+      }
+    })
+    .filter((admin): admin is AdminSchedule => admin !== null)
 }

@@ -1,19 +1,30 @@
 import { create } from "zustand"
 
-import { getDocenteHorariosById, hydrateSchedulesWithAmbienteDetails } from "./api"
-import { buildRows, normalizeDocenteHorarios, resolveDefaultPeriod } from "./normalizers"
+import {
+  getDocenteHorariosById,
+  hydrateSchedulesWithAmbienteDetails,
+  fetchDocenteAdminHorarios,
+} from "./api"
+import {
+  buildRows,
+  normalizeDocenteHorarios,
+  resolveDefaultPeriod,
+  normalizeAdminSchedules,
+} from "./normalizers"
 import type {
   GroupSummary,
   NormalizedSchedule,
   TimeRange,
   TimeRow,
   DocenteScheduleMeta,
+  AdminSchedule,
 } from "../domain/types"
 
 interface DocenteHorariosState {
   docente: DocenteScheduleMeta | null
   schedules: NormalizedSchedule[]
   groups: GroupSummary[]
+  adminSchedules: AdminSchedule[]
   period: number
   timeRange: TimeRange
   rows: TimeRow[]
@@ -35,6 +46,7 @@ const INITIAL_STATE = {
   docente: null,
   schedules: [],
   groups: [],
+  adminSchedules: [],
   period: DEFAULT_PERIOD,
   timeRange: EMPTY_RANGE,
   rows: buildRows(EMPTY_RANGE, DEFAULT_PERIOD),
@@ -54,10 +66,22 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
       const hydratedSchedules = await hydrateSchedulesWithAmbienteDetails(normalized.schedules)
       const period = resolveDefaultPeriod(hydratedSchedules)
 
+      // Fetch administrative schedule if teacher code is available
+      let adminSchedules: AdminSchedule[] = []
+      if (normalized.docente?.codigo && normalized.docente.codigo !== "Sin dato") {
+        try {
+          const adminResponse = await fetchDocenteAdminHorarios(normalized.docente.codigo)
+          adminSchedules = normalizeAdminSchedules(adminResponse)
+        } catch (err) {
+          console.error("Failed to load administrative schedules:", err)
+        }
+      }
+
       set({
         docente: normalized.docente,
         schedules: hydratedSchedules,
         groups: normalized.groups,
+        adminSchedules,
         period,
         timeRange: normalized.timeRange,
         rows: buildRows(normalized.timeRange, period),

@@ -57,6 +57,14 @@ export interface TimelineSegment {
   height: number // total pixel height of this segment
 }
 
+export interface AdminSchedule {
+  id: string | number
+  startMin: number
+  endMin: number
+  label: string
+  days: number[]
+}
+
 export interface WeeklyScheduleGridProps {
   items: ScheduleItem[]
   rows: TimeRow[]
@@ -65,4 +73,5 @@ export interface WeeklyScheduleGridProps {
   overlapRotationIntervalMs?: number
   onItemClick?: (item: ScheduleItem) => void
   className?: string
+  adminSchedules?: AdminSchedule[]
 }

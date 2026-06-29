@@ -9,6 +9,7 @@ import type {
   NormalizedSchedule,
   TimeRange,
   TimeRow,
+  AdminSchedule,
 } from "../domain/types"
 import { GroupSummaryCard } from "./GroupSummaryCard"
 import { WeeklyScheduleGrid } from "./WeeklyScheduleGrid"
@@ -33,6 +34,7 @@ interface TeacherSchedulePageProps {
   onDeleteClick?: (group: GroupSummary) => void
   onEditSchedule?: (schedule: NormalizedSchedule) => void
   onAssigned?: () => void | Promise<void>
+  adminSchedules?: AdminSchedule[]
 }
 
 export function TeacherSchedulePage({
@@ -54,6 +56,7 @@ export function TeacherSchedulePage({
   onDeleteClick,
   onEditSchedule,
   onAssigned,
+  adminSchedules,
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
 
@@ -163,6 +166,7 @@ export function TeacherSchedulePage({
                 timeRange={timeRange}
                 overlapRotationIntervalMs={overlapRotationIntervalMs}
                 onEditSchedule={onEditSchedule}
+                adminSchedules={adminSchedules}
               />
             </div>
           ) : (
