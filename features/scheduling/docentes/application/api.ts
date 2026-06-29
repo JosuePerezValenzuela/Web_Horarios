@@ -146,20 +146,7 @@ export async function hydrateSchedulesWithAmbienteDetails(
 export async function fetchDocenteAdminHorarios(
   codigoPersona: string
 ): Promise<AdminScheduleApiResponse> {
-  const infraUrl = process.env.NEXT_PUBLIC_INFRA_URL ?? "http://localhost:3002/api"
-  const infraOrigin = infraUrl.endsWith("/api") ? infraUrl.slice(0, -4) : infraUrl
-  const url = `${infraOrigin}/asignacion-horario?codigo_persona=${encodeURIComponent(codigoPersona)}`
-
-  const response = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch administrative schedule: ${response.statusText}`)
-  }
-
-  return response.json() as Promise<AdminScheduleApiResponse>
+  return apiClient.get<AdminScheduleApiResponse>(
+    `/asignacion-horario?codigo_persona=${encodeURIComponent(codigoPersona)}`
+  )
 }
