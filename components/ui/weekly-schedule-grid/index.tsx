@@ -456,7 +456,7 @@ export function WeeklyScheduleGrid({
                       return (
                         <div
                           key={`admin-${admin.id}`}
-                          className="absolute inset-x-0 z-[1] pointer-events-auto cursor-default transition-all duration-200 bg-amber-500/[0.14] dark:bg-amber-400/[0.06] hover:bg-amber-500/[0.22] dark:hover:bg-amber-400/[0.1] border-y border-dashed border-amber-500/30 dark:border-amber-400/20 flex items-center justify-center p-2 overflow-hidden"
+                          className="absolute inset-x-0 z-[1] pointer-events-auto cursor-default transition-all duration-200 bg-[var(--primary)]/[0.08] dark:bg-blue-400/[0.06] hover:bg-[var(--primary)]/[0.14] dark:hover:bg-blue-400/[0.1] border-y border-dashed border-[var(--primary)]/25 dark:border-blue-400/20 flex items-center justify-center p-2 overflow-hidden"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
@@ -470,7 +470,7 @@ export function WeeklyScheduleGrid({
                           }
                           onMouseLeave={() => setActiveTimeRange(null)}
                         >
-                          <span className="text-[9px] md:text-[10px] font-bold text-amber-800/65 dark:text-amber-300/45 uppercase select-none tracking-wider text-center leading-none">
+                          <span className="text-[9px] md:text-[10px] font-bold text-[var(--primary)]/70 dark:text-blue-300/50 uppercase select-none tracking-wider text-center leading-none">
                             Horario administrativo
                           </span>
                         </div>
