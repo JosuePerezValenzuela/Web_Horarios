@@ -45,6 +45,7 @@ export function WeeklyScheduleGrid({
   const [activeTimeRange, setActiveTimeRange] = useState<{
     startMin: number
     endMin: number
+    days?: number[]
   } | null>(null)
 
   // Build render slices (fractional overlap splitting)
@@ -195,30 +196,6 @@ export function WeeklyScheduleGrid({
                   style={{ top: `${minuteToY(row.startMin)}px` }}
                 />
               ))}
-
-              {/* Dynamic Hovered/Active Schedule Lines Highlight Overlay */}
-              {activeTimeRange && (
-                <div className="absolute inset-0 transition-all duration-200">
-                  {/* Highlight band overlay */}
-                  <div
-                    className="absolute inset-x-0 bg-primary/5 dark:bg-primary/10 transition-all duration-200"
-                    style={{
-                      top: `${minuteToY(activeTimeRange.startMin)}px`,
-                      height: `${minuteToY(activeTimeRange.endMin) - minuteToY(activeTimeRange.startMin)}px`,
-                    }}
-                  />
-                  {/* Start Line */}
-                  <div
-                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
-                    style={{ top: `${minuteToY(activeTimeRange.startMin)}px` }}
-                  />
-                  {/* End Line */}
-                  <div
-                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
-                    style={{ top: `${minuteToY(activeTimeRange.endMin)}px` }}
-                  />
-                </div>
-              )}
             </div>
 
             {/* Hour labels are now rendered in the dedicated Hours column */}
@@ -283,7 +260,6 @@ export function WeeklyScheduleGrid({
                       </div>
                     )
                   })()}
-
                 {/* Admin hours labels in Hours column */}
                 {adminSchedules?.map((admin) => {
                   const isStartActive =
@@ -299,10 +275,10 @@ export function WeeklyScheduleGrid({
                       >
                         <span
                           className={cn(
-                            "rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold shadow-sm transition-all duration-200",
+                            "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
                             isStartActive
-                              ? "bg-blue-600 border-blue-600 text-white scale-105 shadow-md"
-                              : "border-blue-500/20 bg-blue-50/90 text-blue-700 dark:border-blue-400/20 dark:bg-blue-950/90 dark:text-blue-300"
+                              ? "bg-primary border-primary text-primary-foreground scale-105"
+                              : "border-border/80 bg-background text-foreground"
                           )}
                         >
                           {formatTime(admin.startMin)}
@@ -315,10 +291,10 @@ export function WeeklyScheduleGrid({
                       >
                         <span
                           className={cn(
-                            "rounded-md border px-1.5 py-0.5 text-[10px] font-extrabold shadow-sm transition-all duration-200",
+                            "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
                             isEndActive
-                              ? "bg-blue-600 border-blue-600 text-white scale-105 shadow-md"
-                              : "border-blue-500/20 bg-blue-50/90 text-blue-700 dark:border-blue-400/20 dark:bg-blue-950/90 dark:text-blue-300"
+                              ? "bg-primary border-primary text-primary-foreground scale-105"
+                              : "border-border/80 bg-background text-foreground"
                           )}
                         >
                           {formatTime(admin.endMin)}
@@ -335,6 +311,28 @@ export function WeeklyScheduleGrid({
                   className="relative border-r-[3px] border-border last:border-r-0"
                   style={{ height: `${totalHeight + offsetTop}px` }}
                 >
+                  {/* Dynamic Hovered/Active Schedule Highlight for this column */}
+                  {activeTimeRange &&
+                    (!activeTimeRange.days || activeTimeRange.days.includes(day.value)) && (
+                      <div className="absolute inset-0 pointer-events-none z-[2]">
+                        <div
+                          className="absolute inset-x-0 bg-primary/[0.08] dark:bg-primary/[0.14] transition-all duration-200"
+                          style={{
+                            top: `${minuteToY(activeTimeRange.startMin)}px`,
+                            height: `${minuteToY(activeTimeRange.endMin) - minuteToY(activeTimeRange.startMin)}px`,
+                          }}
+                        />
+                        <div
+                          className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                          style={{ top: `${minuteToY(activeTimeRange.startMin)}px` }}
+                        />
+                        <div
+                          className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                          style={{ top: `${minuteToY(activeTimeRange.endMin)}px` }}
+                        />
+                      </div>
+                    )}
+
                   {/* Administrative schedule background bands */}
                   {adminSchedules
                     ?.filter((admin) => admin.days.includes(day.value))
@@ -345,13 +343,17 @@ export function WeeklyScheduleGrid({
                       return (
                         <div
                           key={`admin-${admin.id}`}
-                          className="absolute inset-x-0 pointer-events-auto cursor-help transition-all duration-200 bg-blue-500/[0.06] dark:bg-blue-400/[0.04] hover:bg-blue-500/[0.09] dark:hover:bg-blue-400/[0.07] border-y border-dashed border-blue-500/10 dark:border-blue-400/10"
+                          className="absolute inset-x-0 z-[1] pointer-events-auto cursor-default transition-all duration-200 bg-blue-500/[0.14] dark:bg-blue-400/[0.05] hover:bg-blue-500/[0.2] dark:hover:bg-blue-400/[0.08] border-y border-dashed border-blue-500/10 dark:border-blue-400/10"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
                           }}
                           onMouseEnter={() =>
-                            setActiveTimeRange({ startMin: admin.startMin, endMin: admin.endMin })
+                            setActiveTimeRange({
+                              startMin: admin.startMin,
+                              endMin: admin.endMin,
+                              days: admin.days,
+                            })
                           }
                           onMouseLeave={() => setActiveTimeRange(null)}
                         />
@@ -399,7 +401,9 @@ export function WeeklyScheduleGrid({
                             onToggle={() => toggleCluster(slice.startMin, slice.endMin)}
                             onHoverChange={(hovered) => setClusterHovered(slice.id, hovered)}
                             onItemClick={onItemClick}
-                            onHoverTimeRangeChange={setActiveTimeRange}
+                            onHoverTimeRangeChange={(range) =>
+                              setActiveTimeRange(range ? { ...range, days: [slice.day] } : null)
+                            }
                           />
                         </div>
                       )
@@ -430,7 +434,9 @@ export function WeeklyScheduleGrid({
                           isContinuation={slice.isContinuation}
                           className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
                           onClick={onItemClick}
-                          onHoverTimeRangeChange={setActiveTimeRange}
+                          onHoverTimeRangeChange={(range) =>
+                            setActiveTimeRange(range ? { ...range, days: [item.day] } : null)
+                          }
                         />
                       </div>
                     )
