@@ -3,7 +3,6 @@
  */
 
 import { apiClient } from "@/shared/services/api/client"
-import { infraApiClient } from "@/shared/services/api/infraClient"
 import type { ApiResponse, DocenteHorariosApiResponse, DocentesFilters } from "../domain/types"
 import type { NormalizedSchedule } from "../domain/types"
 
@@ -133,51 +132,8 @@ export async function getDocenteHorariosById(
   return apiClient.get<DocenteHorariosApiResponse>(`/docentes/${id}/horarios`)
 }
 
-interface AmbienteDetalleResponse {
-  ambiente?: {
-    id?: number
-    codigo?: string | null
-    nombre?: string | null
-    tipo_ambiente_nombre?: string | null
-  } | null
-}
-
 export async function hydrateSchedulesWithAmbienteDetails(
   schedules: NormalizedSchedule[]
 ): Promise<NormalizedSchedule[]> {
-  const ambienteIds = Array.from(
-    new Set(
-      schedules.map((schedule) => schedule.ambienteId).filter((id): id is number => id !== null)
-    )
-  )
-
-  if (ambienteIds.length === 0) return schedules
-
-  const details = await Promise.all(
-    ambienteIds.map(async (ambienteId) => {
-      try {
-        const response = await infraApiClient.get<AmbienteDetalleResponse>(
-          `/ambientes/${ambienteId}/detalle`
-        )
-        return [ambienteId, response.ambiente] as const
-      } catch {
-        return [ambienteId, null] as const
-      }
-    })
-  )
-
-  const detailById = new Map(details)
-
-  return schedules.map((schedule) => {
-    if (!schedule.ambienteId) return schedule
-
-    const detail = detailById.get(schedule.ambienteId)
-    if (!detail) return schedule
-
-    return {
-      ...schedule,
-      ambienteLabel: detail.codigo?.trim() || schedule.ambienteLabel,
-      tipoLabel: detail.tipo_ambiente_nombre?.trim() || schedule.tipoLabel,
-    }
-  })
+  return schedules
 }

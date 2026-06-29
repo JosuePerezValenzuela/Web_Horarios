@@ -69,6 +69,8 @@ export interface DocenteHorarioApiSchedule {
   id?: number | string | null
   persona_grupo_id?: number | string | null
   aula_id?: number | string | null
+  aula_codigo?: string | null
+  aulaCodigo?: string | null
   ambiente_id?: number | string | null
   ambienteId?: number | string | null
   dia?: number | string | null

@@ -268,6 +268,12 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
       ? rawFechaFin.trim()
       : null
 
+  const rawAulaCodigo = schedule.aula_codigo ?? schedule.aulaCodigo
+  const ambienteLabel =
+    rawAulaCodigo != null && String(rawAulaCodigo).trim().length > 0
+      ? String(rawAulaCodigo).trim()
+      : normalizeAmbienteLabel(schedule.ambiente)
+
   return {
     scheduleId: toStringValue(schedule.id, `${groupKey}-${day}-${startMin}-${endMin}`),
     groupKey,
@@ -283,7 +289,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     materia,
     grupo,
     carreras: normalizeCarreras(schedule.carreras),
-    ambienteLabel: normalizeAmbienteLabel(schedule.ambiente),
+    ambienteLabel,
     tipoLabel: normalizeTipoLabel(schedule),
     fechasLabel: normalizeFechasLabel(schedule),
     dbId,
