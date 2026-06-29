@@ -129,6 +129,35 @@ export function WeeklyScheduleGrid({
     return result
   }, [rows, isMinuteVisible, minuteToY])
 
+  // Collect all start/end minutes from classes and admin schedules (for compact mode)
+  const activeHours = useMemo(() => {
+    const mins = new Set<number>()
+    items.forEach((item) => {
+      mins.add(item.startMin)
+      mins.add(item.endMin)
+    })
+    adminSchedules?.forEach((admin) => {
+      mins.add(admin.startMin)
+      mins.add(admin.endMin)
+    })
+
+    const sorted = Array.from(mins).sort((a, b) => a - b)
+
+    // Apply distance filter to avoid overlapping labels (min 20px gap)
+    const result: number[] = []
+    let lastY: number | null = null
+
+    sorted.forEach((minute) => {
+      const y = minuteToY(minute)
+      if (lastY === null || Math.abs(y - lastY) >= 20) {
+        result.push(minute)
+        lastY = y
+      }
+    })
+
+    return result
+  }, [items, adminSchedules, minuteToY])
+
   // Auto-rotation for collapsed clusters
   useEffect(() => {
     if (overlapRotationIntervalMs <= 0) return undefined
@@ -228,13 +257,21 @@ export function WeeklyScheduleGrid({
               className="pointer-events-none absolute inset-0 z-[2]"
               style={{ height: `${totalHeight + offsetTop}px` }}
             >
-              {rows.map((row) => (
-                <div
-                  key={row.key}
-                  className="absolute inset-x-0 border-t-[2px] border-border/60"
-                  style={{ top: `${minuteToY(row.startMin)}px` }}
-                />
-              ))}
+              {isCompactMode
+                ? activeHours.map((minute) => (
+                    <div
+                      key={`compact-line-${minute}`}
+                      className="absolute inset-x-0 border-t-[2px] border-border/60"
+                      style={{ top: `${minuteToY(minute)}px` }}
+                    />
+                  ))
+                : rows.map((row) => (
+                    <div
+                      key={row.key}
+                      className="absolute inset-x-0 border-t-[2px] border-border/60"
+                      style={{ top: `${minuteToY(row.startMin)}px` }}
+                    />
+                  ))}
 
               {/* Dynamic Hovered/Active Schedule Lines Highlight Overlay (Global) */}
               {activeTimeRange && !activeTimeRange.days && (
@@ -272,49 +309,17 @@ export function WeeklyScheduleGrid({
                 className="sticky left-0 z-30 border-r-[3px] border-border bg-card/95 backdrop-blur-[2px]"
                 style={{ height: `${totalHeight + offsetTop}px` }}
               >
-                {visibleRows.map((row) => {
-                  const isStartActive = activeTimeRange && row.startMin === activeTimeRange.startMin
-                  const isEndActive = activeTimeRange && row.startMin === activeTimeRange.endMin
-                  const isActive = isStartActive || isEndActive
-
-                  return (
-                    <div
-                      key={row.key}
-                      className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                      style={{ top: `${minuteToY(row.startMin)}px` }}
-                    >
-                      <span
-                        className={cn(
-                          "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
-                          isActive
-                            ? "bg-primary border-primary text-primary-foreground scale-105"
-                            : "border-border/80 bg-background text-foreground"
-                        )}
-                      >
-                        {row.label}
-                      </span>
-                    </div>
-                  )
-                })}
-                {rows.length > 0 &&
-                  isMinuteVisible(timeRange.endMin) &&
-                  (() => {
-                    const endY = minuteToY(timeRange.endMin)
-                    const overlaps = visibleRows.some(
-                      (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
-                    )
-                    if (overlaps) return null
-
-                    const isStartActive =
-                      activeTimeRange && timeRange.endMin === activeTimeRange.startMin
-                    const isEndActive =
-                      activeTimeRange && timeRange.endMin === activeTimeRange.endMin
+                {isCompactMode ? (
+                  activeHours.map((minute) => {
+                    const isStartActive = activeTimeRange && minute === activeTimeRange.startMin
+                    const isEndActive = activeTimeRange && minute === activeTimeRange.endMin
                     const isActive = isStartActive || isEndActive
 
                     return (
                       <div
-                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                        style={{ top: `${endY}px` }}
+                        key={`compact-hour-${minute}`}
+                        className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                        style={{ top: `${minuteToY(minute)}px` }}
                       >
                         <span
                           className={cn(
@@ -324,72 +329,135 @@ export function WeeklyScheduleGrid({
                               : "border-border/80 bg-background text-foreground"
                           )}
                         >
-                          {formatTime(timeRange.endMin)}
+                          {formatTime(minute)}
                         </span>
                       </div>
                     )
-                  })()}
-                {/* Admin hours labels in Hours column */}
-                {adminSchedules?.map((admin) => {
-                  const showStart = isMinuteVisible(admin.startMin)
-                  const showEnd = isMinuteVisible(admin.endMin)
-                  if (!showStart && !showEnd) return null
+                  })
+                ) : (
+                  <>
+                    {visibleRows.map((row) => {
+                      const isStartActive =
+                        activeTimeRange && row.startMin === activeTimeRange.startMin
+                      const isEndActive = activeTimeRange && row.startMin === activeTimeRange.endMin
+                      const isActive = isStartActive || isEndActive
 
-                  const startY = minuteToY(admin.startMin)
-                  const endY = minuteToY(admin.endMin)
-
-                  const isStartOverlapping = visibleRows.some(
-                    (row) => Math.abs(minuteToY(row.startMin) - startY) < 20
-                  )
-                  const isEndOverlapping = visibleRows.some(
-                    (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
-                  )
-
-                  const isStartActive =
-                    activeTimeRange && admin.startMin === activeTimeRange.startMin
-                  const isEndActive = activeTimeRange && admin.endMin === activeTimeRange.endMin
-
-                  return (
-                    <div key={`admin-label-${admin.id}`}>
-                      {/* Start Hour */}
-                      {showStart && !isStartOverlapping && (
+                      return (
                         <div
-                          className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                          style={{ top: `${startY}px` }}
+                          key={row.key}
+                          className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                          style={{ top: `${minuteToY(row.startMin)}px` }}
                         >
                           <span
                             className={cn(
                               "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
-                              isStartActive
+                              isActive
                                 ? "bg-primary border-primary text-primary-foreground scale-105"
                                 : "border-border/80 bg-background text-foreground"
                             )}
                           >
-                            {formatTime(admin.startMin)}
+                            {row.label}
                           </span>
                         </div>
-                      )}
-                      {/* End Hour */}
-                      {showEnd && !isEndOverlapping && (
-                        <div
-                          className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
-                          style={{ top: `${endY}px` }}
-                        >
-                          <span
-                            className={cn(
-                              "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
-                              isEndActive
-                                ? "bg-primary border-primary text-primary-foreground scale-105"
-                                : "border-border/80 bg-background text-foreground"
-                            )}
+                      )
+                    })}
+                    {rows.length > 0 &&
+                      isMinuteVisible(timeRange.endMin) &&
+                      (() => {
+                        const endY = minuteToY(timeRange.endMin)
+                        const overlaps = visibleRows.some(
+                          (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
+                        )
+                        if (overlaps) return null
+
+                        const isStartActive =
+                          activeTimeRange && timeRange.endMin === activeTimeRange.startMin
+                        const isEndActive =
+                          activeTimeRange && timeRange.endMin === activeTimeRange.endMin
+                        const isActive = isStartActive || isEndActive
+
+                        return (
+                          <div
+                            className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
+                            style={{ top: `${endY}px` }}
                           >
-                            {formatTime(admin.endMin)}
-                          </span>
+                            <span
+                              className={cn(
+                                "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                                isActive
+                                  ? "bg-primary border-primary text-primary-foreground scale-105"
+                                  : "border-border/80 bg-background text-foreground"
+                              )}
+                            >
+                              {formatTime(timeRange.endMin)}
+                            </span>
+                          </div>
+                        )
+                      })()}
+
+                    {/* Admin hours labels in Hours column */}
+                    {adminSchedules?.map((admin) => {
+                      const showStart = isMinuteVisible(admin.startMin)
+                      const showEnd = isMinuteVisible(admin.endMin)
+                      if (!showStart && !showEnd) return null
+
+                      const startY = minuteToY(admin.startMin)
+                      const endY = minuteToY(admin.endMin)
+
+                      const isStartOverlapping = visibleRows.some(
+                        (row) => Math.abs(minuteToY(row.startMin) - startY) < 20
+                      )
+                      const isEndOverlapping = visibleRows.some(
+                        (row) => Math.abs(minuteToY(row.startMin) - endY) < 20
+                      )
+
+                      const isStartActive =
+                        activeTimeRange && admin.startMin === activeTimeRange.startMin
+                      const isEndActive = activeTimeRange && admin.endMin === activeTimeRange.endMin
+
+                      return (
+                        <div key={`admin-label-${admin.id}`}>
+                          {/* Start Hour */}
+                          {showStart && !isStartOverlapping && (
+                            <div
+                              className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                              style={{ top: `${startY}px` }}
+                            >
+                              <span
+                                className={cn(
+                                  "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                                  isStartActive
+                                    ? "bg-primary border-primary text-primary-foreground scale-105"
+                                    : "border-border/80 bg-background text-foreground"
+                                )}
+                              >
+                                {formatTime(admin.startMin)}
+                              </span>
+                            </div>
+                          )}
+                          {/* End Hour */}
+                          {showEnd && !isEndOverlapping && (
+                            <div
+                              className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1 z-10"
+                              style={{ top: `${endY}px` }}
+                            >
+                              <span
+                                className={cn(
+                                  "rounded-md border px-2 py-1 text-[11px] font-bold shadow-md transition-all duration-200",
+                                  isEndActive
+                                    ? "bg-primary border-primary text-primary-foreground scale-105"
+                                    : "border-border/80 bg-background text-foreground"
+                                )}
+                              >
+                                {formatTime(admin.endMin)}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  )
-                })}
+                      )
+                    })}
+                  </>
+                )}
               </div>
 
               {days.map((day) => (
