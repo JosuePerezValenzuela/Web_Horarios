@@ -196,6 +196,30 @@ export function WeeklyScheduleGrid({
                   style={{ top: `${minuteToY(row.startMin)}px` }}
                 />
               ))}
+
+              {/* Dynamic Hovered/Active Schedule Lines Highlight Overlay (Global) */}
+              {activeTimeRange && !activeTimeRange.days && (
+                <div className="absolute inset-0 transition-all duration-200">
+                  {/* Highlight band overlay */}
+                  <div
+                    className="absolute inset-x-0 bg-primary/[0.08] dark:bg-primary/[0.14] transition-all duration-200"
+                    style={{
+                      top: `${minuteToY(activeTimeRange.startMin)}px`,
+                      height: `${minuteToY(activeTimeRange.endMin) - minuteToY(activeTimeRange.startMin)}px`,
+                    }}
+                  />
+                  {/* Start Line */}
+                  <div
+                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                    style={{ top: `${minuteToY(activeTimeRange.startMin)}px` }}
+                  />
+                  {/* End Line */}
+                  <div
+                    className="absolute inset-x-0 border-t-2 border-dashed border-primary/50 dark:border-primary/75 transition-all duration-200"
+                    style={{ top: `${minuteToY(activeTimeRange.endMin)}px` }}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Hour labels are now rendered in the dedicated Hours column */}
@@ -313,7 +337,8 @@ export function WeeklyScheduleGrid({
                 >
                   {/* Dynamic Hovered/Active Schedule Highlight for this column */}
                   {activeTimeRange &&
-                    (!activeTimeRange.days || activeTimeRange.days.includes(day.value)) && (
+                    activeTimeRange.days &&
+                    activeTimeRange.days.includes(day.value) && (
                       <div className="absolute inset-0 pointer-events-none z-[2]">
                         <div
                           className="absolute inset-x-0 bg-primary/[0.08] dark:bg-primary/[0.14] transition-all duration-200"
@@ -401,9 +426,7 @@ export function WeeklyScheduleGrid({
                             onToggle={() => toggleCluster(slice.startMin, slice.endMin)}
                             onHoverChange={(hovered) => setClusterHovered(slice.id, hovered)}
                             onItemClick={onItemClick}
-                            onHoverTimeRangeChange={(range) =>
-                              setActiveTimeRange(range ? { ...range, days: [slice.day] } : null)
-                            }
+                            onHoverTimeRangeChange={setActiveTimeRange}
                           />
                         </div>
                       )
@@ -434,9 +457,7 @@ export function WeeklyScheduleGrid({
                           isContinuation={slice.isContinuation}
                           className="h-full w-full border-border/60 shadow-[0_18px_36px_-24px_rgba(15,23,42,0.7)]"
                           onClick={onItemClick}
-                          onHoverTimeRangeChange={(range) =>
-                            setActiveTimeRange(range ? { ...range, days: [item.day] } : null)
-                          }
+                          onHoverTimeRangeChange={setActiveTimeRange}
                         />
                       </div>
                     )
