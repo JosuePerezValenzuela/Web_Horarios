@@ -8,6 +8,11 @@ import type {
   EliminarHorariosBatchResponse,
   EditarHorariosBatchRequest,
   EditarHorariosBatchResponse,
+  HorarioCatalogoItem,
+  CrearAsignacionHorarioRequest,
+  CrearAsignacionHorarioResponse,
+  PatchAsignacionHorarioRequest,
+  PatchAsignacionHorarioResponse,
 } from "@/features/scheduling/docentes/domain/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
@@ -67,7 +72,7 @@ class ApiClient {
         const { useAuthStore } = await import("@/features/auth/application/authStore")
         useAuthStore.getState().logout()
 
-        if (window.location.pathname !== "/") {
+        if (window.location.pathname !== "/" && !window.location.pathname.startsWith("/reservas")) {
           window.location.href = "/"
         }
       }
@@ -225,5 +230,27 @@ export const horariosApi = {
     payload: EliminarHorariosBatchRequest
   ): Promise<EliminarHorariosBatchResponse> => {
     return apiClient.delete<EliminarHorariosBatchResponse>("/horario-clases", payload)
+  },
+
+  getHorarioCatalogo: (
+    page: number,
+    pageSize: number
+  ): Promise<{ success: boolean; data: HorarioCatalogoItem[] }> => {
+    return apiClient.get<{ success: boolean; data: HorarioCatalogoItem[] }>(
+      `/horario-catalogo?page=${page}&pageSize=${pageSize}`
+    )
+  },
+
+  crearAsignacionHorario: (
+    payload: CrearAsignacionHorarioRequest
+  ): Promise<CrearAsignacionHorarioResponse> => {
+    return apiClient.post<CrearAsignacionHorarioResponse>("/asignacion-horario", payload)
+  },
+
+  patchAsignacionHorario: (
+    id: number,
+    payload: PatchAsignacionHorarioRequest
+  ): Promise<PatchAsignacionHorarioResponse> => {
+    return apiClient.patch<PatchAsignacionHorarioResponse>(`/asignacion-horario/${id}`, payload)
   },
 }

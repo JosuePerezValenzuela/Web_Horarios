@@ -2,7 +2,14 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { ArrowLeft, RefreshCw, Calendar } from "lucide-react"
+import {
+  ArrowLeft,
+  RefreshCw,
+  ClipboardList,
+  LayoutList,
+  AlignJustify,
+  Calendar,
+} from "lucide-react"
 
 import type {
   DocenteScheduleMeta,
@@ -11,10 +18,12 @@ import type {
   TimeRange,
   TimeRow,
   AdminSchedule,
+  AdminScheduleRaw,
 } from "../domain/types"
 import { GroupSummaryCard } from "./GroupSummaryCard"
 import { WeeklyScheduleGrid } from "./WeeklyScheduleGrid"
 import { BulkAssignmentModal } from "./BulkAssignmentModal"
+import { AdminSchedulesModal } from "./AdminSchedulesModal"
 
 interface TeacherSchedulePageProps {
   docente: DocenteScheduleMeta | null
@@ -36,6 +45,7 @@ interface TeacherSchedulePageProps {
   onEditSchedule?: (schedule: NormalizedSchedule) => void
   onAssigned?: () => void | Promise<void>
   adminSchedules?: AdminSchedule[]
+  rawAdminSchedules?: AdminScheduleRaw[]
 }
 
 export function TeacherSchedulePage({
@@ -58,9 +68,11 @@ export function TeacherSchedulePage({
   onEditSchedule,
   onAssigned,
   adminSchedules,
+  rawAdminSchedules = [],
 }: TeacherSchedulePageProps) {
   const hasSchedules = schedules.length > 0
   const [isCompactMode, setIsCompactMode] = useState(false)
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false)
 
   const handleAddClick = (group: GroupSummary) => {
     onAddClick?.(group)
@@ -95,21 +107,38 @@ export function TeacherSchedulePage({
             </div>
           </div>
 
-          {/* Vista Compacta Toggle */}
-          <div className="flex shrink-0 items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-1.5 shadow-sm transition hover:bg-muted/60">
-            <Label
-              htmlFor="compact-mode"
-              className="text-xs font-semibold text-foreground cursor-pointer select-none"
+          <div className="flex items-center gap-3 shrink-0">
+            {/* Horarios Administrativos Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={loading || !docente?.codigo || docente.codigo === "Sin dato"}
+              onClick={() => setIsAdminModalOpen(true)}
+              className="gap-1.5"
             >
+              <ClipboardList className="size-4" />
+              Horarios Administrativos
+            </Button>
+
+            {/* Vista Compacta Toggle */}
+            <Button
+              variant={isCompactMode ? "outline" : "ghost"}
+              size="sm"
+              onClick={() => setIsCompactMode((v) => !v)}
+              className={
+                isCompactMode
+                  ? "gap-1.5 bg-muted border-border text-foreground font-medium hover:bg-muted/70"
+                  : "gap-1.5"
+              }
+              title={isCompactMode ? "Desactivar vista compacta" : "Activar vista compacta"}
+            >
+              {isCompactMode ? (
+                <AlignJustify className="size-4" />
+              ) : (
+                <LayoutList className="size-4" />
+              )}
               Vista compacta
-            </Label>
-            <input
-              id="compact-mode"
-              type="checkbox"
-              checked={isCompactMode}
-              onChange={(e) => setIsCompactMode(e.target.checked)}
-              className="h-4 w-4 rounded-md border-border/80 bg-background text-primary focus:ring-primary cursor-pointer transition accent-primary"
-            />
+            </Button>
           </div>
         </div>
       </header>
@@ -210,6 +239,13 @@ export function TeacherSchedulePage({
       {docenteId && onEditClick && (
         <BulkAssignmentModal mode="edit" schedules={schedules} onAssigned={onAssigned} />
       )}
+      <AdminSchedulesModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        schedules={rawAdminSchedules}
+        docente={docente}
+        onAssigned={() => onAssigned?.()}
+      />
     </div>
   )
 }

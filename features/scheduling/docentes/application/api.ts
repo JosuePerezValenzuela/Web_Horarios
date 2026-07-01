@@ -2,14 +2,19 @@
  * Docentes API functions
  */
 
-import { apiClient } from "@/shared/services/api/client"
+import { apiClient, horariosApi } from "@/shared/services/api/client"
 import type {
   ApiResponse,
   DocenteHorariosApiResponse,
   DocentesFilters,
   AdminScheduleApiResponse,
+  HorarioCatalogoItem,
+  CrearAsignacionHorarioRequest,
+  CrearAsignacionHorarioResponse,
+  PatchAsignacionHorarioRequest,
+  PatchAsignacionHorarioResponse,
+  NormalizedSchedule,
 } from "../domain/types"
-import type { NormalizedSchedule } from "../domain/types"
 
 export interface Facultad {
   id: string
@@ -149,4 +154,24 @@ export async function fetchDocenteAdminHorarios(
   return apiClient.get<AdminScheduleApiResponse>(
     `/asignacion-horario?codigo_persona=${encodeURIComponent(codigoPersona)}`
   )
+}
+
+export async function fetchHorarioCatalogo(
+  page: number,
+  pageSize: number
+): Promise<{ success: boolean; data: HorarioCatalogoItem[] }> {
+  return horariosApi.getHorarioCatalogo(page, pageSize)
+}
+
+export async function crearAsignacionHorario(
+  payload: CrearAsignacionHorarioRequest
+): Promise<CrearAsignacionHorarioResponse> {
+  return horariosApi.crearAsignacionHorario(payload)
+}
+
+export async function patchAsignacionHorario(
+  id: number,
+  payload: PatchAsignacionHorarioRequest
+): Promise<PatchAsignacionHorarioResponse> {
+  return horariosApi.patchAsignacionHorario(id, payload)
 }

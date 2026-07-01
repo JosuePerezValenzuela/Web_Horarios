@@ -464,6 +464,19 @@ export interface TeacherSchedulePageProps {
   onEditSchedule?: (schedule: NormalizedSchedule) => void
   onAssigned?: () => void | Promise<void>
   adminSchedules?: AdminSchedule[]
+  rawAdminSchedules?: AdminScheduleRaw[]
+}
+
+export interface AdminScheduleRaw {
+  id: number
+  horario_catalogo: {
+    id: number
+    descripcion: string
+    hora_entrada: string
+    hora_salida: string
+  }
+  fecha_inicio: string
+  fecha_fin: string | null
 }
 
 export interface AdminScheduleApiResponse {
@@ -473,16 +486,36 @@ export interface AdminScheduleApiResponse {
       codigo?: string
       nombres?: string
     }
-    horarios: Array<{
-      id: number
-      horario_catalogo: {
-        id: number
-        descripcion: string
-        hora_entrada: string
-        hora_salida: string
-      }
-      fecha_inicio: string
-      fecha_fin: string | null
-    }>
+    horarios: AdminScheduleRaw[]
   }
+}
+
+export interface HorarioCatalogoItem {
+  id: number
+  descripcion: string
+  hora_entrada: string
+  hora_salida: string
+}
+
+export interface CrearAsignacionHorarioRequest {
+  persona_codigo: string
+  horario_catalogo_id: number
+  fecha_inicio: string
+  fecha_fin: string | null
+}
+
+export interface CrearAsignacionHorarioResponse {
+  success: boolean
+  message?: string
+  data?: AdminScheduleRaw
+}
+
+export interface PatchAsignacionHorarioRequest {
+  fecha_fin: string | null
+}
+
+export interface PatchAsignacionHorarioResponse {
+  success: boolean
+  message?: string
+  data?: AdminScheduleRaw
 }

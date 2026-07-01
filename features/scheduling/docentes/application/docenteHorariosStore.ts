@@ -18,6 +18,7 @@ import type {
   TimeRow,
   DocenteScheduleMeta,
   AdminSchedule,
+  AdminScheduleRaw,
 } from "../domain/types"
 
 interface DocenteHorariosState {
@@ -25,6 +26,7 @@ interface DocenteHorariosState {
   schedules: NormalizedSchedule[]
   groups: GroupSummary[]
   adminSchedules: AdminSchedule[]
+  rawAdminSchedules: AdminScheduleRaw[]
   period: number
   timeRange: TimeRange
   rows: TimeRow[]
@@ -47,6 +49,7 @@ const INITIAL_STATE = {
   schedules: [],
   groups: [],
   adminSchedules: [],
+  rawAdminSchedules: [],
   period: DEFAULT_PERIOD,
   timeRange: EMPTY_RANGE,
   rows: buildRows(EMPTY_RANGE, DEFAULT_PERIOD),
@@ -68,10 +71,12 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
 
       // Fetch administrative schedule if teacher code is available
       let adminSchedules: AdminSchedule[] = []
+      let rawAdminSchedules: AdminScheduleRaw[] = []
       if (normalized.docente?.codigo && normalized.docente.codigo !== "Sin dato") {
         try {
           const adminResponse = await fetchDocenteAdminHorarios(normalized.docente.codigo)
           adminSchedules = normalizeAdminSchedules(adminResponse)
+          rawAdminSchedules = adminResponse.data.horarios
         } catch (err) {
           console.error("Failed to load administrative schedules:", err)
         }
@@ -91,6 +96,7 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
         schedules: hydratedSchedules,
         groups: normalized.groups,
         adminSchedules,
+        rawAdminSchedules,
         period,
         timeRange: adjustedTimeRange,
         rows: buildRows(adjustedTimeRange, period),
