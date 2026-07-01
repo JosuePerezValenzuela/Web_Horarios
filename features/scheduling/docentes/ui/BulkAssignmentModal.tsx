@@ -467,9 +467,13 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
 
                               return (
                                 <Button
-                                  variant={entry.ambienteLabel ? "secondary" : "outline"}
+                                  variant="outline"
                                   size="xs"
-                                  className="h-7 w-full justify-start text-xs"
+                                  className={
+                                    entry.ambienteLabel
+                                      ? "h-7 w-full justify-start text-xs bg-muted border-border text-foreground font-medium hover:bg-muted/70"
+                                      : "h-7 w-full justify-start text-xs"
+                                  }
                                   onClick={() => {
                                     if (!canSelectAmbiente) {
                                       const missing: string[] = []
@@ -514,8 +518,9 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                               disabled={mode === "create" && entries.length <= 1}
                               onClick={() => handleRowDeleteClick(entry.id)}
                               title="Eliminar horario"
+                              className="hover:bg-muted text-muted-foreground hover:text-foreground"
                             >
-                              <Trash2 className="size-3.5 text-muted-foreground hover:text-destructive" />
+                              <Trash2 className="size-3.5" />
                             </Button>
                           </td>
                         </tr>

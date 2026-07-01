@@ -273,7 +273,7 @@ export function TimePicker({
         <PopoverTrigger asChild disabled={disabled}>
           <button
             type="button"
-            className="ml-2 flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="ml-2 flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <Clock className="size-3.5" />
           </button>
