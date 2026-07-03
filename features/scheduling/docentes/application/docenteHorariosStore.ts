@@ -75,8 +75,30 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
       if (normalized.docente?.codigo && normalized.docente.codigo !== "Sin dato") {
         try {
           const adminResponse = await fetchDocenteAdminHorarios(normalized.docente.codigo)
-          adminSchedules = normalizeAdminSchedules(adminResponse)
           rawAdminSchedules = adminResponse.data.horarios
+
+          // Get local today string in YYYY-MM-DD
+          const today = new Date()
+          const y = today.getFullYear()
+          const m = String(today.getMonth() + 1).padStart(2, "0")
+          const d = String(today.getDate()).padStart(2, "0")
+          const todayStr = `${y}-${m}-${d}`
+
+          // Filter only active schedules for the grid (adminSchedules)
+          const activeSchedules = rawAdminSchedules.filter((h) => {
+            const startOk = h.fecha_inicio <= todayStr
+            const endOk = h.fecha_fin === null || h.fecha_fin >= todayStr
+            return startOk && endOk
+          })
+
+          // Normalize only active ones for display in the grid
+          adminSchedules = normalizeAdminSchedules({
+            ...adminResponse,
+            data: {
+              ...adminResponse.data,
+              horarios: activeSchedules,
+            },
+          })
         } catch (err) {
           console.error("Failed to load administrative schedules:", err)
         }

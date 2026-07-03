@@ -100,9 +100,18 @@ export function AdminSchedulesModal({
 
   // ── Sorted list (memoised inline) ────────────────────────────────────────────
   const sortedSchedules = [...schedules].sort((a, b) => {
-    if (a.fecha_fin === null && b.fecha_fin !== null) return -1
-    if (a.fecha_fin !== null && b.fecha_fin === null) return 1
-    if (a.fecha_fin === null && b.fecha_fin === null) return 0
+    const aActive = a.fecha_fin === null
+    const bActive = b.fecha_fin === null
+
+    if (aActive && !bActive) return -1
+    if (!aActive && bActive) return 1
+
+    if (aActive && bActive) {
+      // Both are active, sort by fecha_inicio descending (newest first)
+      return b.fecha_inicio.localeCompare(a.fecha_inicio)
+    }
+
+    // Both are inactive, sort by fecha_fin descending (most recently ended first)
     return b.fecha_fin!.localeCompare(a.fecha_fin!)
   })
 
@@ -546,12 +555,7 @@ export function AdminSchedulesModal({
                                   : "Sin límite"}
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent
-                              className="w-auto p-0"
-                              align="start"
-                              avoidCollisions={false}
-                              side="bottom"
-                            >
+                            <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
                                 selected={
@@ -568,13 +572,13 @@ export function AdminSchedulesModal({
                                 locale={es}
                                 initialFocus
                               />
-                              {/* Always-rendered footer keeps height stable → no position flip */}
+                              {/* Footer keeps height stable and adapts correctly without clipping */}
                               <div className="border-t border-border p-2">
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   disabled={!editDates[schedule.id]}
-                                  className="w-full text-xs text-muted-foreground disabled:opacity-0"
+                                  className="w-full text-xs text-muted-foreground disabled:opacity-30"
                                   onClick={() =>
                                     setEditDates((prev) => ({
                                       ...prev,
