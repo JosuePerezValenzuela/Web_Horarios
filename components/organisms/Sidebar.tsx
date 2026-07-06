@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
-import { LayoutDashboard, Users, Calendar, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut, MapPin } from "lucide-react"
 
 interface SidebarItem {
   title: string
@@ -28,6 +28,11 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Horarios",
     href: "/horarios",
     icon: Calendar,
+  },
+  {
+    title: "Reservas",
+    href: "/reservas",
+    icon: MapPin,
   },
 ]
 
@@ -142,7 +147,6 @@ export function Sidebar({
                   width={32}
                   height={32}
                   className="object-contain"
-                  style={{ height: "auto" }}
                   priority
                 />
               </div>

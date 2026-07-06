@@ -1,16 +1,38 @@
 "use client"
 
+import { useState } from "react"
 import { useAuth } from "@/features/auth/application/useAuth"
 import { TopHeader } from "@/components/organisms/TopHeader"
 import { AppLayout } from "@/components/organisms/AppLayout"
-import { Calendar, Users, MapPin, FileSpreadsheet, Lock } from "lucide-react"
+import { Calendar, Users, MapPin, FileSpreadsheet, Lock, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth()
+  const [isConnecting, setIsConnecting] = useState(false)
 
-  const handleLogin = () => {
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
-    window.location.href = `${backendUrl}/auth/login`
+  const handleLogin = async () => {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000"
+    setIsConnecting(true)
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+      // Intentamos pegarle a un endpoint ligero del back para verificar conectividad
+      await fetch(`${backendUrl}/auth/me`, {
+        method: "GET",
+        signal: controller.signal,
+        credentials: "include",
+      })
+
+      clearTimeout(timeoutId)
+      window.location.href = `${backendUrl}/auth/login`
+    } catch {
+      setIsConnecting(false)
+      toast.error(
+        "El servidor de autenticación no está disponible en este momento. Por favor, intente más tarde."
+      )
+    }
   }
 
   // 1. PANTALLA DE CARGA
@@ -63,10 +85,15 @@ export default function Home() {
               <div className="mt-2 flex flex-col items-center justify-center gap-3">
                 <button
                   onClick={handleLogin}
-                  className="umss-btn-primary px-6 py-3.5 text-sm tracking-wide uppercase transition-all shadow-md hover:shadow-lg font-bold flex items-center gap-2.5 active:scale-95 group"
+                  disabled={isConnecting}
+                  className="umss-btn-primary px-6 py-3.5 text-sm tracking-wide uppercase transition-all shadow-md hover:shadow-lg font-bold flex items-center gap-2.5 active:scale-95 group disabled:opacity-75 disabled:pointer-events-none"
                 >
-                  <Lock className="h-4.5 w-4.5" />
-                  Ingresar con SSO San Simón
+                  {isConnecting ? (
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                  ) : (
+                    <Lock className="h-4.5 w-4.5" />
+                  )}
+                  {isConnecting ? "Conectando..." : "Ingresar con SSO San Simón"}
                 </button>
                 <span className="text-[10px] text-gray-400 font-semibold tracking-wide uppercase">
                   Autenticación unificada mediante Keycloak SSO institucional.

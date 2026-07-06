@@ -6,7 +6,16 @@ import Image from "next/image"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
 import { usePathname } from "next/navigation"
 import { ThemeToggle } from "@/components/ui/theme-toggle"
-import { User, LogOut, ChevronDown, ShieldAlert, Check, Settings } from "lucide-react"
+import {
+  User,
+  LogOut,
+  ChevronDown,
+  ShieldAlert,
+  Check,
+  Settings,
+  MessageSquare,
+} from "lucide-react"
+import { useUIStore } from "@/shared/stores/uiStore"
 
 interface TopHeaderProps {
   breadcrumbs?: Array<{
@@ -36,19 +45,16 @@ export function TopHeader({
       hasToken: isAuthenticated,
       userData: user ? { name: user.name, email: user.email, role: user.role } : null,
       cerrarSesion: async () => {
-        try {
-          const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
-          await fetch(`${backendUrl}/auth/logout`, { credentials: "include" })
-        } catch (error) {
-          console.error("Error en logout:", error)
-        }
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
         logout()
-        window.location.href = "/"
+        window.location.href = `${backendUrl}/auth/logout`
       },
     }
   }
 
   const { hasToken, userData, cerrarSesion } = propUseAuth ? propUseAuth() : defaultUseAuth()
+
+  const { copilotSidebarOpen, toggleCopilotSidebar } = useUIStore()
 
   const [roles] = useState<string[]>(["Administrador", "Gestor"])
   const [rolActivo, setRolActivo] = useState<string>("Gestor")
@@ -105,7 +111,6 @@ export function TopHeader({
                 width={32}
                 height={32}
                 className="object-contain"
-                style={{ height: "auto" }}
                 priority
               />
             </div>
@@ -177,6 +182,24 @@ export function TopHeader({
           {/* Toggle de tema (para Desktop) */}
           <div className="hidden md:block">
             <ThemeToggle />
+          </div>
+
+          {/* Botón CopilotKit Sidebar */}
+          <div className="flex items-center gap-1.5 border-l border-border pl-3">
+            <button
+              onClick={toggleCopilotSidebar}
+              className={`p-2 rounded-xl transition-all cursor-pointer relative group active:scale-95 ${
+                copilotSidebarOpen
+                  ? "bg-[#002855]/10 dark:bg-blue-400/20 text-[#002855] dark:text-blue-400 font-bold"
+                  : "text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-slate-800"
+              }`}
+              title="Copilot Sidebar"
+            >
+              <MessageSquare className="w-4.5 h-4.5" />
+              <span className="absolute top-full mt-2 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900/90 backdrop-blur-sm border border-gray-800 text-white text-[10px] rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
+                Copilot AI
+              </span>
+            </button>
           </div>
 
           {/* Menú de Usuario Dinámico */}
