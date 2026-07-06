@@ -160,8 +160,11 @@ export default function HorariosListPage() {
   }, [errorAsignaturas])
 
   useEffect(() => {
-    const formatted = formatErrorMessage(errorInfra)
-    if (formatted) toast.error(formatted)
+    if (errorInfra) {
+      toast.error(
+        "No se pudo conectar con el servicio de infraestructura. Los filtros de espacios físicos (campus, bloques y ambientes) no estarán disponibles, pero aún puede realizar sus consultas de horarios normalmente."
+      )
+    }
   }, [errorInfra])
 
   useEffect(() => {
@@ -879,11 +882,17 @@ export default function HorariosListPage() {
                         <Select
                           value={filters.infra_campus_id || "none"}
                           onValueChange={handleCampusChange}
-                          disabled={loadingInfra}
+                          disabled={loadingInfra || !!errorInfra}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
-                              placeholder={loadingInfra ? "Cargando..." : "Seleccione Campus"}
+                              placeholder={
+                                errorInfra
+                                  ? "Servicio no disponible"
+                                  : loadingInfra
+                                    ? "Cargando..."
+                                    : "Seleccione Campus"
+                              }
                             />
                           </SelectTrigger>
                           <SearchableSelectContent
@@ -908,11 +917,17 @@ export default function HorariosListPage() {
                         <Select
                           value={filters.infra_facultad_id || "none"}
                           onValueChange={handleFacultadInfraChange}
-                          disabled={loadingInfra}
+                          disabled={loadingInfra || !!errorInfra}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
-                              placeholder={loadingInfra ? "Cargando..." : "Seleccione Facultad"}
+                              placeholder={
+                                errorInfra
+                                  ? "Servicio no disponible"
+                                  : loadingInfra
+                                    ? "Cargando..."
+                                    : "Seleccione Facultad"
+                              }
                             />
                           </SelectTrigger>
                           <SearchableSelectContent
@@ -938,17 +953,22 @@ export default function HorariosListPage() {
                           value={filters.infra_bloque_id || "none"}
                           onValueChange={handleBloqueChange}
                           disabled={
-                            loadingInfra || !filters.infra_campus_id || !filters.infra_facultad_id
+                            loadingInfra ||
+                            !!errorInfra ||
+                            !filters.infra_campus_id ||
+                            !filters.infra_facultad_id
                           }
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
                               placeholder={
-                                loadingInfra
-                                  ? "Cargando..."
-                                  : !filters.infra_campus_id || !filters.infra_facultad_id
-                                    ? "Seleccione Campus y Facultad"
-                                    : "Seleccione Bloque"
+                                errorInfra
+                                  ? "Servicio no disponible"
+                                  : loadingInfra
+                                    ? "Cargando..."
+                                    : !filters.infra_campus_id || !filters.infra_facultad_id
+                                      ? "Seleccione Campus y Facultad"
+                                      : "Seleccione Bloque"
                               }
                             />
                           </SelectTrigger>
@@ -974,16 +994,18 @@ export default function HorariosListPage() {
                         <Select
                           value={filters.infra_ambiente_id || "none"}
                           onValueChange={handleAmbienteChange}
-                          disabled={loadingInfra || !filters.infra_bloque_id}
+                          disabled={loadingInfra || !!errorInfra || !filters.infra_bloque_id}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
                               placeholder={
-                                loadingInfra
-                                  ? "Cargando..."
-                                  : !filters.infra_bloque_id
-                                    ? "Seleccione Bloque primero"
-                                    : "Seleccione Ambiente"
+                                errorInfra
+                                  ? "Servicio no disponible"
+                                  : loadingInfra
+                                    ? "Cargando..."
+                                    : !filters.infra_bloque_id
+                                      ? "Seleccione Bloque primero"
+                                      : "Seleccione Ambiente"
                               }
                             />
                           </SelectTrigger>

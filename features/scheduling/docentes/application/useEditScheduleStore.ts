@@ -484,9 +484,19 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
         tiposAmbiente: tiposRes.items || [],
       })
     } catch (error) {
-      const apiError = error as { status?: number; body?: { message?: string } }
-      const msg = apiError?.body?.message || "Error al cargar datos iniciales"
-      console.error("Error fetching initial data:", error)
+      console.error("Error fetching initial infrastructure data:", error)
+      let msg =
+        "No se pudo cargar el catálogo de infraestructura (facultades y tipos de ambientes)."
+      if (error instanceof Error) {
+        const errorLower = error.message.toLowerCase()
+        if (errorLower.includes("fetch") || errorLower.includes("network")) {
+          msg =
+            "No se pudo establecer conexión con el servicio de infraestructura. Verifique que el servicio esté activo."
+        } else {
+          const apiError = error as { body?: { message?: string } }
+          msg = apiError.body?.message || error.message
+        }
+      }
       set({ initialLoadError: msg })
     }
   },

@@ -7,19 +7,13 @@ import { DocentesFilters } from "@/features/scheduling/docentes/ui/DocentesFilte
 import { DocentesTable } from "@/features/scheduling/docentes/ui/DocentesTable"
 import { DocentesPagination } from "@/features/scheduling/docentes/ui/DocentesPagination"
 import { useDocentesStore } from "@/features/scheduling/docentes/application/docentesStore"
-import { useAuthStore } from "@/features/auth/application/authStore"
-import { PlusIcon } from "lucide-react"
 
 export default function DocentesPage() {
   const fetchDocentes = useDocentesStore((state) => state.fetchDocentes)
-  const { user } = useAuthStore()
 
   useEffect(() => {
     fetchDocentes()
   }, [fetchDocentes])
-
-  // Verificar si el usuario tiene permiso para crear docentes (rol Administrador)
-  const canCreateDocente = user?.role === "Administrador"
 
   return (
     <ProtectedRoute>
@@ -36,19 +30,10 @@ export default function DocentesPage() {
               <h2 className="umss-title-h1 text-2xl md:text-3xl uppercase tracking-wide">
                 Docentes
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+              <p className="text-xs text-gray-550 dark:text-gray-450 font-medium">
                 Busca docentes y accede a la gestión de su carga horaria.
               </p>
             </div>
-            {canCreateDocente && (
-              <button
-                type="button"
-                className="umss-btn-primary py-2 px-4 text-xs font-bold uppercase rounded-lg flex items-center gap-1.5 cursor-pointer shadow-sm hover:shadow"
-              >
-                <PlusIcon className="size-4" />
-                Registrar docente
-              </button>
-            )}
           </div>
 
           {/* Filters Section (Fondo de tarjeta unificado) */}
