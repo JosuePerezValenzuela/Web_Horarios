@@ -22,6 +22,7 @@ function toScheduleItem(schedule: NormalizedSchedule): ScheduleItem {
     title: schedule.materia,
     subtitle: schedule.ambienteLabel || undefined,
     badge: `G: ${schedule.grupo}`,
+    description: schedule.docente || undefined,
     colorIndex: schedule.colorIndex,
     meta: { schedule },
   }
