@@ -165,13 +165,19 @@ function normalizeCarreras(carreras: unknown): string[] {
 function normalizeAmbienteLabel(value: unknown): string {
   if (typeof value === "string") {
     const val = value.trim()
-    return val ? (val.startsWith("Ambiente: ") ? val : `Ambiente: ${val}`) : FALLBACK_AMBIENTE
+    if (!val) return FALLBACK_AMBIENTE
+    const content = val.startsWith("Ambiente: ") ? val.slice(10).trim() : val
+    const formatted = content.startsWith("Aula") ? content : `Aula ${content}`
+    return `Ambiente: ${formatted}`
   }
 
   if (value && typeof value === "object") {
     const ambiente = value as { nombre?: unknown }
     const name = toStringValue(ambiente.nombre, "").trim()
-    return name ? (name.startsWith("Ambiente: ") ? name : `Ambiente: ${name}`) : FALLBACK_AMBIENTE
+    if (!name) return FALLBACK_AMBIENTE
+    const content = name.startsWith("Ambiente: ") ? name.slice(10).trim() : name
+    const formatted = content.startsWith("Aula") ? content : `Aula ${content}`
+    return `Ambiente: ${formatted}`
   }
 
   return FALLBACK_AMBIENTE
@@ -273,10 +279,17 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
       : null
 
   const rawAulaCodigo = schedule.aula_codigo ?? schedule.aulaCodigo
-  const ambienteLabel =
-    rawAulaCodigo != null && String(rawAulaCodigo).trim().length > 0
-      ? `Ambiente: ${String(rawAulaCodigo).trim()}`
-      : normalizeAmbienteLabel(schedule.ambiente)
+  const cleanAula = rawAulaCodigo != null ? String(rawAulaCodigo).trim() : ""
+  const formattedAula = cleanAula
+    ? cleanAula.startsWith("Aula")
+      ? cleanAula
+      : `Aula ${cleanAula}`
+    : ""
+  const ambienteLabel = formattedAula
+    ? `Ambiente: ${formattedAula}`
+    : normalizeAmbienteLabel(schedule.ambiente)
+
+  const docente = schedule.persona?.nombres ?? schedule.docente ?? ""
 
   return {
     scheduleId: toStringValue(schedule.id, `${groupKey}-${day}-${startMin}-${endMin}`),
@@ -299,6 +312,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     dbId,
     fechaInicioRaw,
     fechaFinRaw,
+    docente: docente || undefined,
   }
 }
 

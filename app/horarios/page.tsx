@@ -5,7 +5,7 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
-import { Filter, RefreshCw, Calendar, AlertCircle, AlertTriangle, MapPin } from "lucide-react"
+import { Filter, RefreshCw, Calendar, AlertCircle, MapPin } from "lucide-react"
 
 // Stores
 import { useHorariosListStore } from "@/features/scheduling/docentes/application/useHorariosListStore"
@@ -33,7 +33,6 @@ import { Badge } from "@/components/ui/badge"
 import { TimePicker } from "@/components/ui/time-picker"
 import type { DateRange } from "react-day-picker"
 import { DatePickerRange } from "@/components/ui/date-picker-range"
-import { Checkbox } from "@/components/ui/checkbox"
 import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
 import type { ScheduleItem } from "@/components/ui/weekly-schedule-grid/types"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
@@ -412,7 +411,6 @@ export default function HorariosListPage() {
     setFilter("fecha_hasta", undefined)
     setFilter("hora_desde", undefined)
     setFilter("hora_hasta", undefined)
-    setFilter("solo_conflicto", false)
     clearCarreras()
     clearAsignaturas()
     triggerFetchIfValid()
@@ -525,14 +523,6 @@ export default function HorariosListPage() {
                   >
                     {pagination.totalRecords} registros
                   </Badge>
-                  {filters.solo_conflicto && (
-                    <Badge
-                      variant="destructive"
-                      className="animate-pulse px-2 py-0.5 text-xs font-semibold"
-                    >
-                      Modo Conflicto Activo
-                    </Badge>
-                  )}
                 </div>
               </div>
 
@@ -829,26 +819,6 @@ export default function HorariosListPage() {
                             className="h-9 text-xs"
                           />
                         </div>
-                      </div>
-
-                      {/* Solo Conflicto Checkbox */}
-                      <div className="flex items-center space-x-2 pt-2 border-t border-border mt-1.5">
-                        <Checkbox
-                          id="solo_conflicto"
-                          checked={filters.solo_conflicto}
-                          onCheckedChange={(checked) => {
-                            setFilter("solo_conflicto", !!checked)
-                            triggerFetchIfValid()
-                          }}
-                          disabled={!isMandatoryFiltersSet}
-                        />
-                        <Label
-                          htmlFor="solo_conflicto"
-                          className="text-xs font-medium text-foreground cursor-pointer flex items-center gap-1.5"
-                        >
-                          <AlertTriangle className="size-3.5 shrink-0 text-destructive" />
-                          Solo solapamientos / conflictos
-                        </Label>
                       </div>
                     </div>
                   </div>

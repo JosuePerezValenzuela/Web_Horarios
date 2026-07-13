@@ -240,8 +240,6 @@ export const useHorariosListStore = create<HorariosListState>()((set, get) => ({
       if (filters.hora_hasta) searchParams.set("hora_hasta", filters.hora_hasta)
       if (filters.dia !== undefined) searchParams.set("dia", filters.dia.toString())
       if (filters.aula_id) searchParams.set("aula_id", filters.aula_id)
-      if (filters.solo_conflicto)
-        searchParams.set("solo_conflicto", filters.solo_conflicto.toString())
 
       // Filtros de infraestructura
       if (filters.infra_campus_id) searchParams.set("infra_campus_id", filters.infra_campus_id)
