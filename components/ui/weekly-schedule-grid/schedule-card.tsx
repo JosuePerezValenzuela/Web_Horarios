@@ -274,15 +274,17 @@ export function ScheduleCard({
           </div>
 
           {/* Aula */}
-          <div className="flex items-start gap-2">
-            <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
-              Ambiente:
-            </span>
-            <span className="flex items-center gap-1.5 font-medium">
-              <MapPin className="size-3.5 text-muted-foreground/70 shrink-0" />
-              <span>{(schedule?.ambienteLabel || "No asignado").replace("Ambiente: ", "")}</span>
-            </span>
-          </div>
+          {rawAula && rawAula !== "Sin ambiente" && rawAula !== "No asignado" && (
+            <div className="flex items-start gap-2">
+              <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
+                Ambiente:
+              </span>
+              <span className="flex items-center gap-1.5 font-medium">
+                <MapPin className="size-3.5 text-muted-foreground/70 shrink-0" />
+                <span>{rawAula}</span>
+              </span>
+            </div>
+          )}
 
           {/* Vigencia */}
           <div className="flex items-start gap-2">
