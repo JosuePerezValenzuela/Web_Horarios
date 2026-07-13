@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useSolapamientosStore } from "../application/useSolapamientosStore"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useUIStore } from "@/shared/stores/uiStore"
