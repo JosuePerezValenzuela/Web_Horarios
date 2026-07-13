@@ -28,17 +28,26 @@ export function formatTime(minutes: number): string {
 }
 
 export function getItemHeight(item: ScheduleItem): number {
-  const titleLines = Math.max(1, Math.ceil(item.title.length / 18))
-  const subtitleLines = item.subtitle ? Math.max(1, Math.ceil(item.subtitle.length / 22)) : 0
-  const badgeLines = item.badge ? 1 : 0
+  // Title (clamped to max 3 lines in CSS)
+  const titleLines = Math.min(3, Math.max(1, Math.ceil(item.title.length / 16)))
 
-  let height = 16 // Padding top/bottom + borders (with safety margin)
-  height += titleLines * 15 // Title text lines
-  if (subtitleLines > 0) {
-    height += subtitleLines * 14 + 2 // Subtitle lines + gap mt-0.5
+  // Teacher / Description (clamped to max 2 lines in CSS)
+  let descriptionLines = 0
+  if (item.description) {
+    descriptionLines = Math.min(2, Math.max(1, Math.ceil(item.description.length / 20)))
+  }
+
+  // Combined Badge: G: group - Aula: room
+  const hasBadge = !!(item.badge || item.subtitle)
+  const badgeLines = hasBadge ? 1 : 0
+
+  let height = 24 // Padding top/bottom + borders + safety margin
+  height += titleLines * 15 // Title lines
+  if (descriptionLines > 0) {
+    height += descriptionLines * 14 + 2 // Description lines + gap mt-0.5
   }
   if (badgeLines > 0) {
-    height += 18 + 4 // Badge + gap mt-1
+    height += 18 + 4 // Combined badge + gap mt-1
   }
 
   return Math.max(height, MIN_BLOCK_HEIGHT)

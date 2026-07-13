@@ -23,6 +23,7 @@ export interface ScheduleItem {
   title: string // main text (e.g. subject name)
   subtitle?: string // secondary text (e.g. room)
   badge?: string // small badge text (e.g. group)
+  description?: string // e.g. teacher's name
   // Theming
   colorIndex: number // integer, used by resolveColorToken
   // Optional callbacks data
