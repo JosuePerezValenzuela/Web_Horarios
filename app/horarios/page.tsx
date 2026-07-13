@@ -341,8 +341,9 @@ export default function HorariosListPage() {
       endMin: schedule.endMin,
       durationMin: schedule.durationMin,
       title: schedule.materia,
-      subtitle: schedule.docente || "Docente no asignado",
-      badge: `G: ${schedule.grupo} · ${schedule.ambienteLabel}`,
+      subtitle: schedule.ambienteLabel || undefined,
+      badge: `G: ${schedule.grupo}`,
+      description: schedule.docente,
       colorIndex: schedule.colorIndex,
       meta: { schedule },
     }))

@@ -145,8 +145,8 @@ export function ScheduleCard({
   const schedule = item.meta?.schedule as NormalizedSchedule | undefined
   const rawGroup = schedule?.grupo || item.badge?.replace("G: ", "") || ""
   const rawAula =
-    schedule?.ambienteLabel?.replace("Ambiente: ", "") ||
-    item.subtitle?.replace("Ambiente: ", "") ||
+    schedule?.ambienteLabel?.replace("Ambiente: ", "").replace("Aula ", "") ||
+    item.subtitle?.replace("Ambiente: ", "").replace("Aula ", "") ||
     ""
 
   const combinedBadgeParts: string[] = []
