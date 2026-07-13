@@ -149,9 +149,12 @@ export function ScheduleCard({
     item.subtitle?.replace("Ambiente: ", "").replace("Aula ", "") ||
     ""
 
+  const showAula =
+    rawAula && rawAula !== "Sin ambiente" && rawAula !== "Sin aula" && rawAula !== "No asignado"
+
   const combinedBadgeParts: string[] = []
   if (rawGroup) combinedBadgeParts.push(`G: ${rawGroup}`)
-  if (rawAula && rawAula !== "Sin ambiente") combinedBadgeParts.push(`Aula: ${rawAula}`)
+  if (showAula) combinedBadgeParts.push(`Aula: ${rawAula}`)
   const combinedBadgeText = combinedBadgeParts.join(" - ")
 
   if (mode === "peek") {
@@ -274,7 +277,7 @@ export function ScheduleCard({
           </div>
 
           {/* Aula */}
-          {rawAula && rawAula !== "Sin ambiente" && rawAula !== "No asignado" && (
+          {showAula && (
             <div className="flex items-start gap-2">
               <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
                 Ambiente:

@@ -193,9 +193,19 @@ function normalizeTipoLabel(schedule: DocenteHorarioApiSchedule): string {
   return toStringValue(explicitTipo, FALLBACK_TIPO)
 }
 
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ""
+  const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr
+  const parts = datePart.split("-")
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`
+  }
+  return dateStr
+}
+
 function normalizeFechasLabel(schedule: DocenteHorarioApiSchedule): string {
-  const inicio = toStringValue(schedule.fechaInicio ?? schedule.fecha_inicio, "")
-  const fin = toStringValue(schedule.fechaFin ?? schedule.fecha_fin, "")
+  const inicio = formatDate(toStringValue(schedule.fechaInicio ?? schedule.fecha_inicio, ""))
+  const fin = formatDate(toStringValue(schedule.fechaFin ?? schedule.fecha_fin, ""))
 
   if (inicio && fin) return `${inicio} - ${fin}`
   if (inicio) return `Desde ${inicio}`
@@ -280,14 +290,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
 
   const rawAulaCodigo = schedule.aula_codigo ?? schedule.aulaCodigo
   const cleanAula = rawAulaCodigo != null ? String(rawAulaCodigo).trim() : ""
-  const formattedAula = cleanAula
-    ? cleanAula.startsWith("Aula")
-      ? cleanAula
-      : `Aula ${cleanAula}`
-    : ""
-  const ambienteLabel = formattedAula
-    ? `Ambiente: ${formattedAula}`
-    : normalizeAmbienteLabel(schedule.ambiente)
+  const ambienteLabel = cleanAula || normalizeAmbienteLabel(schedule.ambiente)
 
   const docente = schedule.persona?.nombres ?? schedule.docente ?? ""
 

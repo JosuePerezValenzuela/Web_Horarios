@@ -11,6 +11,7 @@ export interface HorarioClaseItem {
   fecha_inicio: string // "YYYY-MM-DD"
   fecha_fin: string // "YYYY-MM-DD"
   aula_id: number
+  aula_codigo?: string | null
   modalidad?: string
   persona_grupo_id: number
   persona?: {
@@ -121,9 +122,23 @@ function timeToMinutes(time: string): number {
 }
 
 // Normalizador para la grilla semanal
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ""
+  const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr
+  const parts = datePart.split("-")
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`
+  }
+  return dateStr
+}
+
 function normalizeHorarioToSchedule(item: HorarioClaseItem, index: number): NormalizedSchedule {
   const startMin = timeToMinutes(item.hora_inicio)
   const endMin = timeToMinutes(item.hora_fin)
+
+  // Use aula_codigo directly. If not present, fall back to aula_id. Do not hardcode prefixes in the store.
+  const rawAula = item.aula_codigo || (item.aula_id ? String(item.aula_id) : "")
+  const ambienteLabel = rawAula || "Sin aula"
 
   return {
     scheduleId: `list-${item.id}-${index}`,
@@ -140,9 +155,9 @@ function normalizeHorarioToSchedule(item: HorarioClaseItem, index: number): Norm
     materia: item.asignatura?.nombre || item.plan_estudio?.nombre || "Materia no especificada",
     grupo: item.grupo,
     carreras: item.plan_estudio?.nombre ? [item.plan_estudio.nombre] : [],
-    ambienteLabel: item.aula_id ? `Aula ${item.aula_id}` : "Sin aula",
+    ambienteLabel,
     tipoLabel: item.modalidad === "C" ? "Presencial" : "Virtual",
-    fechasLabel: `${item.fecha_inicio} al ${item.fecha_fin}`,
+    fechasLabel: `${formatDate(item.fecha_inicio)} al ${formatDate(item.fecha_fin)}`,
     dbId: item.id,
     fechaInicioRaw: item.fecha_inicio,
     fechaFinRaw: item.fecha_fin,

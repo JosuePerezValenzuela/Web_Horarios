@@ -17,6 +17,16 @@ import {
   resolveDefaultPeriod,
 } from "../../docentes/application/normalizers"
 
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return ""
+  const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr
+  const parts = datePart.split("-")
+  if (parts.length === 3) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`
+  }
+  return dateStr
+}
+
 interface SolapamientosFilters {
   tolerancia_minutos: number
   persona_codigo: string
@@ -293,7 +303,7 @@ export const useSolapamientosStore = create<SolapamientosState>()((set, get) => 
       const endMin = parseTimeToMinutes(c.hora_fin)
       const groupKey = `${c.asignatura_nombre}::${c.grupo}`
       const rawAula = c.aula_codigo ?? c.aulaCodigo ?? c.ambiente
-      const ambienteLabel = rawAula ? `Ambiente: ${rawAula}` : "Sin ambiente"
+      const ambienteLabel = rawAula ? String(rawAula).trim() : "Sin ambiente"
 
       return {
         scheduleId: `clase-${c.id}`,
@@ -313,7 +323,9 @@ export const useSolapamientosStore = create<SolapamientosState>()((set, get) => 
         carreras: c.carreras.map((car) => car.nombre),
         ambienteLabel,
         tipoLabel: c.tipo_designacion || "TITULAR",
-        fechasLabel: c.fecha_fin ? `${c.fecha_inicio} a ${c.fecha_fin}` : `Desde ${c.fecha_inicio}`,
+        fechasLabel: c.fecha_fin
+          ? `${formatDate(c.fecha_inicio)} a ${formatDate(c.fecha_fin)}`
+          : `Desde ${formatDate(c.fecha_inicio)}`,
         dbId: c.id,
         fechaInicioRaw: c.fecha_inicio,
         fechaFinRaw: c.fecha_fin,
