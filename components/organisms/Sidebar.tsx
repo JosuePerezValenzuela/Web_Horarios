@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
-import { LayoutDashboard, Users, Calendar, LogOut, MapPin } from "lucide-react"
+import { LayoutDashboard, Users, Calendar, LogOut, MapPin, AlertCircle } from "lucide-react"
 
 interface SidebarItem {
   title: string
@@ -33,6 +33,11 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Reservas",
     href: "/reservas",
     icon: MapPin,
+  },
+  {
+    title: "Solapamientos",
+    href: "/solapamientos",
+    icon: AlertCircle,
   },
 ]
 
