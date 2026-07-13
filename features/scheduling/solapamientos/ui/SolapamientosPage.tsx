@@ -48,15 +48,19 @@ export function SolapamientosPage() {
     conflicts,
     timeRange,
     rows,
+    nextDocente,
+    prevDocente,
     setFilter,
     fetchSolapamientos,
     setCurrentDocenteIndex,
     reset,
   } = useSolapamientosStore()
 
-  // Local state for docente search input (filters by name or code locally)
-  const [searchTerm, setSearchTerm] = useState("")
+  // Local state for docente code input (triggers API query param search)
+  const [localCodigo, setLocalCodigo] = useState(filters.persona_codigo)
   const [facultadSearch, setFacultadSearch] = useState("")
+  // Local state to filter the left jump list dropdown by teacher name
+  const [docenteDropdownSearch, setDocenteDropdownSearch] = useState("")
 
   // Fetch initial data
   useEffect(() => {
@@ -66,6 +70,20 @@ export function SolapamientosPage() {
       reset()
     }
   }, [fetchFacultades, fetchSolapamientos, reset])
+
+  // Debounced search for docente code
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (filters.persona_codigo !== localCodigo) {
+        setFilter("persona_codigo", localCodigo)
+        fetchSolapamientos()
+      }
+    }, 600)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [localCodigo, setFilter, fetchSolapamientos, filters.persona_codigo])
 
   // Handle filter changes
   const handleFacultadChange = (value: string) => {
@@ -79,42 +97,25 @@ export function SolapamientosPage() {
     fetchSolapamientos()
   }
 
+  const handleManualSearch = () => {
+    setFilter("persona_codigo", localCodigo)
+    fetchSolapamientos()
+  }
+
   // Filter faculties list in the dropdown
   const filteredFacultades = facultades.filter((f) =>
     f.nombre.toLowerCase().includes(facultadSearch.toLowerCase())
   )
 
-  // Filter docentes list locally based on name or code
-  const filteredDocentes = useMemo(() => {
-    if (!searchTerm.trim()) return docentes
-    const search = searchTerm.toLowerCase()
-    return docentes.filter(
-      (d) => d.nombres.toLowerCase().includes(search) || d.codigo.includes(search)
-    )
-  }, [docentes, searchTerm])
+  // Filter docentes dropdown list locally based on name
+  const filteredDocentesForDropdown = useMemo(() => {
+    if (!docenteDropdownSearch.trim()) return docentes
+    const search = docenteDropdownSearch.toLowerCase()
+    return docentes.filter((d) => d.nombres.toLowerCase().includes(search))
+  }, [docentes, docenteDropdownSearch])
 
-  // Dynamically compute the active index within the filtered list
-  const activeDocenteFromStore = docentes[currentDocenteIndex]
-  const localIndex = useMemo(() => {
-    if (!activeDocenteFromStore) return 0
-    const idx = filteredDocentes.findIndex(
-      (d) => d.persona_id === activeDocenteFromStore.persona_id
-    )
-    return idx !== -1 ? idx : 0
-  }, [filteredDocentes, activeDocenteFromStore])
-
-  const handleSelectDocente = (fIndex: number) => {
-    const targetDoc = filteredDocentes[fIndex]
-    if (targetDoc) {
-      const mainIndex = docentes.findIndex((d) => d.persona_id === targetDoc.persona_id)
-      if (mainIndex !== -1) {
-        setCurrentDocenteIndex(mainIndex)
-      }
-    }
-  }
-
-  const activeDocente = filteredDocentes[localIndex]
-  const hasDocentes = filteredDocentes.length > 0
+  const activeDocente = docentes[currentDocenteIndex]
+  const hasDocentes = docentes.length > 0
 
   // Standard UMSS colors for conflict types
   const getConflictBadgeClass = (tipo: string) => {
@@ -143,26 +144,30 @@ export function SolapamientosPage() {
             <div className="flex flex-col gap-4 md:flex-row md:items-end justify-between">
               {/* Left Side: Filter inputs */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1">
-                {/* Search Teacher Input */}
+                {/* Docente Code Input */}
                 <div className="space-y-1.5">
                   <Label
-                    htmlFor="docente-search-input"
+                    htmlFor="docente-codigo-input"
                     className="text-xs font-semibold text-foreground"
                   >
-                    Buscar Docente
+                    Código de Docente
                   </Label>
                   <div className="relative">
                     <Input
-                      id="docente-search-input"
+                      id="docente-codigo-input"
                       type="text"
-                      placeholder="Nombre o Código de Docente..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Ej: 199700035"
+                      value={localCodigo}
+                      onChange={(e) => setLocalCodigo(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleManualSearch()}
                       className="h-9 pr-8 text-xs rounded-xl"
                     />
-                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 pointer-events-none">
+                    <button
+                      onClick={handleManualSearch}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
                       <Search className="size-4" />
-                    </div>
+                    </button>
                   </div>
                 </div>
 
@@ -261,20 +266,20 @@ export function SolapamientosPage() {
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => handleSelectDocente(localIndex - 1)}
-                          disabled={localIndex === 0}
+                          onClick={prevDocente}
+                          disabled={currentDocenteIndex === 0}
                           className="rounded-md h-7 w-7"
                         >
                           <ChevronLeft className="size-4" />
                         </Button>
                         <span className="text-xs font-semibold">
-                          {localIndex + 1} de {filteredDocentes.length}
+                          {currentDocenteIndex + 1} de {docentes.length}
                         </span>
                         <Button
                           variant="ghost"
                           size="icon-sm"
-                          onClick={() => handleSelectDocente(localIndex + 1)}
-                          disabled={localIndex === filteredDocentes.length - 1}
+                          onClick={nextDocente}
+                          disabled={currentDocenteIndex === docentes.length - 1}
                           className="rounded-md h-7 w-7"
                         >
                           <ChevronRight className="size-4" />
@@ -283,18 +288,31 @@ export function SolapamientosPage() {
 
                       {/* Direct Jump Dropdown */}
                       <Select
-                        value={String(localIndex)}
-                        onValueChange={(val) => handleSelectDocente(Number(val))}
+                        value={String(currentDocenteIndex)}
+                        onValueChange={(val) => {
+                          setCurrentDocenteIndex(Number(val))
+                          // Reset dropdown filter state when selection is made
+                          setDocenteDropdownSearch("")
+                        }}
                       >
                         <SelectTrigger className="h-8 text-[11px] rounded-lg">
                           <SelectValue placeholder="Ir a docente..." />
                         </SelectTrigger>
-                        <SearchableSelectContent maxVisibleItems={5}>
-                          {filteredDocentes.map((d, i) => (
-                            <SelectItem key={d.persona_id} value={String(i)}>
-                              {d.nombres}
-                            </SelectItem>
-                          ))}
+                        <SearchableSelectContent
+                          maxVisibleItems={5}
+                          onFilterChange={setDocenteDropdownSearch}
+                          searchPlaceholder="Buscar por nombre..."
+                        >
+                          {filteredDocentesForDropdown.map((d) => {
+                            const originalIndex = docentes.findIndex(
+                              (orig) => orig.persona_id === d.persona_id
+                            )
+                            return (
+                              <SelectItem key={d.persona_id} value={String(originalIndex)}>
+                                {d.nombres}
+                              </SelectItem>
+                            )
+                          })}
                         </SearchableSelectContent>
                       </Select>
                     </div>
