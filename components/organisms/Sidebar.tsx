@@ -5,7 +5,15 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
-import { LayoutDashboard, Users, Calendar, LogOut, MapPin, AlertCircle } from "lucide-react"
+import {
+  LayoutDashboard,
+  Users,
+  Calendar,
+  LogOut,
+  MapPin,
+  AlertCircle,
+  ClipboardList,
+} from "lucide-react"
 
 interface SidebarItem {
   title: string
@@ -38,6 +46,11 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Solapamientos",
     href: "/solapamientos",
     icon: AlertCircle,
+  },
+  {
+    title: "Partes Diarios",
+    href: "/partes-diarios",
+    icon: ClipboardList,
   },
 ]
 

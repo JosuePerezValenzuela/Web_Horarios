@@ -22,8 +22,12 @@ RUN chown node:node /app
 # ----------------- ETAPA DE DESARROLLO (Devcontainer) -----------------
 FROM base AS development
 
-# Instalar herramientas para desarrollo (git y bash requeridos para devcontainers)
-RUN apk add --no-cache git bash
+# Instalar herramientas para desarrollo, Chromium y fuentes tipográficas
+RUN apk add --no-cache git bash chromium nss freetype harfbuzz ca-certificates ttf-freefont
+
+# Configurar variables de entorno para que Puppeteer use el Chromium del sistema
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 # Cambiar al usuario no-root node
 USER node
