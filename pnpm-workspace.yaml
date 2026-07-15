@@ -1,4 +1,6 @@
 allowBuilds:
+  '@scarf/scarf': set this to true or false
   msw: true
+  puppeteer: true
   sharp: true
   unrs-resolver: true
