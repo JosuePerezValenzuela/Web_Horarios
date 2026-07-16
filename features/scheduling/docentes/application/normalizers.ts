@@ -250,10 +250,18 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     return null
   }
 
-  const durationMin = endMin - startMin
   const materia = toStringValue(
-    schedule.materia ?? schedule.asignatura ?? schedule.materiaRef?.nombre,
+    schedule.materia ??
+      (typeof schedule.asignatura === "object"
+        ? schedule.asignatura?.nombre
+        : schedule.asignatura) ??
+      schedule.materiaRef?.nombre,
     "Sin materia"
+  )
+  const materiaCodigo = toStringValue(
+    (typeof schedule.asignatura === "object" ? schedule.asignatura?.codigo : undefined) ??
+      schedule.materiaRef?.codigo,
+    ""
   )
   const grupo = toStringValue(
     schedule.grupo ?? schedule.grupoNombre ?? schedule.grupoRef?.nombre,
@@ -316,6 +324,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     fechaInicioRaw,
     fechaFinRaw,
     docente: docente || undefined,
+    materiaCodigo: materiaCodigo || undefined,
   }
 }
 

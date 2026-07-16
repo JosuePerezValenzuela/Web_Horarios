@@ -239,6 +239,11 @@ export function ScheduleCard({
           <h3 className="font-roboto text-sm font-bold text-foreground leading-snug line-clamp-2">
             {schedule?.materia || item.title}
           </h3>
+          {schedule?.materiaCodigo && (
+            <p className="text-[10px] font-mono font-medium text-muted-foreground leading-none">
+              Cod: {schedule.materiaCodigo}
+            </p>
+          )}
           {(schedule?.docente || item.description) && (
             <p className="text-xs text-muted-foreground font-medium flex items-center gap-1.5 mt-0.5">
               <Award className="size-3.5 text-muted-foreground/60 shrink-0" />

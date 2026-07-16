@@ -56,6 +56,7 @@ export interface DocenteHorarioApiGroupRef {
 export interface DocenteHorarioApiSubjectRef {
   id?: number | string | null
   nombre?: string | null
+  codigo?: string | null
 }
 
 export interface DocenteHorarioApiAmbienteRef {
@@ -87,7 +88,7 @@ export interface DocenteHorarioApiSchedule {
   duracionMinutos?: number | string | null
   duracion_minutos?: number | string | null
   materia?: string | null
-  asignatura?: string | null
+  asignatura?: string | { codigo?: string | null; nombre?: string | null } | null
   grupo?: string | null
   grupoNombre?: string | null
   grupo_id?: number | string | null
@@ -177,6 +178,7 @@ export interface NormalizedSchedule {
   fechaInicioRaw: string | null
   fechaFinRaw: string | null
   docente?: string
+  materiaCodigo?: string
 }
 
 export interface GroupSummary {

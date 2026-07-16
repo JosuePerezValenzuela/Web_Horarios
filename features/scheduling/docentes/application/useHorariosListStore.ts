@@ -162,6 +162,7 @@ function normalizeHorarioToSchedule(item: HorarioClaseItem, index: number): Norm
     fechaInicioRaw: item.fecha_inicio,
     fechaFinRaw: item.fecha_fin,
     docente: item.persona?.nombres || "Docente no asignado",
+    materiaCodigo: item.asignatura?.codigo || undefined,
   }
 }
 

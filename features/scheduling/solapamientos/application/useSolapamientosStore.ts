@@ -318,6 +318,7 @@ export const useSolapamientosStore = create<SolapamientosState>()((set, get) => 
         laneIndex: 0,
         laneCount: 1,
         materia: c.asignatura_nombre,
+        materiaCodigo: c.asignatura_codigo,
         grupo: c.grupo,
         docente: docente.nombres,
         carreras: c.carreras.map((car) => car.nombre),
