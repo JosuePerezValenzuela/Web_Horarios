@@ -483,6 +483,7 @@ export interface AdminScheduleRaw {
   }
   fecha_inicio: string
   fecha_fin: string | null
+  permite_clases: boolean
 }
 
 export interface AdminScheduleApiResponse {
@@ -508,6 +509,7 @@ export interface CrearAsignacionHorarioRequest {
   horario_catalogo_id: number
   fecha_inicio: string
   fecha_fin: string | null
+  permite_clases: boolean
 }
 
 export interface CrearAsignacionHorarioResponse {
@@ -517,7 +519,8 @@ export interface CrearAsignacionHorarioResponse {
 }
 
 export interface PatchAsignacionHorarioRequest {
-  fecha_fin: string | null
+  fecha_fin?: string | null
+  permite_clases?: boolean
 }
 
 export interface PatchAsignacionHorarioResponse {

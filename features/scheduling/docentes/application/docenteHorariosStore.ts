@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import { toast } from "sonner"
 
 import {
   getDocenteHorariosById,
@@ -101,6 +102,7 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
           })
         } catch (err) {
           console.error("Failed to load administrative schedules:", err)
+          toast.error("No se pudieron cargar los horarios administrativos del docente")
         }
       }
 

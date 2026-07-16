@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { toast } from "sonner"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, AlertCircle, Pencil } from "lucide-react"
+import { CalendarIcon, AlertCircle, Pencil, HelpCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
@@ -87,15 +88,16 @@ export function AdminSchedulesModal({
   const [selectedEnd, setSelectedEnd] = useState<string>("")
   const [fechaInicio, setFechaInicio] = useState<Date>(new Date())
   const [fechaFin, setFechaFin] = useState<Date | undefined>(undefined)
+  const [permiteClases, setPermiteClases] = useState(false)
   const [catalogList, setCatalogList] = useState<HorarioCatalogoItem[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [overlapError, setOverlapError] = useState<string | null>(null)
 
   // ── Edit-mode state ──────────────────────────────────────────────────────────
-  // Map of id → "yyyy-MM-dd" or "" (sin límite)
   const [isEditMode, setIsEditMode] = useState(false)
   const [editDates, setEditDates] = useState<Record<number, string>>({})
+  const [editPermiteClases, setEditPermiteClases] = useState<Record<number, boolean>>({})
   const [isSaving, setIsSaving] = useState(false)
 
   // ── Sorted list (memoised inline) ────────────────────────────────────────────
@@ -107,11 +109,9 @@ export function AdminSchedulesModal({
     if (!aActive && bActive) return 1
 
     if (aActive && bActive) {
-      // Both are active, sort by fecha_inicio descending (newest first)
       return b.fecha_inicio.localeCompare(a.fecha_inicio)
     }
 
-    // Both are inactive, sort by fecha_fin descending (most recently ended first)
     return b.fecha_fin!.localeCompare(a.fecha_fin!)
   })
 
@@ -122,6 +122,7 @@ export function AdminSchedulesModal({
     setSelectedEnd("")
     setFechaInicio(new Date())
     setFechaFin(undefined)
+    setPermiteClases(false)
     setOverlapError(null)
   }
 
@@ -184,11 +185,14 @@ export function AdminSchedulesModal({
 
   // ── Edit-mode helpers ────────────────────────────────────────────────────────
   const enterEditMode = () => {
-    const map: Record<number, string> = {}
+    const datesMap: Record<number, string> = {}
+    const permiteMap: Record<number, boolean> = {}
     sortedSchedules.forEach((s) => {
-      map[s.id] = s.fecha_fin ?? ""
+      datesMap[s.id] = s.fecha_fin ?? ""
+      permiteMap[s.id] = s.permite_clases
     })
-    setEditDates(map)
+    setEditDates(datesMap)
+    setEditPermiteClases(permiteMap)
     setIsEditMode(true)
     if (isFormOpen) {
       setIsFormOpen(false)
@@ -198,6 +202,7 @@ export function AdminSchedulesModal({
 
   const cancelEditMode = () => {
     setEditDates({})
+    setEditPermiteClases({})
     setIsEditMode(false)
   }
 
@@ -270,6 +275,7 @@ export function AdminSchedulesModal({
         horario_catalogo_id: Number(selectedCatalogId),
         fecha_inicio: format(fechaInicio, "yyyy-MM-dd"),
         fecha_fin: fechaFin ? format(fechaFin, "yyyy-MM-dd") : null,
+        permite_clases: permiteClases,
       }
       const res = await crearAsignacionHorario(payload)
       if (res.success) {
@@ -289,10 +295,11 @@ export function AdminSchedulesModal({
   }
 
   const handleSaveEdits = async () => {
-    // Only PATCH entries where fecha_fin actually changed
-    const changed = Object.entries(editDates).filter(([id, val]) => {
-      const original = schedules.find((s) => s.id === Number(id))
-      return val !== (original?.fecha_fin ?? "")
+    // Check which entries actually changed (either dates or permite_clases)
+    const changed = sortedSchedules.filter((s) => {
+      const dateChanged = (editDates[s.id] ?? "") !== (s.fecha_fin ?? "")
+      const permiteChanged = (editPermiteClases[s.id] ?? s.permite_clases) !== s.permite_clases
+      return dateChanged || permiteChanged
     })
 
     if (changed.length === 0) {
@@ -304,14 +311,28 @@ export function AdminSchedulesModal({
     let allOk = true
     try {
       await Promise.all(
-        changed.map(async ([id, val]) => {
-          const payload: PatchAsignacionHorarioRequest = { fecha_fin: val || null }
-          const res = await patchAsignacionHorario(Number(id), payload)
-          if (!res.success) allOk = false
+        changed.map(async (schedule) => {
+          const payload: PatchAsignacionHorarioRequest = {}
+          const newDate = editDates[schedule.id] ?? ""
+          const originalDate = schedule.fecha_fin ?? ""
+          if (newDate !== originalDate) {
+            payload.fecha_fin = newDate || null
+          }
+          const newPermite = editPermiteClases[schedule.id] ?? schedule.permite_clases
+          if (newPermite !== schedule.permite_clases) {
+            payload.permite_clases = newPermite
+          }
+
+          const res = await patchAsignacionHorario(schedule.id, payload)
+          if (!res.success) {
+            allOk = false
+            toast.error(res.message || `Error al actualizar horario con ID ${schedule.id}`)
+          }
         })
       )
-      if (allOk) toast.success("Fechas actualizadas correctamente")
-      else toast.error("Algunos cambios no pudieron guardarse")
+      if (allOk) {
+        toast.success("Horarios actualizados correctamente")
+      }
       cancelEditMode()
       onAssigned?.()
     } catch (err) {
@@ -325,14 +346,14 @@ export function AdminSchedulesModal({
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-2xl gap-4 overflow-hidden rounded-4xl bg-popover p-6 shadow-xl">
+      <DialogContent className="sm:max-w-3xl gap-4 overflow-hidden rounded-4xl bg-popover p-6 shadow-xl">
         {/* ── Header ── */}
         <DialogHeader className="flex flex-col gap-1 pb-1">
           <DialogTitle className="font-roboto text-xl font-bold text-foreground">
             Horario Administrativo
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground pb-2">
-            Listado de actividades de gestión, reuniones, tutorías u otras asignaciones.
+            Listado de horarios activos.
           </DialogDescription>
           {docente && (
             <div className="text-xs text-muted-foreground pt-2 border-t border-border/40">
@@ -461,6 +482,40 @@ export function AdminSchedulesModal({
                   </Popover>
                 </div>
 
+                {/* Permite clases checkbox */}
+                <div className="sm:col-span-2 flex items-center gap-2 py-1 select-none">
+                  <Checkbox
+                    id="permite-clases"
+                    checked={permiteClases}
+                    onCheckedChange={(checked) => setPermiteClases(!!checked)}
+                  />
+                  <label
+                    htmlFor="permite-clases"
+                    className="text-xs font-semibold text-foreground/80 cursor-pointer font-roboto flex items-center gap-1"
+                  >
+                    Permitir dictar clases en este horario administrativo
+                  </label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-foreground outline-none transition-colors"
+                      >
+                        <HelpCircle className="size-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-72 p-3 text-xs leading-relaxed bg-popover rounded-2xl shadow-lg border border-border">
+                      <p className="font-semibold text-foreground mb-1 font-roboto">
+                        Habilitar compatibilidad de clases
+                      </p>
+                      <p className="text-muted-foreground">
+                        Permite registrar clases regulares simultáneas al docente dentro de este
+                        mismo bloque de horario asignado para labores administrativas.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
                 {/* Error — above action buttons */}
                 {overlapError && (
                   <div className="sm:col-span-2 p-3 rounded-2xl bg-red-500/10 border border-red-200/50 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
@@ -474,19 +529,18 @@ export function AdminSchedulesModal({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
                     onClick={() => {
                       setIsFormOpen(false)
                       resetForm()
                     }}
-                    className="rounded-xl text-xs"
+                    className="rounded-2xl"
                   >
                     Cancelar
                   </Button>
                   <Button
                     type="submit"
                     disabled={isSubmitting || !selectedCatalogId || !!overlapError}
-                    className="px-6 rounded-lg bg-umss-btn-blue hover:bg-[#001b3a] text-white py-3 h-auto umss-btn-primary"
+                    className="rounded-2xl bg-umss-btn-blue hover:bg-[#001b3a] text-white px-6"
                   >
                     {isSubmitting ? "Asignando..." : "Asignar"}
                   </Button>
@@ -522,12 +576,16 @@ export function AdminSchedulesModal({
                   <TableHead className="font-semibold text-xs text-foreground/80">
                     {isEditMode ? "Fecha Fin" : "Fin"}
                   </TableHead>
+                  <TableHead className="font-semibold text-xs text-foreground/80">
+                    {isEditMode ? "Dicta Clases" : "Clases"}
+                  </TableHead>
                   <TableHead className="font-semibold text-xs text-foreground/80">Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedSchedules.map((schedule) => {
                   const isVigente = schedule.fecha_fin === null
+                  const checkedValue = editPermiteClases[schedule.id] ?? schedule.permite_clases
                   return (
                     <TableRow key={schedule.id} className="group">
                       <TableCell className="font-medium text-sm text-foreground">
@@ -593,6 +651,29 @@ export function AdminSchedulesModal({
                           </Popover>
                         ) : (
                           formatDate(schedule.fecha_fin, true)
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {isEditMode ? (
+                          <div className="flex justify-center items-center h-8">
+                            <Checkbox
+                              checked={checkedValue}
+                              onCheckedChange={(checked) =>
+                                setEditPermiteClases((prev) => ({
+                                  ...prev,
+                                  [schedule.id]: !!checked,
+                                }))
+                              }
+                            />
+                          </div>
+                        ) : schedule.permite_clases ? (
+                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 text-[10px] uppercase px-2 py-0.5">
+                            Permitido
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-muted text-muted-foreground border-border hover:bg-muted text-[10px] uppercase px-2 py-0.5">
+                            Restringido
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>

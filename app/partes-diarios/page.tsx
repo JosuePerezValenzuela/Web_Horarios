@@ -16,6 +16,14 @@ import { TimePicker } from "@/components/ui/time-picker"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 import { PdfHeader } from "@/components/templates/pdf/PdfHeader"
 import { PdfFooter } from "@/components/templates/pdf/PdfFooter"
 import { toast } from "sonner"
@@ -63,6 +71,10 @@ export default function PartesDiariosPage() {
   const [reporteData, setReporteData] = useState<ParteDiarioReporte | null>(null)
   const [hasSearched, setHasSearched] = useState<boolean>(false)
 
+  // Control del modal de generación de parte diario
+  const [showGenerateModal, setShowGenerateModal] = useState<boolean>(false)
+  const [generatingParte, setGeneratingParte] = useState<boolean>(false)
+
   const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
 
   useEffect(() => {
@@ -78,9 +90,7 @@ export default function PartesDiariosPage() {
     return date.toLocaleDateString("es-BO", { weekday: "long" })
   }
 
-  const handleBuscar = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const fetchReporteData = async () => {
     if (!selectedFacultadId) {
       toast.error("Por favor, seleccione una facultad")
       return
@@ -119,7 +129,7 @@ export default function PartesDiariosPage() {
       console.error("Error al cargar reporte:", error)
       const apiErr = error as PartesApiError
       if (apiErr.status === 404) {
-        toast.error("No se encontró un parte diario para la facultad y fecha seleccionadas")
+        setShowGenerateModal(true)
       } else {
         toast.error(
           apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
@@ -129,6 +139,43 @@ export default function PartesDiariosPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleBuscar = async (e: React.FormEvent) => {
+    e.preventDefault()
+    await fetchReporteData()
+  }
+
+  const handleGenerarParte = async () => {
+    const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
+    if (!facultad) return
+
+    setGeneratingParte(true)
+    const toastId = toast.loading("Generando parte diario...")
+
+    try {
+      await partesApiClient.post("/partes-diarios", {
+        facultadCodigo: facultad.codigo,
+        fecha: fecha,
+      })
+
+      toast.success("Parte diario generado correctamente", { id: toastId })
+      setShowGenerateModal(false)
+
+      // Consultar de nuevo al endpoint para mostrar la previsualización
+      await fetchReporteData()
+    } catch (error) {
+      console.error("Error al generar parte diario:", error)
+      const apiErr = error as PartesApiError
+      toast.error(
+        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
+          ? String(apiErr.body.message)
+          : "Error al generar el parte diario",
+        { id: toastId }
+      )
+    } finally {
+      setGeneratingParte(false)
     }
   }
 
@@ -254,7 +301,7 @@ export default function PartesDiariosPage() {
           }}
         />
 
-        <div className="space-y-4">
+        <div className="flex flex-col h-full gap-4">
           {/* Encabezado compacto */}
           <div className="no-print flex items-center justify-between border-b border-border pb-2">
             <h1 className="text-xl font-roboto font-black text-[#001B47] dark:text-white flex items-center gap-2">
@@ -264,104 +311,141 @@ export default function PartesDiariosPage() {
           </div>
 
           {/* Panel de Filtros Compacto para priorizar espacio */}
-          <Card className="no-print border-border/60 shadow-sm">
+          <Card className="no-print border-border/60 shadow-sm py-3">
             <CardContent className="p-3">
               <form
                 onSubmit={handleBuscar}
-                className="flex flex-col md:flex-row md:items-end gap-3"
+                className="flex flex-wrap items-end justify-between gap-4 w-full"
               >
-                {/* Selector de Facultad */}
-                <div className="flex-1 space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    Facultad
-                  </label>
-                  <Select
-                    value={selectedFacultadId}
-                    onValueChange={setSelectedFacultadId}
-                    disabled={loadingFacultades}
-                  >
-                    <SelectTrigger className="w-full bg-background rounded-xl border border-border h-9 text-xs">
-                      <SelectValue placeholder="Seleccione una facultad" />
-                    </SelectTrigger>
-                    <SearchableSelectContent onFilterChange={setFacultadSearch}>
-                      {filteredFacultades.map((f) => (
-                        <SelectItem key={f.id} value={String(f.id)}>
-                          {f.nombre}
-                        </SelectItem>
-                      ))}
-                    </SearchableSelectContent>
-                  </Select>
-                </div>
-
-                {/* Fecha con Popover + Calendario */}
-                <div className="w-full md:w-44 space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    Fecha
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50 rounded-xl"
+                {/* Grupo 1: Filtros de Selección (a la izquierda, flexibles) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1 min-w-[300px]">
+                  {/* Selector de Facultad */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
+                      Facultad <span className="text-red-500">*</span>
+                    </label>
+                    <Select
+                      value={selectedFacultadId}
+                      onValueChange={setSelectedFacultadId}
+                      disabled={loadingFacultades}
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className="w-full bg-background rounded-xl border border-border h-9 text-xs mb-0"
                       >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                        {fecha ? (
-                          format(getCalendarDate()!, "dd 'de' MMMM, yyyy", { locale: es })
-                        ) : (
-                          <span className="text-muted-foreground">Elegir fecha</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={getCalendarDate()}
-                        onSelect={(date) => {
-                          if (date) {
-                            const formatted = date.toISOString().split("T")[0]
-                            setFecha(formatted)
-                          }
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                        <SelectValue placeholder="Seleccione una facultad" />
+                      </SelectTrigger>
+                      <SearchableSelectContent onFilterChange={setFacultadSearch}>
+                        {filteredFacultades.map((f) => (
+                          <SelectItem key={f.id} value={String(f.id)}>
+                            {f.nombre}
+                          </SelectItem>
+                        ))}
+                      </SearchableSelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Fecha con Popover + Calendario */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
+                      Fecha <span className="text-red-500">*</span>
+                    </label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50 rounded-xl"
+                        >
+                          <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                          {fecha ? (
+                            format(getCalendarDate()!, "dd 'de' MMMM, yyyy", { locale: es })
+                          ) : (
+                            <span className="text-muted-foreground">Elegir fecha</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={getCalendarDate()}
+                          onSelect={(date) => {
+                            if (date) {
+                              const formatted = date.toISOString().split("T")[0]
+                              setFecha(formatted)
+                            }
+                          }}
+                          locale={es}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  {/* Rango de Horas con TimePicker */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      Hora Inicio{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </label>
+                    <TimePicker
+                      value={horaInicio}
+                      onChange={setHoraInicio}
+                      placeholder="00:00"
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      Hora Fin{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </label>
+                    <TimePicker
+                      value={horaFin}
+                      onChange={setHoraFin}
+                      placeholder="00:00"
+                      className="rounded-xl h-9"
+                    />
+                  </div>
                 </div>
 
-                {/* Rango de Horas con TimePicker */}
-                <div className="w-full md:w-32 space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    Hora Inicio
-                  </label>
-                  <TimePicker
-                    value={horaInicio}
-                    onChange={setHoraInicio}
-                    placeholder="00:00"
-                    className="rounded-xl h-9"
-                  />
-                </div>
+                {/* Grupo 2: Acciones de Búsqueda y Reporte */}
+                <div className="flex items-center gap-2 w-auto justify-end m-0 p-0">
+                  {/* Estado del parte (badge) */}
+                  {reporteData && (
+                    <Badge
+                      variant={reporteData.estado === "confirmado" ? "default" : "secondary"}
+                      className={
+                        reporteData.estado === "confirmado"
+                          ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2.5 py-1.5 rounded-lg"
+                          : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-2.5 py-1.5 rounded-lg"
+                      }
+                    >
+                      {reporteData.estado.toUpperCase()}
+                    </Badge>
+                  )}
 
-                <div className="w-full md:w-32 space-y-1.5">
-                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                    Hora Fin
-                  </label>
-                  <TimePicker
-                    value={horaFin}
-                    onChange={setHoraFin}
-                    placeholder="00:00"
-                    className="rounded-xl h-9"
-                  />
-                </div>
-
-                {/* Botón Buscar */}
-                <div className="w-full md:w-auto">
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="umss-btn-primary rounded-xl px-5 h-9 w-full text-xs font-semibold gap-1.5"
+                    className="umss-btn-primary rounded-xl px-4 h-9 text-xs font-semibold gap-1.5"
                   >
                     <Search className="w-3.5 h-3.5" />
                     Buscar
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={!reporteData || generatingPdf}
+                    className="bg-[#003770] hover:bg-[#00254d] text-white gap-1.5 rounded-xl h-9 text-xs px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generatingPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Printer className="w-3.5 h-3.5" />
+                    )}
+                    {generatingPdf ? "Generando..." : "Imprimir / PDF"}
                   </Button>
                 </div>
               </form>
@@ -369,19 +453,42 @@ export default function PartesDiariosPage() {
           </Card>
 
           {/* Sección de resultados / Preview */}
+          {!loading && !reporteData && !hasSearched && (
+            <Card className="no-print border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
+              <CardContent className="flex flex-col items-center justify-center space-y-3">
+                <FileText className="w-12 h-12 text-[#003770]/60" />
+                <h3 className="font-bold text-base text-gray-800 dark:text-gray-200">
+                  Visualizar Parte Diario
+                </h3>
+                <p className="text-xs text-gray-500 text-center max-w-md">
+                  Por favor, seleccione la{" "}
+                  <span className="font-bold text-gray-800 dark:text-gray-200">Facultad</span> y la{" "}
+                  <span className="font-bold text-gray-800 dark:text-gray-200">Fecha</span>{" "}
+                  requeridas en los filtros superiores y haga clic en{" "}
+                  <span className="font-bold text-gray-850 dark:text-gray-150">Buscar</span> para
+                  cargar la previsualización del parte diario de asistencia docente.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
           {loading && (
-            <div className="no-print flex flex-col items-center justify-center py-10 space-y-3">
-              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#002855]" />
-              <p className="text-muted-foreground text-xs">Cargando reporte...</p>
-            </div>
+            <Card className="no-print border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
+              <CardContent className="flex flex-col items-center justify-center space-y-3">
+                <Loader2 className="w-10 h-10 animate-spin text-[#003770]" />
+                <p className="text-muted-foreground text-xs">Cargando reporte...</p>
+              </CardContent>
+            </Card>
           )}
 
           {!loading && !reporteData && hasSearched && (
-            <Card className="no-print border-dashed border-2 py-8 text-center">
-              <CardContent className="flex flex-col items-center justify-center space-y-2">
+            <Card className="no-print border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
+              <CardContent className="flex flex-col items-center justify-center space-y-3">
                 <Info className="w-10 h-10 text-gray-400" />
-                <h3 className="font-bold text-base text-gray-700">No se encontraron resultados</h3>
-                <p className="text-xs text-gray-500 max-w-md">
+                <h3 className="font-bold text-base text-gray-700 dark:text-gray-200">
+                  No se encontraron resultados
+                </h3>
+                <p className="text-xs text-gray-500 max-w-md text-center">
                   No hay clases registradas para la facultad y fecha seleccionada en este día.
                 </p>
               </CardContent>
@@ -389,41 +496,9 @@ export default function PartesDiariosPage() {
           )}
 
           {!loading && reporteData && (
-            <div className="space-y-4">
-              {/* Barra de Acciones del Preview */}
-              <div className="no-print flex justify-between items-center bg-muted p-3 rounded-xl border border-border">
-                <div className="flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-[#002855]" />
-                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">
-                    Vista Previa del Parte de Asistencia
-                  </span>
-                  <Badge
-                    variant={reporteData.estado === "confirmado" ? "default" : "secondary"}
-                    className={
-                      reporteData.estado === "confirmado"
-                        ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2 py-0.5"
-                        : "text-[10px] px-2 py-0.5"
-                    }
-                  >
-                    {reporteData.estado.toUpperCase()}
-                  </Badge>
-                </div>
-                <Button
-                  onClick={handlePrint}
-                  disabled={generatingPdf}
-                  className="umss-btn-primary gap-1.5 rounded-xl h-8 text-xs px-3 disabled:opacity-75"
-                >
-                  {generatingPdf ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Printer className="w-3.5 h-3.5" />
-                  )}
-                  {generatingPdf ? "Generando PDF..." : "Imprimir / PDF"}
-                </Button>
-              </div>
-
+            <div className="space-y-4 flex-grow flex-shrink">
               {/* Contenedor del Preview (Estilizado como una hoja A4 de demostración) */}
-              <div className="bg-slate-100 dark:bg-slate-900/50 p-2 md:p-6 rounded-xl overflow-x-auto no-print">
+              <div className="bg-slate-100 dark:bg-slate-900/50 p-2 md:p-6 rounded-xl overflow-auto max-h-[calc(100vh-230px)] no-print">
                 <div
                   id="pdf-preview-wrapper"
                   className="bg-white text-black p-[15mm] shadow-2xl border border-gray-300 mx-auto w-[210mm] min-h-[297mm] select-none text-[11px] font-sans flex flex-col justify-between"
@@ -552,6 +627,45 @@ export default function PartesDiariosPage() {
             </div>
           )}
         </div>
+
+        {/* Modal para generar parte diario cuando no existe (retorna 404) */}
+        <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
+          <DialogContent className="sm:max-w-[425px] bg-white">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-gray-900">
+                Parte Diario no Encontrado
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 pt-2">
+                No se generó un parte diario para la facultad{" "}
+                <strong>{selectedFacultad?.nombre || selectedFacultadId}</strong> en la fecha
+                seleccionada. ¿Desea proceder a generar el parte diario?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowGenerateModal(false)}
+                disabled={generatingParte}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleGenerarParte}
+                disabled={generatingParte}
+                className="bg-[#003770] hover:bg-[#00254d] text-white"
+              >
+                {generatingParte ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generando...
+                  </>
+                ) : (
+                  "Generar Parte"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </AppLayout>
     </ProtectedRoute>
   )
