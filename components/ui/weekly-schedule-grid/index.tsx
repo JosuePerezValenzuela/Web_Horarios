@@ -30,7 +30,7 @@ const DEFAULT_ROTATION_INTERVAL_MS = 5000
 
 export function WeeklyScheduleGrid({
   items,
-  rows,
+
   timeRange,
   days = DEFAULT_DAYS,
   overlapRotationIntervalMs = DEFAULT_ROTATION_INTERVAL_MS,
@@ -51,6 +51,89 @@ export function WeeklyScheduleGrid({
 
   // Build render slices (fractional overlap splitting)
   const renderSlices = useMemo(() => buildRenderSlices(items), [items])
+
+  // 1. Calculate absolute time range boundaries (including class and admin schedules)
+  const derivedTimeRange = useMemo(() => {
+    let startMin = timeRange.startMin
+    let endMin = timeRange.endMin
+
+    const allStarts = [
+      ...items.map((i) => i.startMin),
+      ...(adminSchedules || []).map((a) => a.startMin),
+    ]
+    const allEnds = [...items.map((i) => i.endMin), ...(adminSchedules || []).map((a) => a.endMin)]
+
+    if (allStarts.length > 0) {
+      startMin = Math.min(...allStarts)
+    }
+    if (allEnds.length > 0) {
+      endMin = Math.max(...allEnds)
+    }
+    return { startMin, endMin }
+  }, [timeRange, items, adminSchedules])
+
+  // 2. Calculate period (GCD of class schedules only)
+  const classPeriod = useMemo(() => {
+    const classDurations = items.map((i) => i.durationMin)
+    if (classDurations.length === 0) return 90
+    // Simple GCD helper
+    const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+    const validDurations = classDurations.filter((d) => Number.isFinite(d) && d > 0)
+    if (validDurations.length === 0) return 90
+    const resolvedGcd = validDurations.reduce((acc, val) => gcd(acc, val))
+    return resolvedGcd > 0 ? resolvedGcd : 90
+  }, [items])
+
+  // 3. Class start and end limits
+  const classBounds = useMemo(() => {
+    const classStarts = items.map((i) => i.startMin)
+    const classEnds = items.map((i) => i.endMin)
+    if (classStarts.length === 0) {
+      return { startMin: derivedTimeRange.startMin, endMin: derivedTimeRange.endMin }
+    }
+    return {
+      startMin: Math.min(...classStarts),
+      endMin: Math.max(...classEnds),
+    }
+  }, [items, derivedTimeRange])
+
+  // 4. Build aligned time rows starting from classStartMin to classEndMin with classPeriod steps
+  // Prepend/append rows for early/late boundaries if they exceed class limits
+  const gridRows = useMemo(() => {
+    const rowsList: { key: string; label: string; startMin: number; endMin: number }[] = []
+
+    if (derivedTimeRange.startMin < classBounds.startMin) {
+      rowsList.push({
+        key: `${derivedTimeRange.startMin}-${classBounds.startMin}`,
+        label: formatTime(derivedTimeRange.startMin),
+        startMin: derivedTimeRange.startMin,
+        endMin: classBounds.startMin,
+      })
+    }
+
+    let cursor = classBounds.startMin
+    while (cursor < classBounds.endMin) {
+      const next = Math.min(cursor + classPeriod, classBounds.endMin)
+      rowsList.push({
+        key: `${cursor}-${next}`,
+        label: formatTime(cursor),
+        startMin: cursor,
+        endMin: next,
+      })
+      cursor = next
+    }
+
+    if (derivedTimeRange.endMin > classBounds.endMin) {
+      rowsList.push({
+        key: `${classBounds.endMin}-${derivedTimeRange.endMin}`,
+        label: formatTime(classBounds.endMin),
+        startMin: classBounds.endMin,
+        endMin: derivedTimeRange.endMin,
+      })
+    }
+
+    return rowsList
+  }, [derivedTimeRange, classBounds, classPeriod])
 
   // For each time range (timeKey), calculate the max collapsed and expanded heights across all days.
   const maxHeightsByTimeKey = useMemo(() => {
@@ -75,17 +158,17 @@ export function WeeklyScheduleGrid({
     return map
   }, [renderSlices])
 
-  // Build timeline segments (adaptive height)
+  // Build timeline segments (adaptive height) using derivedTimeRange
   const timelineSegments = useMemo(
     () =>
       buildTimelineSegments(
         renderSlices,
         expandedClusterIds,
-        timeRange,
+        derivedTimeRange,
         adminSchedules,
         isCompactMode
       ),
-    [renderSlices, expandedClusterIds, timeRange, adminSchedules, isCompactMode]
+    [renderSlices, expandedClusterIds, derivedTimeRange, adminSchedules, isCompactMode]
   )
 
   const totalHeight = useMemo(
@@ -107,14 +190,14 @@ export function WeeklyScheduleGrid({
   // Helper to get pixel position from minute with an offset to avoid cutting off the top hour badge
   const offsetTop = 16
   const minuteToY = useCallback(
-    (minute: number) => getMinutePosition(minute, timeRange, timelineSegments) + offsetTop,
-    [timeRange, timelineSegments]
+    (minute: number) => getMinutePosition(minute, derivedTimeRange, timelineSegments) + offsetTop,
+    [derivedTimeRange, timelineSegments]
   )
 
-  // Filter rows (hour markings) to only include visible/non-collapsed times
+  // Filter gridRows (hour markings) to only include visible/non-collapsed times
   const visibleRows = useMemo(() => {
-    return rows.filter((row) => isMinuteVisible(row.startMin))
-  }, [rows, isMinuteVisible])
+    return gridRows.filter((row) => isMinuteVisible(row.startMin))
+  }, [gridRows, isMinuteVisible])
 
   // Collect all start/end minutes from classes and admin schedules (for compact mode)
   const activeHours = useMemo(() => {
@@ -238,7 +321,7 @@ export function WeeklyScheduleGrid({
                       style={{ top: `${minuteToY(minute)}px` }}
                     />
                   ))
-                : rows.map((row) => (
+                : gridRows.map((row) => (
                     <div
                       key={row.key}
                       className="absolute inset-x-0 border-t-[2px] border-border/60"
@@ -334,19 +417,19 @@ export function WeeklyScheduleGrid({
                         </div>
                       )
                     })}
-                    {rows.length > 0 &&
-                      isMinuteVisible(timeRange.endMin) &&
+                    {gridRows.length > 0 &&
+                      isMinuteVisible(derivedTimeRange.endMin) &&
                       (() => {
                         const isStartActive =
-                          activeTimeRange && timeRange.endMin === activeTimeRange.startMin
+                          activeTimeRange && derivedTimeRange.endMin === activeTimeRange.startMin
                         const isEndActive =
-                          activeTimeRange && timeRange.endMin === activeTimeRange.endMin
+                          activeTimeRange && derivedTimeRange.endMin === activeTimeRange.endMin
                         const isActive = isStartActive || isEndActive
 
                         return (
                           <div
                             className="absolute inset-x-0 -translate-y-1/2 flex items-center justify-center px-1"
-                            style={{ top: `${minuteToY(timeRange.endMin)}px` }}
+                            style={{ top: `${minuteToY(derivedTimeRange.endMin)}px` }}
                           >
                             <span
                               className={cn(
@@ -356,7 +439,7 @@ export function WeeklyScheduleGrid({
                                   : "border-border/80 bg-background text-foreground"
                               )}
                             >
-                              {formatTime(timeRange.endMin)}
+                              {formatTime(derivedTimeRange.endMin)}
                             </span>
                           </div>
                         )
