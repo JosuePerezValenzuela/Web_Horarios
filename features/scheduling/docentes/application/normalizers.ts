@@ -99,6 +99,7 @@ function extractSchedules(payload: DocenteHorariosApiResponse): DocenteHorarioAp
       grupoNombre: schedule.grupoNombre ?? schedule.grupo ?? group.grupo,
       materia: schedule.materia ?? schedule.asignatura ?? group.materia,
       carreras: schedule.carreras ?? group.carreras,
+      materia_codigo: schedule.materia_codigo ?? group.materia_codigo,
     }))
   })
 
@@ -250,6 +251,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     return null
   }
 
+  const durationMin = endMin - startMin
   const materia = toStringValue(
     schedule.materia ??
       (typeof schedule.asignatura === "object"
@@ -260,7 +262,9 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
   )
   const materiaCodigo = toStringValue(
     (typeof schedule.asignatura === "object" ? schedule.asignatura?.codigo : undefined) ??
-      schedule.materiaRef?.codigo,
+      schedule.materiaRef?.codigo ??
+      schedule.materia_codigo ??
+      schedule.materiaCodigo,
     ""
   )
   const grupo = toStringValue(

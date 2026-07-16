@@ -109,6 +109,7 @@ export interface DocenteHorarioApiSchedule {
     nombres?: string | null
   } | null
   docente?: string | null
+  materia_codigo?: string | null
 }
 
 export interface DocenteHorarioApiGroup {
@@ -119,6 +120,7 @@ export interface DocenteHorarioApiGroup {
   materia?: string | null
   carreras?: Array<string | DocenteHorarioApiCarrera> | null
   horarios?: DocenteHorarioApiSchedule[] | null
+  materia_codigo?: string | null
 }
 
 export interface DocenteHorariosApiPayload {
