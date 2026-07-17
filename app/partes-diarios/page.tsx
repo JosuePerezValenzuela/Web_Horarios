@@ -96,6 +96,11 @@ interface GroupedRow {
   retraso: number
   tipo_tickeo: string
   observacion: string
+  // Valores originales para comparación de cambios
+  originalIngreso: string
+  originalSalida: string
+  originalTipoTickeo: string
+  originalObservacion: string
 }
 
 function parseTimeToMinutes(timeStr: string): number {
@@ -190,6 +195,15 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
 
       const first = group[0]
 
+      const defaultIngreso = first.ingreso || hora_inicio
+      const defaultSalida = first.salida || hora_fin
+      const defaultTipoTickeo = first.tipo_tickeo || "presente"
+      const defaultObservacion = first.observacion || ""
+      const defaultRetraso =
+        typeof first.minutos_retraso === "number"
+          ? first.minutos_retraso
+          : calculateTotalDelay(hora_inicio, defaultIngreso, hora_fin, defaultSalida)
+
       const ids = group
         .map((item) => item.detalle_id || item.id)
         .filter((val): val is number => typeof val === "number")
@@ -207,11 +221,15 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
           grupo_nombre: item.grupo_nombre,
           aula_codigo: item.aula_codigo,
         })),
-        ingreso: hora_inicio,
-        salida: hora_fin,
-        retraso: 0,
-        tipo_tickeo: "presente",
-        observacion: "",
+        ingreso: defaultIngreso,
+        salida: defaultSalida,
+        retraso: defaultRetraso,
+        tipo_tickeo: defaultTipoTickeo,
+        observacion: defaultObservacion,
+        originalIngreso: defaultIngreso,
+        originalSalida: defaultSalida,
+        originalTipoTickeo: defaultTipoTickeo,
+        originalObservacion: defaultObservacion,
       })
     })
   })
@@ -624,10 +642,10 @@ export default function PartesDiariosPage() {
   const getModifiedItems = useCallback(() => {
     const modified: GroupedRow[] = []
     groupedRows.forEach((row) => {
-      const isIngresoChanged = row.ingreso !== row.hora_inicio
-      const isSalidaChanged = row.salida !== row.hora_fin
-      const isTickeoChanged = row.tipo_tickeo !== "presente"
-      const isObsChanged = row.observacion !== ""
+      const isIngresoChanged = row.ingreso !== row.originalIngreso
+      const isSalidaChanged = row.salida !== row.originalSalida
+      const isTickeoChanged = row.tipo_tickeo !== row.originalTipoTickeo
+      const isObsChanged = row.observacion !== row.originalObservacion
       if (isIngresoChanged || isSalidaChanged || isTickeoChanged || isObsChanged) {
         modified.push(row)
       }
@@ -686,14 +704,29 @@ export default function PartesDiariosPage() {
     })
 
     try {
-      await partesApiClient.request(`/partes-diarios/${parteId}/detalles`, {
+      const res = await partesApiClient.request<{
+        attempted: number
+        succeeded: number
+        failed: number
+        failed_items?: unknown[]
+      }>(`/partes-diarios/${parteId}/detalles`, {
         method: "PATCH",
         body: {
           items: itemsPayload,
         },
       })
 
-      toast.success("Registro de asistencia guardado correctamente", { id: toastId })
+      if (res.failed > 0) {
+        toast.error(
+          `Proceso completado con novedades: Se registraron exitosamente ${res.succeeded} de ${res.attempted} cambios, pero fallaron ${res.failed} registros.`,
+          { id: toastId }
+        )
+      } else {
+        toast.success(
+          `Se registraron exitosamente ${res.succeeded} de ${res.attempted} cambios de asistencia.`,
+          { id: toastId }
+        )
+      }
       setShowSaveDialog(false)
       await fetchReporteData()
     } catch (error) {
