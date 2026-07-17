@@ -110,96 +110,83 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
     originalIndex: idx + 1,
   }))
 
-  const byTeacher: Record<string, typeof itemsWithIndex> = {}
-  itemsWithIndex.forEach((item) => {
-    const key = item.persona_codigo || item.persona_nombres
-    if (!byTeacher[key]) {
-      byTeacher[key] = []
-    }
-    byTeacher[key].push(item)
-  })
-
   const groupedRows: GroupedRow[] = []
+  const processedIndices = new Set<number>()
 
-  Object.entries(byTeacher).forEach(([teacherKey, list]) => {
-    const sorted = [...list].sort((a, b) => {
-      return parseTimeToMinutes(a.hora_inicio) - parseTimeToMinutes(b.hora_inicio)
-    })
+  for (let i = 0; i < itemsWithIndex.length; i++) {
+    if (processedIndices.has(i)) continue
 
-    const mergedGroups: (typeof itemsWithIndex)[] = []
+    const currentItem = itemsWithIndex[i]
+    const teacherKey = currentItem.persona_codigo || currentItem.persona_nombres
+    const currentGroup = [currentItem]
+    processedIndices.add(i)
 
-    sorted.forEach((item) => {
-      const start = parseTimeToMinutes(item.hora_inicio)
-      const end = parseTimeToMinutes(item.hora_fin)
+    let foundNewOverlap = true
+    while (foundNewOverlap) {
+      foundNewOverlap = false
+      for (let j = i + 1; j < itemsWithIndex.length; j++) {
+        if (processedIndices.has(j)) continue
 
-      let placed = false
-      for (const group of mergedGroups) {
-        const overlaps = group.some((gItem) => {
-          const gStart = parseTimeToMinutes(gItem.hora_inicio)
-          const gEnd = parseTimeToMinutes(gItem.hora_fin)
-          return start < gEnd && gStart < end
-        })
+        const compareItem = itemsWithIndex[j]
+        const compareTeacherKey = compareItem.persona_codigo || compareItem.persona_nombres
 
-        if (overlaps) {
-          group.push(item)
-          placed = true
-          break
+        if (teacherKey === compareTeacherKey) {
+          const cStart = parseTimeToMinutes(compareItem.hora_inicio)
+          const cEnd = parseTimeToMinutes(compareItem.hora_fin)
+
+          const overlaps = currentGroup.some((gItem) => {
+            const gStart = parseTimeToMinutes(gItem.hora_inicio)
+            const gEnd = parseTimeToMinutes(gItem.hora_fin)
+            return cStart < gEnd && gStart < cEnd
+          })
+
+          if (overlaps) {
+            currentGroup.push(compareItem)
+            processedIndices.add(j)
+            foundNewOverlap = true
+          }
         }
       }
+    }
 
-      if (!placed) {
-        mergedGroups.push([item])
-      }
+    const indices = currentGroup.map((item) => item.originalIndex).sort((a, b) => a - b)
+    const starts = currentGroup.map((item) => parseTimeToMinutes(item.hora_inicio))
+    const ends = currentGroup.map((item) => parseTimeToMinutes(item.hora_fin))
+    const minStart = Math.min(...starts)
+    const maxEnd = Math.max(...ends)
+
+    const formatTime = (mins: number) => {
+      const h = Math.floor(mins / 60)
+        .toString()
+        .padStart(2, "0")
+      const m = (mins % 60).toString().padStart(2, "0")
+      return `${h}:${m}`
+    }
+
+    const hora_inicio = formatTime(minStart)
+    const hora_fin = formatTime(maxEnd)
+
+    groupedRows.push({
+      key: `${teacherKey}-${minStart}-${maxEnd}-${i}`,
+      indices,
+      persona_nombres: currentItem.persona_nombres,
+      persona_codigo: currentItem.persona_codigo,
+      hora_inicio,
+      hora_fin,
+      detalles: currentGroup.map((item) => ({
+        asignatura_nombre: item.asignatura_nombre,
+        grupo_nombre: item.grupo_nombre,
+        aula_codigo: item.aula_codigo,
+      })),
+      ingreso: hora_inicio,
+      salida: hora_fin,
+      retraso: 0,
+      tipo_tickeo: "NORMAL",
+      observacion: "",
     })
+  }
 
-    mergedGroups.forEach((group, groupIdx) => {
-      const indices = group.map((item) => item.originalIndex).sort((a, b) => a - b)
-
-      const starts = group.map((item) => parseTimeToMinutes(item.hora_inicio))
-      const ends = group.map((item) => parseTimeToMinutes(item.hora_fin))
-      const minStart = Math.min(...starts)
-      const maxEnd = Math.max(...ends)
-
-      const formatTime = (mins: number) => {
-        const h = Math.floor(mins / 60)
-          .toString()
-          .padStart(2, "0")
-        const m = (mins % 60).toString().padStart(2, "0")
-        return `${h}:${m}`
-      }
-
-      const hora_inicio = formatTime(minStart)
-      const hora_fin = formatTime(maxEnd)
-
-      const first = group[0]
-
-      groupedRows.push({
-        key: `${teacherKey}-${minStart}-${maxEnd}-${groupIdx}`,
-        indices,
-        persona_nombres: first.persona_nombres,
-        persona_codigo: first.persona_codigo,
-        hora_inicio,
-        hora_fin,
-        detalles: group.map((item) => ({
-          asignatura_nombre: item.asignatura_nombre,
-          grupo_nombre: item.grupo_nombre,
-          aula_codigo: item.aula_codigo,
-        })),
-        ingreso: hora_inicio,
-        salida: hora_fin,
-        retraso: 0,
-        tipo_tickeo: "NORMAL",
-        observacion: "",
-      })
-    })
-  })
-
-  return groupedRows.sort((a, b) => {
-    const timeA = parseTimeToMinutes(a.hora_inicio)
-    const timeB = parseTimeToMinutes(b.hora_fin)
-    if (timeA !== timeB) return timeA - timeB
-    return a.persona_nombres.localeCompare(b.persona_nombres)
-  })
+  return groupedRows
 }
 
 export default function PartesDiariosPage() {
@@ -400,7 +387,10 @@ export default function PartesDiariosPage() {
 
   return (
     <ProtectedRoute>
-      <AppLayout breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Diarios" }]}>
+      <AppLayout
+        breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Diarios" }]}
+        className="pt-0 pb-0 md:pb-0"
+      >
         <div className="flex flex-col h-full gap-4">
           {/* Encabezado */}
           <div className="flex items-center justify-between border-b border-border pb-2">
@@ -517,8 +507,8 @@ export default function PartesDiariosPage() {
                       variant={reporteData.estado === "confirmado" ? "default" : "secondary"}
                       className={
                         reporteData.estado === "confirmado"
-                          ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2.5 py-1.5 rounded-lg"
-                          : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-2.5 py-1.5 rounded-lg"
+                          ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2.5 py-1.5 rounded-lg dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/40"
+                          : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-2.5 py-1.5 rounded-lg dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40"
                       }
                     >
                       {reporteData.estado.toUpperCase()}
@@ -595,20 +585,22 @@ export default function PartesDiariosPage() {
           {!loading && reporteData && groupedRows.length > 0 && (
             <Card className="border border-border/60 shadow-md rounded-xl overflow-hidden flex-grow">
               <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
-                <Table>
+                <Table className="min-w-[1100px]">
                   <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                     <TableRow>
                       <TableHead className="w-12 text-center font-bold">N°</TableHead>
-                      <TableHead className="w-28 text-center font-bold">Horario</TableHead>
-                      <TableHead className="font-bold">Docente</TableHead>
-                      <TableHead className="font-bold">Asignatura</TableHead>
+                      <TableHead className="w-24 text-center font-bold">Horario</TableHead>
+                      <TableHead className="text-center font-bold">Docente</TableHead>
+                      <TableHead className="text-center font-bold">Asignatura</TableHead>
                       <TableHead className="w-16 text-center font-bold">Grupo</TableHead>
                       <TableHead className="w-20 text-center font-bold">Aula</TableHead>
-                      <TableHead className="w-28 font-bold">Ingreso</TableHead>
-                      <TableHead className="w-28 font-bold">Salida</TableHead>
+                      <TableHead className="w-28 text-center font-bold">Ingreso</TableHead>
+                      <TableHead className="w-28 text-center font-bold">Salida</TableHead>
                       <TableHead className="w-28 text-center font-bold">Retraso (m)</TableHead>
-                      <TableHead className="w-36 font-bold">Tipo Tickeo</TableHead>
-                      <TableHead className="min-w-[150px] font-bold">Observación</TableHead>
+                      <TableHead className="w-32 text-center font-bold">Tipo Tickeo</TableHead>
+                      <TableHead className="min-w-[200px] text-center font-bold">
+                        Observación
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -630,10 +622,12 @@ export default function PartesDiariosPage() {
                           </TableCell>
 
                           {/* Horario */}
-                          <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200">
-                            {row.hora_inicio} - {row.hora_fin}
+                          <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
+                            <div>{row.hora_inicio}</div>
+                            <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
+                            <div>{row.hora_fin}</div>
                             {isOverlap && (
-                              <Badge className="ml-1 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] scale-90 px-1 py-0.5 rounded">
+                              <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
                                 Solapado
                               </Badge>
                             )}
@@ -652,7 +646,7 @@ export default function PartesDiariosPage() {
                                 className={
                                   index > 0
                                     ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
-                                    : ""
+                                    : "font-semibold"
                                 }
                               >
                                 {d.asignatura_nombre}
@@ -667,8 +661,8 @@ export default function PartesDiariosPage() {
                                 key={index}
                                 className={
                                   index > 0
-                                    ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-[#BC000C]"
-                                    : "font-bold text-[#BC000C]"
+                                    ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
+                                    : "font-bold text-foreground"
                                 }
                               >
                                 {d.grupo_nombre}
@@ -693,22 +687,22 @@ export default function PartesDiariosPage() {
                           </TableCell>
 
                           {/* Ingreso (editable) */}
-                          <TableCell>
+                          <TableCell className="text-center">
                             <Input
                               type="time"
                               size="sm"
-                              className="h-8 rounded-lg text-xs"
+                              className="h-8 rounded-lg text-xs w-24 mx-auto"
                               value={row.ingreso}
                               onChange={(e) => handleRowChange(row.key, "ingreso", e.target.value)}
                             />
                           </TableCell>
 
                           {/* Salida (editable) */}
-                          <TableCell>
+                          <TableCell className="text-center">
                             <Input
                               type="time"
                               size="sm"
-                              className="h-8 rounded-lg text-xs"
+                              className="h-8 rounded-lg text-xs w-24 mx-auto"
                               value={row.salida}
                               onChange={(e) => handleRowChange(row.key, "salida", e.target.value)}
                             />
@@ -747,8 +741,8 @@ export default function PartesDiariosPage() {
                             <Input
                               type="text"
                               size="sm"
-                              placeholder="Ej: Docente firmó tarde"
-                              className="h-8 rounded-lg text-xs bg-transparent focus-visible:bg-background"
+                              placeholder="Escribir observación..."
+                              className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full"
                               value={row.observacion}
                               onChange={(e) =>
                                 handleRowChange(row.key, "observacion", e.target.value)
