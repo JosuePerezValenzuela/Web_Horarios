@@ -50,78 +50,84 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
     originalIndex: idx + 1,
   }))
 
+  const byTeacher: Record<string, typeof itemsWithIndex> = {}
+  itemsWithIndex.forEach((item) => {
+    const key = item.persona_codigo || item.persona_nombres
+    if (!byTeacher[key]) {
+      byTeacher[key] = []
+    }
+    byTeacher[key].push(item)
+  })
+
   const groupedRows: GroupedRow[] = []
-  const processedIndices = new Set<number>()
 
-  for (let i = 0; i < itemsWithIndex.length; i++) {
-    if (processedIndices.has(i)) continue
+  Object.entries(byTeacher).forEach(([teacherKey, list]) => {
+    const sorted = [...list].sort((a, b) => {
+      return parseTimeToMinutes(a.hora_inicio) - parseTimeToMinutes(b.hora_inicio)
+    })
 
-    const currentItem = itemsWithIndex[i]
-    const teacherKey = currentItem.persona_codigo || currentItem.persona_nombres
-    const currentGroup = [currentItem]
-    processedIndices.add(i)
+    const mergedGroups: (typeof itemsWithIndex)[] = []
 
-    let foundNewOverlap = true
-    while (foundNewOverlap) {
-      foundNewOverlap = false
-      for (let j = i + 1; j < itemsWithIndex.length; j++) {
-        if (processedIndices.has(j)) continue
+    sorted.forEach((item) => {
+      const start = parseTimeToMinutes(item.hora_inicio)
+      const end = parseTimeToMinutes(item.hora_fin)
 
-        const compareItem = itemsWithIndex[j]
-        const compareTeacherKey = compareItem.persona_codigo || compareItem.persona_nombres
+      let merged = false
+      if (mergedGroups.length > 0) {
+        const lastGroup = mergedGroups[mergedGroups.length - 1]
+        const gStarts = lastGroup.map((g) => parseTimeToMinutes(g.hora_inicio))
+        const gEnds = lastGroup.map((g) => parseTimeToMinutes(g.hora_fin))
+        const gStart = Math.min(...gStarts)
+        const gEnd = Math.max(...gEnds)
 
-        if (teacherKey === compareTeacherKey) {
-          const cStart = parseTimeToMinutes(compareItem.hora_inicio)
-          const cEnd = parseTimeToMinutes(compareItem.hora_fin)
-
-          const overlaps = currentGroup.some((gItem) => {
-            const gStart = parseTimeToMinutes(gItem.hora_inicio)
-            const gEnd = parseTimeToMinutes(gItem.hora_fin)
-            return cStart < gEnd && gStart < cEnd
-          })
-
-          if (overlaps) {
-            currentGroup.push(compareItem)
-            processedIndices.add(j)
-            foundNewOverlap = true
-          }
+        if (start < gEnd && gStart < end) {
+          lastGroup.push(item)
+          merged = true
         }
       }
-    }
 
-    const indices = currentGroup.map((item) => item.originalIndex).sort((a, b) => a - b)
-    const starts = currentGroup.map((item) => parseTimeToMinutes(item.hora_inicio))
-    const ends = currentGroup.map((item) => parseTimeToMinutes(item.hora_fin))
-    const minStart = Math.min(...starts)
-    const maxEnd = Math.max(...ends)
-
-    const formatTime = (mins: number) => {
-      const h = Math.floor(mins / 60)
-        .toString()
-        .padStart(2, "0")
-      const m = (mins % 60).toString().padStart(2, "0")
-      return `${h}:${m}`
-    }
-
-    const hora_inicio = formatTime(minStart)
-    const hora_fin = formatTime(maxEnd)
-
-    groupedRows.push({
-      key: `${teacherKey}-${minStart}-${maxEnd}-${i}`,
-      indices,
-      persona_nombres: currentItem.persona_nombres,
-      persona_codigo: currentItem.persona_codigo,
-      hora_inicio,
-      hora_fin,
-      detalles: currentGroup.map((item) => ({
-        asignatura_nombre: item.asignatura_nombre,
-        grupo_nombre: item.grupo_nombre,
-        aula_codigo: item.aula_codigo,
-      })),
+      if (!merged) {
+        mergedGroups.push([item])
+      }
     })
-  }
 
-  return groupedRows
+    mergedGroups.forEach((group) => {
+      const indices = group.map((item) => item.originalIndex).sort((a, b) => a - b)
+      const starts = group.map((item) => parseTimeToMinutes(item.hora_inicio))
+      const ends = group.map((item) => parseTimeToMinutes(item.hora_fin))
+      const minStart = Math.min(...starts)
+      const maxEnd = Math.max(...ends)
+
+      const formatTime = (mins: number) => {
+        const h = Math.floor(mins / 60)
+          .toString()
+          .padStart(2, "0")
+        const m = (mins % 60).toString().padStart(2, "0")
+        return `${h}:${m}`
+      }
+
+      const hora_inicio = formatTime(minStart)
+      const hora_fin = formatTime(maxEnd)
+
+      const first = group[0]
+
+      groupedRows.push({
+        key: `${teacherKey}-${minStart}-${maxEnd}-${indices[0]}`,
+        indices,
+        persona_nombres: first.persona_nombres,
+        persona_codigo: first.persona_codigo,
+        hora_inicio,
+        hora_fin,
+        detalles: group.map((item) => ({
+          asignatura_nombre: item.asignatura_nombre,
+          grupo_nombre: item.grupo_nombre,
+          aula_codigo: item.aula_codigo,
+        })),
+      })
+    })
+  })
+
+  return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
 export async function GET(request: NextRequest) {
