@@ -195,6 +195,28 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
+function ObservationInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [localValue, setLocalValue] = useState(value)
+  const [prevValue, setPrevValue] = useState(value)
+
+  if (value !== prevValue) {
+    setLocalValue(value)
+    setPrevValue(value)
+  }
+
+  return (
+    <Input
+      type="text"
+      size="sm"
+      placeholder="Escribir observación..."
+      className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full"
+      value={localValue}
+      onChange={(e) => setLocalValue(e.target.value)}
+      onBlur={() => onChange(localValue)}
+    />
+  )
+}
+
 export default function PartesDiariosPage() {
   const { user } = useAuthStore()
   const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
@@ -589,179 +611,167 @@ export default function PartesDiariosPage() {
 
           {/* Grilla / Tabla principal */}
           {!loading && reporteData && groupedRows.length > 0 && (
-            <Card className="border border-border/60 shadow-md rounded-xl overflow-hidden flex-grow">
-              <div className="overflow-x-auto max-h-[calc(100vh-270px)]">
-                <Table className="min-w-[1100px]">
-                  <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                    <TableRow>
-                      <TableHead className="w-12 text-center font-bold">N°</TableHead>
-                      <TableHead className="w-24 text-center font-bold">Horario</TableHead>
-                      <TableHead className="text-center font-bold">Docente</TableHead>
-                      <TableHead className="text-center font-bold">Asignatura</TableHead>
-                      <TableHead className="w-16 text-center font-bold">Grupo</TableHead>
-                      <TableHead className="w-20 text-center font-bold">Aula</TableHead>
-                      <TableHead className="w-28 text-center font-bold">Ingreso</TableHead>
-                      <TableHead className="w-28 text-center font-bold">Salida</TableHead>
-                      <TableHead className="w-28 text-center font-bold">Retraso (m)</TableHead>
-                      <TableHead className="w-32 text-center font-bold">Tipo Tickeo</TableHead>
-                      <TableHead className="min-w-[200px] text-center font-bold">
-                        Observación
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {groupedRows.map((row) => {
-                      const isOverlap = row.detalles.length > 1
+            <div className="overflow-x-auto max-h-[calc(100vh-270px)] border border-border/60 rounded-xl flex-grow">
+              <Table className="min-w-[1100px]">
+                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+                  <TableRow>
+                    <TableHead className="w-12 text-center font-bold">N°</TableHead>
+                    <TableHead className="w-24 text-center font-bold">Horario</TableHead>
+                    <TableHead className="text-center font-bold">Docente</TableHead>
+                    <TableHead className="text-center font-bold">Asignatura</TableHead>
+                    <TableHead className="w-16 text-center font-bold">Grupo</TableHead>
+                    <TableHead className="w-20 text-center font-bold">Aula</TableHead>
+                    <TableHead className="w-28 text-center font-bold">Ingreso</TableHead>
+                    <TableHead className="w-28 text-center font-bold">Salida</TableHead>
+                    <TableHead className="w-28 text-center font-bold">Retraso (m)</TableHead>
+                    <TableHead className="w-32 text-center font-bold">Tipo Tickeo</TableHead>
+                    <TableHead className="min-w-[200px] text-center font-bold">
+                      Observación
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {groupedRows.map((row) => {
+                    const isOverlap = row.detalles.length > 1
 
-                      return (
-                        <TableRow
-                          key={row.key}
-                          className={
-                            isOverlap
-                              ? "bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/30"
-                              : ""
-                          }
-                        >
-                          {/* N° */}
-                          <TableCell className="text-center font-mono font-bold text-slate-500">
-                            {row.indices.join(", ")}
-                          </TableCell>
+                    return (
+                      <TableRow
+                        key={row.key}
+                        className={
+                          isOverlap
+                            ? "bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/30"
+                            : ""
+                        }
+                      >
+                        {/* N° */}
+                        <TableCell className="text-center font-mono font-bold text-slate-500">
+                          {row.indices.join(", ")}
+                        </TableCell>
 
-                          {/* Horario */}
-                          <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
-                            <div>{row.hora_inicio}</div>
-                            <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
-                            <div>{row.hora_fin}</div>
-                            {isOverlap && (
-                              <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                                Solapado
-                              </Badge>
-                            )}
-                          </TableCell>
-
-                          {/* Docente */}
-                          <TableCell className="font-bold text-slate-900 dark:text-white">
-                            {row.persona_nombres}
-                          </TableCell>
-
-                          {/* Asignatura */}
-                          <TableCell className="text-slate-700 dark:text-slate-300 text-xs">
-                            {row.detalles.map((d, index) => (
-                              <div
-                                key={index}
-                                className={
-                                  index > 0
-                                    ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
-                                    : "font-semibold"
-                                }
-                              >
-                                {d.asignatura_nombre}
-                              </div>
-                            ))}
-                          </TableCell>
-
-                          {/* Grupo */}
-                          <TableCell className="text-center font-bold text-slate-800 dark:text-slate-200">
-                            {row.detalles.map((d, index) => (
-                              <div
-                                key={index}
-                                className={
-                                  index > 0
-                                    ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
-                                    : "font-bold text-foreground"
-                                }
-                              >
-                                {d.grupo_nombre}
-                              </div>
-                            ))}
-                          </TableCell>
-
-                          {/* Aula */}
-                          <TableCell className="text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
-                            {row.detalles.map((d, index) => (
-                              <div
-                                key={index}
-                                className={
-                                  index > 0
-                                    ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-mono"
-                                    : "font-mono"
-                                }
-                              >
-                                {d.aula_codigo || "S/R"}
-                              </div>
-                            ))}
-                          </TableCell>
-
-                          {/* Ingreso (editable) */}
-                          <TableCell className="text-center">
-                            <Input
-                              type="time"
-                              size="sm"
-                              className="h-8 rounded-lg text-xs w-24 mx-auto"
-                              value={row.ingreso}
-                              onChange={(e) => handleRowChange(row.key, "ingreso", e.target.value)}
-                            />
-                          </TableCell>
-
-                          {/* Salida (editable) */}
-                          <TableCell className="text-center">
-                            <Input
-                              type="time"
-                              size="sm"
-                              className="h-8 rounded-lg text-xs w-24 mx-auto"
-                              value={row.salida}
-                              onChange={(e) => handleRowChange(row.key, "salida", e.target.value)}
-                            />
-                          </TableCell>
-
-                          {/* Minutos Retraso */}
-                          <TableCell className="text-center">
-                            <Badge
-                              variant={row.retraso > 0 ? "destructive" : "secondary"}
-                              className="font-mono text-xs px-2 py-0.5 rounded"
-                            >
-                              {row.retraso} min
+                        {/* Horario */}
+                        <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
+                          <div>{row.hora_inicio}</div>
+                          <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
+                          <div>{row.hora_fin}</div>
+                          {isOverlap && (
+                            <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+                              Solapado
                             </Badge>
-                          </TableCell>
+                          )}
+                        </TableCell>
 
-                          {/* Tipo Tickeo */}
-                          <TableCell>
-                            <Select
-                              value={row.tipo_tickeo}
-                              onValueChange={(val) => handleRowChange(row.key, "tipo_tickeo", val)}
-                            >
-                              <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-28">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="NORMAL">Normal</SelectItem>
-                                <SelectItem value="ATRASO">Atraso</SelectItem>
-                                <SelectItem value="FALTA">Falta</SelectItem>
-                                <SelectItem value="LICENCIA">Licencia</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
+                        {/* Docente */}
+                        <TableCell className="font-bold text-slate-900 dark:text-white">
+                          {row.persona_nombres}
+                        </TableCell>
 
-                          {/* Observación */}
-                          <TableCell>
-                            <Input
-                              type="text"
-                              size="sm"
-                              placeholder="Escribir observación..."
-                              className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full"
-                              value={row.observacion}
-                              onChange={(e) =>
-                                handleRowChange(row.key, "observacion", e.target.value)
+                        {/* Asignatura */}
+                        <TableCell className="text-slate-700 dark:text-slate-300 text-xs">
+                          {row.detalles.map((d, index) => (
+                            <div
+                              key={index}
+                              className={
+                                index > 0
+                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
+                                  : "font-semibold"
                               }
-                            />
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
+                            >
+                              {d.asignatura_nombre}
+                            </div>
+                          ))}
+                        </TableCell>
+
+                        {/* Grupo */}
+                        <TableCell className="text-center font-bold text-slate-800 dark:text-slate-200">
+                          {row.detalles.map((d, index) => (
+                            <div
+                              key={index}
+                              className={
+                                index > 0
+                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
+                                  : "font-bold text-foreground"
+                              }
+                            >
+                              {d.grupo_nombre}
+                            </div>
+                          ))}
+                        </TableCell>
+
+                        {/* Aula */}
+                        <TableCell className="text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
+                          {row.detalles.map((d, index) => (
+                            <div
+                              key={index}
+                              className={
+                                index > 0
+                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-mono"
+                                  : "font-mono"
+                              }
+                            >
+                              {d.aula_codigo || "S/R"}
+                            </div>
+                          ))}
+                        </TableCell>
+
+                        {/* Ingreso (editable) */}
+                        <TableCell className="text-center">
+                          <TimePicker
+                            value={row.ingreso}
+                            onChange={(val) => handleRowChange(row.key, "ingreso", val)}
+                            className="h-8 w-24 mx-auto"
+                          />
+                        </TableCell>
+
+                        {/* Salida (editable) */}
+                        <TableCell className="text-center">
+                          <TimePicker
+                            value={row.salida}
+                            onChange={(val) => handleRowChange(row.key, "salida", val)}
+                            className="h-8 w-24 mx-auto"
+                          />
+                        </TableCell>
+
+                        {/* Minutos Retraso */}
+                        <TableCell className="text-center">
+                          <Badge
+                            variant={row.retraso > 0 ? "destructive" : "secondary"}
+                            className="font-mono text-xs px-2 py-0.5 rounded"
+                          >
+                            {row.retraso} min
+                          </Badge>
+                        </TableCell>
+
+                        {/* Tipo Tickeo */}
+                        <TableCell>
+                          <Select
+                            value={row.tipo_tickeo}
+                            onValueChange={(val) => handleRowChange(row.key, "tipo_tickeo", val)}
+                          >
+                            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="NORMAL">Normal</SelectItem>
+                              <SelectItem value="ATRASO">Atraso</SelectItem>
+                              <SelectItem value="FALTA">Falta</SelectItem>
+                              <SelectItem value="LICENCIA">Licencia</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+
+                        {/* Observación */}
+                        <TableCell>
+                          <ObservationInput
+                            value={row.observacion}
+                            onChange={(val) => handleRowChange(row.key, "observacion", val)}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
 
