@@ -49,9 +49,13 @@ import {
   FileText,
   Loader2,
   AlertCircle,
+  Save,
+  Lock,
 } from "lucide-react"
 
 interface ReporteDetalle {
+  id?: number
+  detalle_id?: number
   hora_inicio: string
   hora_fin: string
   persona_nombres: string
@@ -62,6 +66,8 @@ interface ReporteDetalle {
 }
 
 interface ParteDiarioReporte {
+  id?: number
+  parte_id?: number
   fecha: string
   facultad_codigo: string
   estado: string
@@ -73,6 +79,7 @@ interface ParteDiarioReporte {
 interface GroupedRow {
   key: string
   indices: number[]
+  ids: number[]
   persona_nombres: string
   persona_codigo?: string
   hora_inicio: string
@@ -171,9 +178,14 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
 
       const first = group[0]
 
+      const ids = group
+        .map((item) => item.detalle_id || item.id)
+        .filter((val): val is number => typeof val === "number")
+
       groupedRows.push({
         key: `${teacherKey}-${minStart}-${maxEnd}-${indices[0]}`,
         indices,
+        ids,
         persona_nombres: first.persona_nombres,
         persona_codigo: first.persona_codigo,
         hora_inicio,
@@ -389,6 +401,10 @@ export default function PartesDiariosPage() {
   // Catálogo de tipos de tickeo
   const [tiposTickeo, setTiposTickeo] = useState<{ codigo: string; nombre: string }[]>([])
 
+  // Diálogos de acción
+  const [showSaveDialog, setShowSaveDialog] = useState<boolean>(false)
+  const [saving, setSaving] = useState<boolean>(false)
+
   const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
 
   useEffect(() => {
@@ -585,6 +601,86 @@ export default function PartesDiariosPage() {
     )
   }, [])
 
+  // Obtener solo las filas que han sido modificadas de sus valores iniciales
+  const getModifiedItems = useCallback(() => {
+    const modified: GroupedRow[] = []
+    groupedRows.forEach((row) => {
+      const isIngresoChanged = row.ingreso !== row.hora_inicio
+      const isSalidaChanged = row.salida !== row.hora_fin
+      const isTickeoChanged = row.tipo_tickeo !== "presente"
+      const isObsChanged = row.observacion !== ""
+      if (isIngresoChanged || isSalidaChanged || isTickeoChanged || isObsChanged) {
+        modified.push(row)
+      }
+    })
+    return modified
+  }, [groupedRows])
+
+  // Registrar cambios del parte en lote
+  const handleSaveConfirm = async () => {
+    if (!reporteData) return
+    const parteId = reporteData.id || reporteData.parte_id
+    if (!parteId) {
+      toast.error("No se pudo identificar el ID del parte diario")
+      return
+    }
+
+    setSaving(true)
+    const toastId = toast.loading("Guardando registro de asistencia...")
+
+    const itemsPayload: Record<string, unknown>[] = []
+    const modifiedItems = getModifiedItems()
+
+    const referencia_origen = {
+      usuario: {
+        id: user?.id || "unknown",
+        nombre: user?.name || "Administrador",
+        email: user?.email || "",
+      },
+      auditoria: {
+        fecha_registro: new Date().toISOString(),
+        origen: "Plataforma Web de Partes Diarias",
+      },
+    }
+
+    modifiedItems.forEach((row) => {
+      row.ids.forEach((detalleId) => {
+        itemsPayload.push({
+          detalle_id: detalleId,
+          minutos_retraso: row.retraso,
+          observacion: row.observacion || null,
+          tipo_tickeo: row.tipo_tickeo || null,
+          fuente_registro: "firma_manual",
+          referencia_origen,
+        })
+      })
+    })
+
+    try {
+      await partesApiClient.request(`/partes-diarios/${parteId}/detalles`, {
+        method: "PATCH",
+        body: {
+          items: itemsPayload,
+        },
+      })
+
+      toast.success("Registro de asistencia guardado correctamente", { id: toastId })
+      setShowSaveDialog(false)
+      await fetchReporteData()
+    } catch (error) {
+      console.error("Error al guardar asistencia:", error)
+      const apiErr = error as PartesApiError
+      toast.error(
+        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
+          ? String(apiErr.body.message)
+          : "Error al guardar el registro de asistencia",
+        { id: toastId }
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const filteredFacultades = facultades.filter((f) =>
     f.nombre.toLowerCase().includes(facultadSearch.toLowerCase())
   )
@@ -617,7 +713,11 @@ export default function PartesDiariosPage() {
                 onSubmit={handleBuscar}
                 className="flex flex-wrap items-end justify-between gap-4 w-full"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1 min-w-[300px]">
+                <div
+                  className={`grid grid-cols-1 sm:grid-cols-2 ${
+                    reporteData ? "md:grid-cols-2" : "md:grid-cols-4"
+                  } gap-3 flex-1 min-w-[300px]`}
+                >
                   {/* Selector de Facultad */}
                   <div className="space-y-1.5 m-0 p-0">
                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
@@ -682,33 +782,37 @@ export default function PartesDiariosPage() {
                     </Popover>
                   </div>
 
-                  {/* Hora Inicio */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                      Hora Inicio{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </label>
-                    <TimePicker
-                      value={horaInicio}
-                      onChange={setHoraInicio}
-                      placeholder="00:00"
-                      className="rounded-xl h-9"
-                    />
-                  </div>
+                  {/* Hora Inicio (Ocultar si hay búsqueda) */}
+                  {!reporteData && (
+                    <div className="space-y-1.5 m-0 p-0">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                        Hora Inicio{" "}
+                        <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                      </label>
+                      <TimePicker
+                        value={horaInicio}
+                        onChange={setHoraInicio}
+                        placeholder="00:00"
+                        className="rounded-xl h-9"
+                      />
+                    </div>
+                  )}
 
-                  {/* Hora Fin */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                      Hora Fin{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </label>
-                    <TimePicker
-                      value={horaFin}
-                      onChange={setHoraFin}
-                      placeholder="00:00"
-                      className="rounded-xl h-9"
-                    />
-                  </div>
+                  {/* Hora Fin (Ocultar si hay búsqueda) */}
+                  {!reporteData && (
+                    <div className="space-y-1.5 m-0 p-0">
+                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                        Hora Fin{" "}
+                        <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                      </label>
+                      <TimePicker
+                        value={horaFin}
+                        onChange={setHoraFin}
+                        placeholder="00:00"
+                        className="rounded-xl h-9"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2 w-auto justify-end m-0 p-0">
@@ -733,6 +837,28 @@ export default function PartesDiariosPage() {
                     <Search className="w-3.5 h-3.5" />
                     Buscar
                   </Button>
+
+                  {reporteData && (
+                    <>
+                      <Button
+                        type="button"
+                        onClick={() => setShowSaveDialog(true)}
+                        disabled={loading}
+                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Guardar Asistencia
+                      </Button>
+                      <Button
+                        type="button"
+                        disabled={loading}
+                        className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm"
+                      >
+                        <Lock className="w-3.5 h-3.5" />
+                        Cerrar Parte
+                      </Button>
+                    </>
+                  )}
 
                   <Button
                     type="button"
@@ -861,6 +987,97 @@ export default function PartesDiariosPage() {
                   </>
                 ) : (
                   "Generar Parte"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Guardado Lote Asistencia */}
+        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <DialogContent className="sm:max-w-[550px] bg-white dark:bg-slate-900">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Save className="w-5 h-5 text-green-600" />
+                Guardar Cambios de Asistencia
+              </DialogTitle>
+              <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 pt-2">
+                Se registrarán las firmas y observaciones modificadas en el sistema de partes. A
+                continuación se listan las novedades detectadas respecto a la carga por defecto.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="my-4">
+              {getModifiedItems().length === 0 ? (
+                <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
+                  No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
+                  guardarán como &quot;Presente&quot; sin novedades.
+                </div>
+              ) : (
+                <div className="border border-border/80 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] uppercase font-bold text-slate-500">
+                      <tr>
+                        <th className="px-3 py-2 text-center w-12">N°</th>
+                        <th className="px-3 py-2">Docente</th>
+                        <th className="px-3 py-2 text-center w-24">Retraso</th>
+                        <th className="px-3 py-2 w-32">Tipo Tickeo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {getModifiedItems().map((mRow) => {
+                        const tickeoNombre =
+                          tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
+                          mRow.tipo_tickeo ||
+                          "S/R"
+
+                        return (
+                          <tr
+                            key={mRow.key}
+                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
+                          >
+                            <td className="px-3 py-2 text-center font-bold font-mono text-slate-500">
+                              {mRow.indices.join(", ")}
+                            </td>
+                            <td className="px-3 py-2 font-semibold text-slate-900 dark:text-white">
+                              {mRow.persona_nombres}
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <Badge
+                                variant={mRow.retraso > 0 ? "destructive" : "secondary"}
+                                className="font-mono text-[10px] px-1.5 py-0"
+                              >
+                                {mRow.retraso} min
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 font-medium capitalize text-slate-700 dark:text-slate-300">
+                              {tickeoNombre}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <DialogFooter className="flex gap-2 sm:justify-end">
+              <Button variant="outline" onClick={() => setShowSaveDialog(false)} disabled={saving}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveConfirm}
+                disabled={saving}
+                className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+              >
+                {saving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Confirmar Guardar"
                 )}
               </Button>
             </DialogFooter>
