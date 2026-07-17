@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, memo, useCallback } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -217,6 +217,153 @@ function ObservationInput({ value, onChange }: { value: string; onChange: (val: 
   )
 }
 
+const PartesTableRow = memo(
+  ({
+    row,
+    tiposTickeo,
+    onRowChange,
+  }: {
+    row: GroupedRow
+    tiposTickeo: { codigo: string; nombre: string }[]
+    onRowChange: (key: string, field: keyof GroupedRow, value: string) => void
+  }) => {
+    const isOverlap = row.detalles.length > 1
+
+    return (
+      <TableRow
+        className={isOverlap ? "bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/30" : ""}
+      >
+        {/* N° */}
+        <TableCell className="text-center font-mono font-bold text-slate-500">
+          {row.indices.join(", ")}
+        </TableCell>
+
+        {/* Horario */}
+        <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
+          <div>{row.hora_inicio}</div>
+          <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
+          <div>{row.hora_fin}</div>
+          {isOverlap && (
+            <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+              Solapado
+            </Badge>
+          )}
+        </TableCell>
+
+        {/* Docente */}
+        <TableCell className="font-bold text-slate-900 dark:text-white">
+          {row.persona_nombres}
+        </TableCell>
+
+        {/* Asignatura */}
+        <TableCell className="text-slate-700 dark:text-slate-300 text-xs">
+          {row.detalles.map((d, index) => (
+            <div
+              key={index}
+              className={
+                index > 0
+                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
+                  : "font-semibold"
+              }
+            >
+              {d.asignatura_nombre}
+            </div>
+          ))}
+        </TableCell>
+
+        {/* Grupo */}
+        <TableCell className="text-center font-bold text-slate-800 dark:text-slate-200">
+          {row.detalles.map((d, index) => (
+            <div
+              key={index}
+              className={
+                index > 0
+                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
+                  : "font-bold text-foreground"
+              }
+            >
+              {d.grupo_nombre}
+            </div>
+          ))}
+        </TableCell>
+
+        {/* Aula */}
+        <TableCell className="text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
+          {row.detalles.map((d, index) => (
+            <div
+              key={index}
+              className={
+                index > 0
+                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-mono"
+                  : "font-mono"
+              }
+            >
+              {d.aula_codigo || "S/R"}
+            </div>
+          ))}
+        </TableCell>
+
+        {/* Ingreso (editable) */}
+        <TableCell className="text-center">
+          <TimePicker
+            value={row.ingreso}
+            onChange={(val) => onRowChange(row.key, "ingreso", val)}
+            className="h-8 w-24 mx-auto"
+          />
+        </TableCell>
+
+        {/* Salida (editable) */}
+        <TableCell className="text-center">
+          <TimePicker
+            value={row.salida}
+            onChange={(val) => onRowChange(row.key, "salida", val)}
+            className="h-8 w-24 mx-auto"
+          />
+        </TableCell>
+
+        {/* Minutos Retraso */}
+        <TableCell className="text-center">
+          <Badge
+            variant={row.retraso > 0 ? "destructive" : "secondary"}
+            className="font-mono text-xs px-2 py-0.5 rounded"
+          >
+            {row.retraso} min
+          </Badge>
+        </TableCell>
+
+        {/* Tipo Tickeo */}
+        <TableCell>
+          <Select
+            value={row.tipo_tickeo}
+            onValueChange={(val) => onRowChange(row.key, "tipo_tickeo", val)}
+          >
+            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-36">
+              <SelectValue placeholder="Seleccionar..." />
+            </SelectTrigger>
+            <SelectContent>
+              {tiposTickeo.map((t) => (
+                <SelectItem key={t.codigo} value={t.codigo}>
+                  {t.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </TableCell>
+
+        {/* Observación */}
+        <TableCell>
+          <ObservationInput
+            value={row.observacion}
+            onChange={(val) => onRowChange(row.key, "observacion", val)}
+          />
+        </TableCell>
+      </TableRow>
+    )
+  }
+)
+
+PartesTableRow.displayName = "PartesTableRow"
+
 export default function PartesDiariosPage() {
   const { user } = useAuthStore()
   const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
@@ -415,7 +562,7 @@ export default function PartesDiariosPage() {
   }
 
   // Manejo de cambios en los inputs editables
-  const handleRowChange = (key: string, field: keyof GroupedRow, value: string) => {
+  const handleRowChange = useCallback((key: string, field: keyof GroupedRow, value: string) => {
     setGroupedRows((prev) =>
       prev.map((row) => {
         if (row.key === key) {
@@ -436,7 +583,7 @@ export default function PartesDiariosPage() {
         return row
       })
     )
-  }
+  }, [])
 
   const filteredFacultades = facultades.filter((f) =>
     f.nombre.toLowerCase().includes(facultadSearch.toLowerCase())
@@ -666,145 +813,14 @@ export default function PartesDiariosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {groupedRows.map((row) => {
-                    const isOverlap = row.detalles.length > 1
-
-                    return (
-                      <TableRow
-                        key={row.key}
-                        className={
-                          isOverlap
-                            ? "bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/30"
-                            : ""
-                        }
-                      >
-                        {/* N° */}
-                        <TableCell className="text-center font-mono font-bold text-slate-500">
-                          {row.indices.join(", ")}
-                        </TableCell>
-
-                        {/* Horario */}
-                        <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
-                          <div>{row.hora_inicio}</div>
-                          <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
-                          <div>{row.hora_fin}</div>
-                          {isOverlap && (
-                            <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                              Solapado
-                            </Badge>
-                          )}
-                        </TableCell>
-
-                        {/* Docente */}
-                        <TableCell className="font-bold text-slate-900 dark:text-white">
-                          {row.persona_nombres}
-                        </TableCell>
-
-                        {/* Asignatura */}
-                        <TableCell className="text-slate-700 dark:text-slate-300 text-xs">
-                          {row.detalles.map((d, index) => (
-                            <div
-                              key={index}
-                              className={
-                                index > 0
-                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
-                                  : "font-semibold"
-                              }
-                            >
-                              {d.asignatura_nombre}
-                            </div>
-                          ))}
-                        </TableCell>
-
-                        {/* Grupo */}
-                        <TableCell className="text-center font-bold text-slate-800 dark:text-slate-200">
-                          {row.detalles.map((d, index) => (
-                            <div
-                              key={index}
-                              className={
-                                index > 0
-                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
-                                  : "font-bold text-foreground"
-                              }
-                            >
-                              {d.grupo_nombre}
-                            </div>
-                          ))}
-                        </TableCell>
-
-                        {/* Aula */}
-                        <TableCell className="text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
-                          {row.detalles.map((d, index) => (
-                            <div
-                              key={index}
-                              className={
-                                index > 0
-                                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-mono"
-                                  : "font-mono"
-                              }
-                            >
-                              {d.aula_codigo || "S/R"}
-                            </div>
-                          ))}
-                        </TableCell>
-
-                        {/* Ingreso (editable) */}
-                        <TableCell className="text-center">
-                          <TimePicker
-                            value={row.ingreso}
-                            onChange={(val) => handleRowChange(row.key, "ingreso", val)}
-                            className="h-8 w-24 mx-auto"
-                          />
-                        </TableCell>
-
-                        {/* Salida (editable) */}
-                        <TableCell className="text-center">
-                          <TimePicker
-                            value={row.salida}
-                            onChange={(val) => handleRowChange(row.key, "salida", val)}
-                            className="h-8 w-24 mx-auto"
-                          />
-                        </TableCell>
-
-                        {/* Minutos Retraso */}
-                        <TableCell className="text-center">
-                          <Badge
-                            variant={row.retraso > 0 ? "destructive" : "secondary"}
-                            className="font-mono text-xs px-2 py-0.5 rounded"
-                          >
-                            {row.retraso} min
-                          </Badge>
-                        </TableCell>
-
-                        {/* Tipo Tickeo */}
-                        <TableCell>
-                          <Select
-                            value={row.tipo_tickeo}
-                            onValueChange={(val) => handleRowChange(row.key, "tipo_tickeo", val)}
-                          >
-                            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-36">
-                              <SelectValue placeholder="Seleccionar..." />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {tiposTickeo.map((t) => (
-                                <SelectItem key={t.codigo} value={t.codigo}>
-                                  {t.nombre}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-
-                        {/* Observación */}
-                        <TableCell>
-                          <ObservationInput
-                            value={row.observacion}
-                            onChange={(val) => handleRowChange(row.key, "observacion", val)}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
+                  {groupedRows.map((row) => (
+                    <PartesTableRow
+                      key={row.key}
+                      row={row}
+                      tiposTickeo={tiposTickeo}
+                      onRowChange={handleRowChange}
+                    />
+                  ))}
                 </TableBody>
               </Table>
             </div>
