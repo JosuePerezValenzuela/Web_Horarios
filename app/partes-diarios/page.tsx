@@ -68,6 +68,7 @@ interface ReporteDetalle {
 interface ParteDiarioReporte {
   id?: number
   parte_id?: number
+  parte_diario_id?: number
   fecha: string
   facultad_codigo: string
   estado: string
@@ -647,7 +648,7 @@ export default function PartesDiariosPage() {
   // Registrar cambios del parte en lote
   const handleSaveConfirm = async () => {
     if (!reporteData) return
-    const parteId = reporteData.id || reporteData.parte_id
+    const parteId = reporteData.parte_diario_id || reporteData.id || reporteData.parte_id
     if (!parteId) {
       toast.error("No se pudo identificar el ID del parte diario")
       return
