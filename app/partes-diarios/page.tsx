@@ -105,10 +105,21 @@ function parseTimeToMinutes(timeStr: string): number {
   return h * 60 + m
 }
 
-function calculateDelay(scheduledStart: string, actualStart: string): number {
-  const sched = parseTimeToMinutes(scheduledStart)
-  const actual = parseTimeToMinutes(actualStart)
-  return Math.max(0, actual - sched)
+function calculateTotalDelay(
+  scheduledStart: string,
+  actualStart: string,
+  scheduledEnd: string,
+  actualEnd: string
+): number {
+  const schedStartMin = parseTimeToMinutes(scheduledStart)
+  const actualStartMin = parseTimeToMinutes(actualStart)
+  const schedEndMin = parseTimeToMinutes(scheduledEnd)
+  const actualEndMin = parseTimeToMinutes(actualEnd)
+
+  const startDelay = Math.max(0, actualStartMin - schedStartMin)
+  const endDelay = Math.max(0, schedEndMin - actualEndMin)
+
+  return startDelay + endDelay
 }
 
 function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
@@ -583,9 +594,16 @@ export default function PartesDiariosPage() {
       prev.map((row) => {
         if (row.key === key) {
           const updatedRow = { ...row, [field]: value }
-          // Recalcular minutos de retraso si cambia el ingreso
-          if (field === "ingreso") {
-            updatedRow.retraso = calculateDelay(row.hora_inicio, value)
+          // Recalcular minutos de retraso si cambia el ingreso o la salida
+          if (field === "ingreso" || field === "salida") {
+            const currentIngreso = field === "ingreso" ? value : row.ingreso
+            const currentSalida = field === "salida" ? value : row.salida
+            updatedRow.retraso = calculateTotalDelay(
+              row.hora_inicio,
+              currentIngreso,
+              row.hora_fin,
+              currentSalida
+            )
           }
           // Desseleccionar "presente" si cambia el ingreso o la salida
           if (
@@ -614,6 +632,16 @@ export default function PartesDiariosPage() {
       }
     })
     return modified
+  }, [groupedRows])
+
+  // Validar y abrir diálogo de guardado
+  const handleSaveClick = useCallback(() => {
+    const missingTickeo = groupedRows.some((row) => !row.tipo_tickeo)
+    if (missingTickeo) {
+      toast.error("Debe seleccionar un Tipo de Tickeo para todos los registros antes de guardar.")
+      return
+    }
+    setShowSaveDialog(true)
   }, [groupedRows])
 
   // Registrar cambios del parte en lote
@@ -842,7 +870,7 @@ export default function PartesDiariosPage() {
                     <>
                       <Button
                         type="button"
-                        onClick={() => setShowSaveDialog(true)}
+                        onClick={handleSaveClick}
                         disabled={loading}
                         className="bg-green-600 hover:bg-green-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm"
                       >
@@ -920,7 +948,7 @@ export default function PartesDiariosPage() {
           {/* Grilla / Tabla principal */}
           {!loading && reporteData && groupedRows.length > 0 && (
             <div className="overflow-x-auto max-h-[calc(100vh-270px)] border border-border/60 rounded-xl flex-grow">
-              <Table className="min-w-[1100px]">
+              <Table className="min-w-[1200px] w-full">
                 <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
                   <TableRow>
                     <TableHead className="w-12 text-center font-bold">N°</TableHead>
@@ -933,7 +961,7 @@ export default function PartesDiariosPage() {
                     <TableHead className="w-28 text-center font-bold">Salida</TableHead>
                     <TableHead className="w-28 text-center font-bold">Retraso (m)</TableHead>
                     <TableHead className="w-32 text-center font-bold">Tipo Tickeo</TableHead>
-                    <TableHead className="min-w-[200px] text-center font-bold">
+                    <TableHead className="min-w-[250px] text-center font-bold">
                       Observación
                     </TableHead>
                   </TableRow>
@@ -955,13 +983,13 @@ export default function PartesDiariosPage() {
 
         {/* Modal de Generación */}
         <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
-          <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogContent className="sm:max-w-[425px] bg-background border border-border">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-amber-500" />
                 Parte Diario no Encontrado
               </DialogTitle>
-              <DialogDescription className="text-sm text-gray-500 pt-2">
+              <DialogDescription className="text-sm text-muted-foreground pt-2">
                 No se generó un parte diario para la facultad{" "}
                 <strong>{selectedFacultad?.nombre || selectedFacultadId}</strong> en la fecha
                 seleccionada. ¿Desea proceder a generar el parte diario de asistencia?
@@ -978,7 +1006,7 @@ export default function PartesDiariosPage() {
               <Button
                 onClick={handleGenerarParte}
                 disabled={generatingParte}
-                className="bg-[#003770] hover:bg-[#00254d] text-white"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 {generatingParte ? (
                   <>
@@ -995,13 +1023,13 @@ export default function PartesDiariosPage() {
 
         {/* Modal de Guardado Lote Asistencia */}
         <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-          <DialogContent className="sm:max-w-[550px] bg-white dark:bg-slate-900">
+          <DialogContent className="sm:max-w-[550px] bg-background border border-border">
             <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
                 <Save className="w-5 h-5 text-green-600" />
                 Guardar Cambios de Asistencia
               </DialogTitle>
-              <DialogDescription className="text-sm text-gray-500 dark:text-gray-400 pt-2">
+              <DialogDescription className="text-sm text-muted-foreground pt-2">
                 Se registrarán las firmas y observaciones modificadas en el sistema de partes. A
                 continuación se listan las novedades detectadas respecto a la carga por defecto.
               </DialogDescription>
@@ -1014,9 +1042,9 @@ export default function PartesDiariosPage() {
                   guardarán como &quot;Presente&quot; sin novedades.
                 </div>
               ) : (
-                <div className="border border-border/80 rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
+                <div className="border border-border rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] uppercase font-bold text-slate-500">
+                    <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
                       <tr>
                         <th className="px-3 py-2 text-center w-12">N°</th>
                         <th className="px-3 py-2">Docente</th>
@@ -1032,14 +1060,11 @@ export default function PartesDiariosPage() {
                           "S/R"
 
                         return (
-                          <tr
-                            key={mRow.key}
-                            className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30"
-                          >
+                          <tr key={mRow.key} className="hover:bg-muted/40">
                             <td className="px-3 py-2 text-center font-bold font-mono text-slate-500">
                               {mRow.indices.join(", ")}
                             </td>
-                            <td className="px-3 py-2 font-semibold text-slate-900 dark:text-white">
+                            <td className="px-3 py-2 font-semibold text-foreground">
                               {mRow.persona_nombres}
                             </td>
                             <td className="px-3 py-2 text-center">
@@ -1050,7 +1075,7 @@ export default function PartesDiariosPage() {
                                 {mRow.retraso} min
                               </Badge>
                             </td>
-                            <td className="px-3 py-2 font-medium capitalize text-slate-700 dark:text-slate-300">
+                            <td className="px-3 py-2 font-medium capitalize text-foreground">
                               {tickeoNombre}
                             </td>
                           </tr>
