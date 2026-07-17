@@ -54,8 +54,9 @@ import {
 } from "lucide-react"
 
 interface ReporteDetalle {
-  id?: number
-  detalle_id?: number
+  id?: number | string
+  detalle_id?: number | string
+  detalle_partes_diarios_id?: number | string
   hora_inicio: string
   hora_fin: string
   persona_nombres: string
@@ -63,6 +64,11 @@ interface ReporteDetalle {
   grupo_nombre: string
   aula_codigo: string
   persona_codigo?: string
+  ingreso?: string | null
+  salida?: string | null
+  tipo_tickeo?: string | null
+  observacion?: string | null
+  minutos_retraso?: number | null
 }
 
 interface ParteDiarioReporte {
@@ -205,8 +211,9 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
           : calculateTotalDelay(hora_inicio, defaultIngreso, hora_fin, defaultSalida)
 
       const ids = group
-        .map((item) => item.detalle_id || item.id)
-        .filter((val): val is number => typeof val === "number")
+        .map((item) => item.detalle_id ?? item.id ?? item.detalle_partes_diarios_id)
+        .map((val) => Number(val))
+        .filter((val) => !isNaN(val) && val > 0)
 
       groupedRows.push({
         key: `${teacherKey}-${minStart}-${maxEnd}-${indices[0]}`,
