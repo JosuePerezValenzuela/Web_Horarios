@@ -186,7 +186,7 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
         ingreso: hora_inicio,
         salida: hora_fin,
         retraso: 0,
-        tipo_tickeo: "NORMAL",
+        tipo_tickeo: "presente",
         observacion: "",
       })
     })
@@ -239,11 +239,39 @@ export default function PartesDiariosPage() {
   const [showGenerateModal, setShowGenerateModal] = useState<boolean>(false)
   const [generatingParte, setGeneratingParte] = useState<boolean>(false)
 
+  // Catálogo de tipos de tickeo
+  const [tiposTickeo, setTiposTickeo] = useState<{ codigo: string; nombre: string }[]>([])
+
   const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
 
   useEffect(() => {
     fetchFacultades()
   }, [fetchFacultades])
+
+  // Cargar catálogo de tipos de tickeo
+  useEffect(() => {
+    const fetchTipos = async () => {
+      try {
+        const response = await partesApiClient.get<
+          { codigo: string; nombre: string; activo: boolean }[]
+        >("/partes-diarios/tipos-tickeo")
+        const activos = response
+          .filter((t) => t.activo)
+          .map((t) => ({ codigo: t.codigo, nombre: t.nombre }))
+        setTiposTickeo(activos)
+      } catch (error) {
+        console.error("Error al cargar catálogo de tipos de tickeo:", error)
+        // Fallback robusto local
+        setTiposTickeo([
+          { codigo: "presente", nombre: "Presente" },
+          { codigo: "atraso", nombre: "Atraso" },
+          { codigo: "falta", nombre: "Falta" },
+          { codigo: "licencia", nombre: "Licencia" },
+        ])
+      }
+    }
+    fetchTipos()
+  }, [])
 
   const fetchReporteData = async () => {
     if (!selectedFacultadId) {
@@ -395,6 +423,13 @@ export default function PartesDiariosPage() {
           // Recalcular minutos de retraso si cambia el ingreso
           if (field === "ingreso") {
             updatedRow.retraso = calculateDelay(row.hora_inicio, value)
+          }
+          // Desseleccionar "presente" si cambia el ingreso o la salida
+          if (
+            (field === "ingreso" || field === "salida") &&
+            updatedRow.tipo_tickeo === "presente"
+          ) {
+            updatedRow.tipo_tickeo = ""
           }
           return updatedRow
         }
@@ -747,14 +782,15 @@ export default function PartesDiariosPage() {
                             value={row.tipo_tickeo}
                             onValueChange={(val) => handleRowChange(row.key, "tipo_tickeo", val)}
                           >
-                            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-28">
-                              <SelectValue />
+                            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-36">
+                              <SelectValue placeholder="Seleccionar..." />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="NORMAL">Normal</SelectItem>
-                              <SelectItem value="ATRASO">Atraso</SelectItem>
-                              <SelectItem value="FALTA">Falta</SelectItem>
-                              <SelectItem value="LICENCIA">Licencia</SelectItem>
+                              {tiposTickeo.map((t) => (
+                                <SelectItem key={t.codigo} value={t.codigo}>
+                                  {t.nombre}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </TableCell>
