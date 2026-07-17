@@ -676,7 +676,6 @@ export default function PartesDiariosPage() {
     const toastId = toast.loading("Guardando registro de asistencia...")
 
     const itemsPayload: Record<string, unknown>[] = []
-    const modifiedItems = getModifiedItems()
 
     const referencia_origen = {
       usuario: {
@@ -690,7 +689,7 @@ export default function PartesDiariosPage() {
       },
     }
 
-    modifiedItems.forEach((row) => {
+    groupedRows.forEach((row) => {
       row.ids.forEach((detalleId) => {
         itemsPayload.push({
           detalle_id: detalleId,
