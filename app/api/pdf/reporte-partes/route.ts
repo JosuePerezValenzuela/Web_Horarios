@@ -10,6 +10,7 @@ interface ReporteDetalle {
   asignatura_nombre: string
   grupo_nombre: string
   aula_codigo: string
+  persona_codigo?: string
 }
 
 interface ParteDiarioReporte {
@@ -21,16 +22,131 @@ interface ParteDiarioReporte {
   detalles: ReporteDetalle[]
 }
 
+interface GroupedRow {
+  key: string
+  indices: number[]
+  persona_nombres: string
+  persona_codigo?: string
+  hora_inicio: string
+  hora_fin: string
+  detalles: {
+    asignatura_nombre: string
+    grupo_nombre: string
+    aula_codigo: string
+  }[]
+}
+
+function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0
+  const parts = timeStr.split(":")
+  const h = Number(parts[0] || 0)
+  const m = Number(parts[1] || 0)
+  return h * 60 + m
+}
+
+function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
+  const itemsWithIndex = detalles.map((d, idx) => ({
+    ...d,
+    originalIndex: idx + 1,
+  }))
+
+  const byTeacher: Record<string, typeof itemsWithIndex> = {}
+  itemsWithIndex.forEach((item) => {
+    const key = item.persona_codigo || item.persona_nombres
+    if (!byTeacher[key]) {
+      byTeacher[key] = []
+    }
+    byTeacher[key].push(item)
+  })
+
+  const groupedRows: GroupedRow[] = []
+
+  Object.entries(byTeacher).forEach(([teacherKey, list]) => {
+    const sorted = [...list].sort((a, b) => {
+      return parseTimeToMinutes(a.hora_inicio) - parseTimeToMinutes(b.hora_inicio)
+    })
+
+    const mergedGroups: (typeof itemsWithIndex)[] = []
+
+    sorted.forEach((item) => {
+      const start = parseTimeToMinutes(item.hora_inicio)
+      const end = parseTimeToMinutes(item.hora_fin)
+
+      let placed = false
+      for (const group of mergedGroups) {
+        const overlaps = group.some((gItem) => {
+          const gStart = parseTimeToMinutes(gItem.hora_inicio)
+          const gEnd = parseTimeToMinutes(gItem.hora_fin)
+          return start < gEnd && gStart < end
+        })
+
+        if (overlaps) {
+          group.push(item)
+          placed = true
+          break
+        }
+      }
+
+      if (!placed) {
+        mergedGroups.push([item])
+      }
+    })
+
+    mergedGroups.forEach((group, groupIdx) => {
+      const indices = group.map((item) => item.originalIndex).sort((a, b) => a - b)
+
+      const starts = group.map((item) => parseTimeToMinutes(item.hora_inicio))
+      const ends = group.map((item) => parseTimeToMinutes(item.hora_fin))
+      const minStart = Math.min(...starts)
+      const maxEnd = Math.max(...ends)
+
+      const formatTime = (mins: number) => {
+        const h = Math.floor(mins / 60)
+          .toString()
+          .padStart(2, "0")
+        const m = (mins % 60).toString().padStart(2, "0")
+        return `${h}:${m}`
+      }
+
+      const hora_inicio = formatTime(minStart)
+      const hora_fin = formatTime(maxEnd)
+
+      const first = group[0]
+
+      groupedRows.push({
+        key: `${teacherKey}-${minStart}-${maxEnd}-${groupIdx}`,
+        indices,
+        persona_nombres: first.persona_nombres,
+        persona_codigo: first.persona_codigo,
+        hora_inicio,
+        hora_fin,
+        detalles: group.map((item) => ({
+          asignatura_nombre: item.asignatura_nombre,
+          grupo_nombre: item.grupo_nombre,
+          aula_codigo: item.aula_codigo,
+        })),
+      })
+    })
+  })
+
+  return groupedRows.sort((a, b) => {
+    const timeA = parseTimeToMinutes(a.hora_inicio)
+    const timeB = parseTimeToMinutes(b.hora_fin)
+    if (timeA !== timeB) return timeA - timeB
+    return a.persona_nombres.localeCompare(b.persona_nombres)
+  })
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const fecha = searchParams.get("fecha")
-  const facultadCodigo = searchParams.get("facultadCodigo")
+  const nullSafeFacultadCodigo = searchParams.get("facultadCodigo")
   const facultadNombreParam = searchParams.get("facultadNombre")
   const userNameParam = searchParams.get("userName")
   const horaInicio = searchParams.get("hora_inicio")
   const horaFin = searchParams.get("hora_fin")
 
-  if (!fecha || !facultadCodigo) {
+  if (!fecha || !nullSafeFacultadCodigo) {
     return NextResponse.json(
       { error: "Faltan parámetros requeridos: fecha y facultadCodigo" },
       { status: 400 }
@@ -42,7 +158,6 @@ export async function GET(request: NextRequest) {
   let browser: Browser | null = null
 
   try {
-    // 1. Obtener la información del backend de partes diarios
     let backendUrl = process.env.NEXT_PUBLIC_PARTES_URL ?? "http://localhost:3006"
 
     if (backendUrl.includes("localhost")) {
@@ -51,7 +166,7 @@ export async function GET(request: NextRequest) {
       backendUrl = backendUrl.replace("127.0.0.1", "host.docker.internal")
     }
 
-    let fetchUrl = `${backendUrl}/partes-diarios/reporte?fecha=${fecha}&facultadCodigo=${facultadCodigo}`
+    let fetchUrl = `${backendUrl}/partes-diarios/reporte?fecha=${fecha}&facultadCodigo=${nullSafeFacultadCodigo}`
 
     if (horaInicio && horaFin) {
       fetchUrl += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
@@ -73,12 +188,10 @@ export async function GET(request: NextRequest) {
       ? decodeURIComponent(facultadNombreParam)
       : data.facultadNombre
 
-    // Formatear día en español para la cabecera
     const [dayStr, monthStr, yearStr] = fecha.split("-")
     const dateObj = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr))
     const nombreDia = dateObj.toLocaleDateString("es-BO", { weekday: "long" })
 
-    // Leer el logo local y pasarlo a Base64
     let logoBase64 = ""
     try {
       const logoPath = path.join(process.cwd(), "public", "umss1.png")
@@ -88,43 +201,69 @@ export async function GET(request: NextRequest) {
       console.error("No se pudo leer el logo para el PDF:", err)
     }
 
-    // Generar la fecha de emisión de hoy
     const todayStr = new Date().toLocaleDateString("es-BO", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
     })
 
-    // 2. Compilar las filas del reporte en HTML estático
-    const rowsHtml = data.detalles
-      .map((detalle, idx) => {
+    const groupedRows = groupSchedules(data.detalles)
+
+    const rowsHtml = groupedRows
+      .map((row) => {
+        const nCol = row.indices.join(", ")
+        const horarioCol = `${row.hora_inicio} -<br/>${row.hora_fin}`
+
+        const subjectsHtml = row.detalles
+          .map(
+            (d, idx) =>
+              `<div class="${idx > 0 ? "border-t border-gray-300 pt-1 mt-1" : ""}">${d.asignatura_nombre}</div>`
+          )
+          .join("")
+
+        const groupsHtml = row.detalles
+          .map(
+            (d, idx) =>
+              `<div class="${idx > 0 ? "border-t border-gray-300 pt-1 mt-1 text-center font-bold" : "text-center font-bold"}">${d.grupo_nombre}</div>`
+          )
+          .join("")
+
+        const aulasHtml = row.detalles
+          .map(
+            (d, idx) =>
+              `<div class="${idx > 0 ? "border-t border-gray-300 pt-1 mt-1 text-center font-mono" : "text-center font-mono"}">${d.aula_codigo || "S/R"}</div>`
+          )
+          .join("")
+
+        const heightPx = Math.max(32, row.detalles.length * 28)
+
         return `
           <tr class="hover:bg-gray-50/50">
-            <td style="text-align: center; font-family: monospace; color: #6b7280; width: 30px;">
-              ${idx + 1}
+            <td style="text-align: center; font-family: monospace; color: #6b7280; width: 30px; vertical-align: middle;">
+              ${nCol}
             </td>
-            <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 60px;">
-              ${detalle.hora_inicio} -<br/>${detalle.hora_fin}
+            <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 60px; vertical-align: middle;">
+              ${horarioCol}
             </td>
-            <td class="font-semibold text-gray-950">
-              ${detalle.persona_nombres}
+            <td class="font-semibold text-gray-950" style="vertical-align: middle;">
+              ${row.persona_nombres}
             </td>
-            <td class="text-gray-700 text-[9.5px]">
-              ${detalle.asignatura_nombre}
+            <td class="text-gray-700 text-[9.5px]" style="vertical-align: middle; padding: 4px 6px;">
+              ${subjectsHtml}
             </td>
-            <td style="text-align: center; font-weight: bold; color: #111827; width: 35px;">
-              ${detalle.grupo_nombre}
+            <td style="vertical-align: middle; padding: 4px 6px; width: 35px;">
+              ${groupsHtml}
             </td>
-            <td style="text-align: center; font-family: monospace; font-weight: bold; color: #374151; width: 50px;">
-              ${detalle.aula_codigo || "S/R"}
+            <td style="vertical-align: middle; padding: 4px 6px; width: 50px;">
+              ${aulasHtml}
             </td>
-            <td style="text-align: center; position: relative; height: 32px; width: 85px;">
+            <td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
             </td>
-            <td style="text-align: center; position: relative; height: 32px; width: 85px;">
+            <td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
             </td>
-            <td style="position: relative; height: 32px; width: 105px;">
+            <td style="position: relative; height: ${heightPx}px; width: 105px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #d1d5db; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
             </td>
           </tr>
@@ -137,7 +276,6 @@ export async function GET(request: NextRequest) {
       <html>
         <head>
           <meta charset="utf-8" />
-          <!-- Cargar Tailwind CSS CDN para usar exactamente las mismas clases de la web -->
           <script src="https://cdn.tailwindcss.com"></script>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
@@ -175,12 +313,10 @@ export async function GET(request: NextRequest) {
           </style>
         </head>
         <body class="bg-white text-black p-0 m-0 text-[11px]">
-          <!-- Usar tabla contenedora nativa de A4 para repetir cabecera y pie de página de forma automática y precisa -->
           <table class="w-full border-none">
             <thead class="table-header-group">
               <tr>
                 <td class="border-none p-0 pb-1">
-                  <!-- Cabecera Institucional Oficial (Idéntica al componente PdfHeader de la web) -->
                   <header class="w-full border-b-2 border-[#003770] pb-2 mb-2 select-none">
                     <div class="flex items-center justify-between gap-4">
                       <div class="flex items-center gap-4">
@@ -206,12 +342,11 @@ export async function GET(request: NextRequest) {
                     </div>
                   </header>
 
-                  <!-- Metadata -->
                   <div class="flex justify-between border border-gray-300 bg-gray-50/50 p-2.5 rounded-lg text-gray-700 text-[10px] mb-2">
                     <div class="flex flex-col gap-1">
                       <div>
                         <span class="font-bold text-gray-950">Facultad: </span>
-                        ${facultadNombre} (${facultadCodigo})
+                        ${facultadNombre} (${nullSafeFacultadCodigo})
                       </div>
                       ${data.campusNombre ? `<div><span class="font-bold text-gray-950">Campus: </span>${data.campusNombre}</div>` : ""}
                     </div>
@@ -260,7 +395,6 @@ export async function GET(request: NextRequest) {
       </html>
     `
 
-    // 3. Lanzar Puppeteer para generar el PDF
     browser = await puppeteer.launch({
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH ?? "/usr/bin/chromium-browser",
       args: [
@@ -274,7 +408,6 @@ export async function GET(request: NextRequest) {
     const page = await browser.newPage()
     await page.setContent(fullHtml, { waitUntil: "domcontentloaded" })
 
-    // Pie de página oficial inyectado por Chromium
     const footerTemplate = `
       <div style="font-family: monospace; font-size: 8px; width: 100%; margin: 0 15mm; padding-top: 5px; border-top: 1px solid #d1d5db; display: flex; justify-content: space-between; align-items: center; color: #9ca3af;">
         <div style="display: flex; flex-direction: column; text-align: left;">
@@ -303,7 +436,6 @@ export async function GET(request: NextRequest) {
 
     await browser.close()
 
-    // 4. Retornar el archivo PDF generado como respuesta binaria
     return new NextResponse(new Blob([pdfBuffer as unknown as BlobPart]), {
       status: 200,
       headers: {
