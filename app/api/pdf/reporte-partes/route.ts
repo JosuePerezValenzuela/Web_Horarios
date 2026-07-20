@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
               font-size: 8px;
             }
             .signatures-table th, .signatures-table td {
-              border: 1px solid #d1d5db !important;
+              border: none !important;
               padding: 6px 4px !important;
             }
           </style>
