@@ -267,7 +267,15 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
-function ObservationInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function ObservationInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (val: string) => void
+  disabled?: boolean
+}) {
   const [localValue, setLocalValue] = useState(value)
   const [prevValue, setPrevValue] = useState(value)
 
@@ -278,10 +286,11 @@ function ObservationInput({ value, onChange }: { value: string; onChange: (val: 
 
   return (
     <Input
+      disabled={disabled}
       type="text"
       size="sm"
       placeholder="Escribir observación..."
-      className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full"
+      className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full disabled:opacity-75 disabled:cursor-not-allowed"
       value={localValue}
       onChange={(e) => setLocalValue(e.target.value)}
       onBlur={() => onChange(localValue)}
@@ -294,12 +303,20 @@ const PartesTableRow = memo(
     row,
     tiposTickeo,
     onRowChange,
+    isClosed,
   }: {
     row: GroupedRow
     tiposTickeo: { codigo: string; nombre: string }[]
     onRowChange: (key: string, field: keyof GroupedRow, value: string) => void
+    isClosed: boolean
   }) => {
     const isOverlap = row.detalles.length > 1
+
+    const handleCellClick = () => {
+      if (isClosed) {
+        toast.info("El parte diario está cerrado y no se permite realizar modificaciones.")
+      }
+    }
 
     return (
       <TableRow
@@ -396,20 +413,22 @@ const PartesTableRow = memo(
         </TableCell>
 
         {/* Ingreso (editable) */}
-        <TableCell className="text-center">
+        <TableCell className="text-center" onClick={handleCellClick}>
           <TimePicker
             value={row.ingreso}
             onChange={(val) => onRowChange(row.key, "ingreso", val)}
             className="h-8 w-24 mx-auto"
+            disabled={isClosed}
           />
         </TableCell>
 
         {/* Salida (editable) */}
-        <TableCell className="text-center">
+        <TableCell className="text-center" onClick={handleCellClick}>
           <TimePicker
             value={row.salida}
             onChange={(val) => onRowChange(row.key, "salida", val)}
             className="h-8 w-24 mx-auto"
+            disabled={isClosed}
           />
         </TableCell>
 
@@ -424,12 +443,16 @@ const PartesTableRow = memo(
         </TableCell>
 
         {/* Tipo Tickeo */}
-        <TableCell>
+        <TableCell onClick={handleCellClick}>
           <Select
             value={row.tipo_tickeo}
             onValueChange={(val) => onRowChange(row.key, "tipo_tickeo", val)}
+            disabled={isClosed}
           >
-            <SelectTrigger size="sm" className="h-8 rounded-lg text-xs w-36">
+            <SelectTrigger
+              size="sm"
+              className="h-8 rounded-lg text-xs w-36 disabled:opacity-75 disabled:cursor-not-allowed"
+            >
               <SelectValue placeholder="Seleccionar..." />
             </SelectTrigger>
             <SelectContent>
@@ -443,10 +466,11 @@ const PartesTableRow = memo(
         </TableCell>
 
         {/* Observación */}
-        <TableCell>
+        <TableCell onClick={handleCellClick}>
           <ObservationInput
             value={row.observacion}
             onChange={(val) => onRowChange(row.key, "observacion", val)}
+            disabled={isClosed}
           />
         </TableCell>
       </TableRow>
@@ -484,8 +508,11 @@ export default function PartesDiariosPage() {
   // Diálogos de acción
   const [showSaveDialog, setShowSaveDialog] = useState<boolean>(false)
   const [saving, setSaving] = useState<boolean>(false)
+  const [showCloseDialog, setShowCloseDialog] = useState<boolean>(false)
+  const [closingParte, setClosingParte] = useState<boolean>(false)
 
   const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
+  const isClosed = reporteData?.estado === "confirmado"
 
   useEffect(() => {
     fetchFacultades()
@@ -822,6 +849,40 @@ export default function PartesDiariosPage() {
     }
   }
 
+  // Confirmar y cerrar el parte diario (pasar a Confirmado)
+  const handleCloseConfirm = async () => {
+    if (!reporteData) return
+    const parteId = reporteData.parte_diario_id || reporteData.id || reporteData.parte_id
+    if (!parteId) {
+      toast.error("No se pudo identificar el ID del parte diario")
+      return
+    }
+
+    setClosingParte(true)
+    const toastId = toast.loading("Cerrando el parte diario...")
+
+    try {
+      await partesApiClient.request(`/partes-diarios/${parteId}/confirmar`, {
+        method: "PATCH",
+      })
+
+      toast.success("Parte diario cerrado y verificado correctamente", { id: toastId })
+      setShowCloseDialog(false)
+      await fetchReporteData()
+    } catch (error) {
+      console.error("Error al cerrar el parte diario:", error)
+      const apiErr = error as PartesApiError
+      toast.error(
+        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
+          ? String(apiErr.body.message)
+          : "Error al cerrar el parte diario",
+        { id: toastId }
+      )
+    } finally {
+      setClosingParte(false)
+    }
+  }
+
   const filteredFacultades = facultades.filter((f) =>
     f.nombre.toLowerCase().includes(facultadSearch.toLowerCase())
   )
@@ -984,16 +1045,17 @@ export default function PartesDiariosPage() {
                       <Button
                         type="button"
                         onClick={handleSaveClick}
-                        disabled={loading}
-                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm"
+                        disabled={loading || isClosed}
+                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm disabled:opacity-50"
                       >
                         <Save className="w-3.5 h-3.5" />
                         Guardar Asistencia
                       </Button>
                       <Button
                         type="button"
-                        disabled={loading}
-                        className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm"
+                        onClick={() => setShowCloseDialog(true)}
+                        disabled={loading || isClosed}
+                        className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm disabled:opacity-50"
                       >
                         <Lock className="w-3.5 h-3.5" />
                         Cerrar Parte
@@ -1086,6 +1148,7 @@ export default function PartesDiariosPage() {
                       row={row}
                       tiposTickeo={tiposTickeo}
                       onRowChange={handleRowChange}
+                      isClosed={isClosed}
                     />
                   ))}
                 </TableBody>
@@ -1240,6 +1303,46 @@ export default function PartesDiariosPage() {
                   </>
                 ) : (
                   "Confirmar Guardar"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Confirmar Cerrar Parte */}
+        <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
+          <DialogContent className="sm:max-w-[425px] bg-background border border-border">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                <Lock className="w-5 h-5 text-amber-600" />
+                Confirmar Cierre de Parte Diario
+              </DialogTitle>
+              <DialogDescription className="text-sm text-muted-foreground pt-2">
+                ¿Está seguro de que desea confirmar y cerrar este parte diario? Una vez cerrado,{" "}
+                <strong>ningún registro de asistencia podrá ser modificado</strong> y el estado
+                pasará a ser definitivo.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+              <Button
+                variant="outline"
+                onClick={() => setShowCloseDialog(false)}
+                disabled={closingParte}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleCloseConfirm}
+                disabled={closingParte}
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+              >
+                {closingParte ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Cerrando...
+                  </>
+                ) : (
+                  "Confirmar Cierre"
                 )}
               </Button>
             </DialogFooter>
