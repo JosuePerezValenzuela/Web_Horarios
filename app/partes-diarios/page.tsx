@@ -1135,16 +1135,16 @@ export default function PartesDiariosPage() {
 
             <div className="my-4">
               {/* Advertencia si hay registros editados que ya tenían persistencia */}
-              {getItemsToSubmit().some((row) => row.alreadySaved) && (
+              {getModifiedItems().some((row) => row.alreadySaved) && (
                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-4">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-500" />
                   <span>
                     Atención: Está intentando editar los datos de{" "}
-                    <strong>{getItemsToSubmit().filter((row) => row.alreadySaved).length}</strong>{" "}
+                    <strong>{getModifiedItems().filter((row) => row.alreadySaved).length}</strong>{" "}
                     registro
-                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
+                    {getModifiedItems().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
                     ya{" "}
-                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1
+                    {getModifiedItems().filter((row) => row.alreadySaved).length > 1
                       ? "fueron guardados"
                       : "fue guardado"}{" "}
                     anteriormente.
@@ -1152,7 +1152,7 @@ export default function PartesDiariosPage() {
                 </div>
               )}
 
-              {getItemsToSubmit().length === 0 ? (
+              {getModifiedItems().length === 0 ? (
                 <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
                   No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
                   guardarán como &quot;Presente&quot; sin novedades.
@@ -1169,7 +1169,7 @@ export default function PartesDiariosPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {getItemsToSubmit().map((mRow) => {
+                      {getModifiedItems().map((mRow) => {
                         const tickeoNombre =
                           tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
                           mRow.tipo_tickeo ||
