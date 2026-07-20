@@ -290,7 +290,7 @@ export async function GET(request: NextRequest) {
               border-collapse: collapse !important;
               text-align: left;
               font-size: 9.5px;
-              border: 1px solid #d1d5db !important;
+              border: none !important;
             }
             .signatures-table th {
               background-color: #f3f4f6;
@@ -300,7 +300,7 @@ export async function GET(request: NextRequest) {
               font-size: 8px;
             }
             .signatures-table th, .signatures-table td {
-              border: none !important;
+              border: 1px solid #d1d5db !important;
               padding: 6px 4px !important;
             }
           </style>
@@ -360,7 +360,7 @@ export async function GET(request: NextRequest) {
             <tbody class="table-row-group">
               <tr>
                 <td class="border-none p-0">
-                  <div style="border-radius: 6px; overflow: hidden; border: 1px solid #d1d5db;">
+                  <div style="overflow: hidden;">
                     <table class="signatures-table">
                       <thead>
                         <tr style="background-color: #f3f4f6;">
