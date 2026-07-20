@@ -688,6 +688,21 @@ export default function PartesDiariosPage() {
     )
   }, [])
 
+  // Obtener solo las filas que han sido modificadas de sus valores iniciales
+  const getModifiedItems = useCallback(() => {
+    const modified: GroupedRow[] = []
+    groupedRows.forEach((row) => {
+      const isIngresoChanged = row.ingreso !== row.originalIngreso
+      const isSalidaChanged = row.salida !== row.originalSalida
+      const isTickeoChanged = row.tipo_tickeo !== row.originalTipoTickeo
+      const isObsChanged = row.observacion !== row.originalObservacion
+      if (isIngresoChanged || isSalidaChanged || isTickeoChanged || isObsChanged) {
+        modified.push(row)
+      }
+    })
+    return modified
+  }, [groupedRows])
+
   // Obtener los ítems que realmente se enviarán al endpoint (nuevos o modificados)
   const getItemsToSubmit = useCallback(() => {
     return groupedRows.filter((row) => {
