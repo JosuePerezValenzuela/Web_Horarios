@@ -53,22 +53,35 @@ import {
   Lock,
 } from "lucide-react"
 
+interface ReferenciaOrigen {
+  horario: {
+    hora_entrada: string
+    hora_salida: string
+  }
+  usuario: {
+    nombre: string
+    email: string
+  }
+  auditoria: {
+    fecha_registro: string
+    origen: string
+  }
+}
+
 interface ReporteDetalle {
-  id?: number | string
-  detalle_id?: number | string
-  detalle_partes_diarios_id?: number | string
+  detalle_parte_id: number
   hora_inicio: string
   hora_fin: string
   persona_nombres: string
   asignatura_nombre: string
   grupo_nombre: string
   aula_codigo: string
+  minutos_retraso: number | null
+  referencia_origen: ReferenciaOrigen | null
+  observacion: string | null
+  tipo_tickeo: string | null
   persona_codigo?: string
-  ingreso?: string | null
-  salida?: string | null
-  tipo_tickeo?: string | null
-  observacion?: string | null
-  minutos_retraso?: number | null
+  asignatura_codigo?: string
 }
 
 interface ParteDiarioReporte {
@@ -107,6 +120,8 @@ interface GroupedRow {
   originalSalida: string
   originalTipoTickeo: string
   originalObservacion: string
+  // Control de persistencia previa
+  alreadySaved: boolean
 }
 
 function parseTimeToMinutes(timeStr: string): number {
@@ -200,9 +215,10 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
       const hora_fin = formatTime(maxEnd)
 
       const first = group[0]
+      const alreadySaved = first.referencia_origen !== null
 
-      const defaultIngreso = first.ingreso || hora_inicio
-      const defaultSalida = first.salida || hora_fin
+      const defaultIngreso = first.referencia_origen?.horario?.hora_entrada || first.hora_inicio
+      const defaultSalida = first.referencia_origen?.horario?.hora_salida || first.hora_fin
       const defaultTipoTickeo = first.tipo_tickeo || "presente"
       const defaultObservacion = first.observacion || ""
       const defaultRetraso =
@@ -211,7 +227,13 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
           : calculateTotalDelay(hora_inicio, defaultIngreso, hora_fin, defaultSalida)
 
       const ids = group
-        .map((item) => item.detalle_id ?? item.id ?? item.detalle_partes_diarios_id)
+        .map(
+          (item) =>
+            item.detalle_partte_id ??
+            item.detalle_parte_id ??
+            item.id ??
+            item.detalle_partes_diarios_id
+        )
         .map((val) => Number(val))
         .filter((val) => !isNaN(val) && val > 0)
 
@@ -237,6 +259,7 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
         originalSalida: defaultSalida,
         originalTipoTickeo: defaultTipoTickeo,
         originalObservacion: defaultObservacion,
+        alreadySaved,
       })
     })
   })
@@ -292,11 +315,31 @@ const PartesTableRow = memo(
           <div>{row.hora_inicio}</div>
           <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
           <div>{row.hora_fin}</div>
-          {isOverlap && (
-            <Badge className="mt-1.5 bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-              Solapado
-            </Badge>
-          )}
+          <div className="flex flex-col gap-1 mt-1.5 items-center">
+            {isOverlap && (
+              <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+                Solapado
+              </Badge>
+            )}
+            {row.alreadySaved ? (
+              row.ingreso !== row.originalIngreso ||
+              row.salida !== row.originalSalida ||
+              row.tipo_tickeo !== row.originalTipoTickeo ||
+              row.observacion !== row.originalObservacion ? (
+                <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+                  Modificado
+                </Badge>
+              ) : (
+                <Badge className="bg-green-600 hover:bg-green-700 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+                  Registrado
+                </Badge>
+              )
+            ) : (
+              <Badge className="bg-slate-500 hover:bg-slate-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
+                Pendiente
+              </Badge>
+            )}
+          </div>
         </TableCell>
 
         {/* Docente */}
@@ -645,19 +688,16 @@ export default function PartesDiariosPage() {
     )
   }, [])
 
-  // Obtener solo las filas que han sido modificadas de sus valores iniciales
-  const getModifiedItems = useCallback(() => {
-    const modified: GroupedRow[] = []
-    groupedRows.forEach((row) => {
-      const isIngresoChanged = row.ingreso !== row.originalIngreso
-      const isSalidaChanged = row.salida !== row.originalSalida
-      const isTickeoChanged = row.tipo_tickeo !== row.originalTipoTickeo
-      const isObsChanged = row.observacion !== row.originalObservacion
-      if (isIngresoChanged || isSalidaChanged || isTickeoChanged || isObsChanged) {
-        modified.push(row)
-      }
+  // Obtener los ítems que realmente se enviarán al endpoint (nuevos o modificados)
+  const getItemsToSubmit = useCallback(() => {
+    return groupedRows.filter((row) => {
+      const isModified =
+        row.ingreso !== row.originalIngreso ||
+        row.salida !== row.originalSalida ||
+        row.tipo_tickeo !== row.originalTipoTickeo ||
+        row.observacion !== row.originalObservacion
+      return !row.alreadySaved || isModified
     })
-    return modified
   }, [groupedRows])
 
   // Validar y abrir diálogo de guardado
@@ -667,8 +707,15 @@ export default function PartesDiariosPage() {
       toast.error("Debe seleccionar un Tipo de Tickeo para todos los registros antes de guardar.")
       return
     }
+
+    const itemsToSubmit = getItemsToSubmit()
+    if (itemsToSubmit.length === 0) {
+      toast.info("No se detectaron nuevos registros ni modificaciones para guardar.")
+      return
+    }
+
     setShowSaveDialog(true)
-  }, [groupedRows])
+  }, [groupedRows, getItemsToSubmit])
 
   // Registrar cambios del parte en lote
   const handleSaveConfirm = async () => {
@@ -683,8 +730,13 @@ export default function PartesDiariosPage() {
     const toastId = toast.loading("Guardando registro de asistencia...")
 
     const itemsPayload: Record<string, unknown>[] = []
+    const itemsToSubmit = getItemsToSubmit()
 
     const referencia_origen = {
+      horario: {
+        hora_entrada: "",
+        hora_salida: "",
+      },
       usuario: {
         id: user?.id || "unknown",
         nombre: user?.name || "Administrador",
@@ -696,7 +748,7 @@ export default function PartesDiariosPage() {
       },
     }
 
-    groupedRows.forEach((row) => {
+    itemsToSubmit.forEach((row) => {
       row.ids.forEach((detalleId) => {
         itemsPayload.push({
           detalle_id: detalleId,
@@ -704,7 +756,13 @@ export default function PartesDiariosPage() {
           observacion: row.observacion || null,
           tipo_tickeo: row.tipo_tickeo || null,
           fuente_registro: "firma_manual",
-          referencia_origen,
+          referencia_origen: {
+            ...referencia_origen,
+            horario: {
+              hora_entrada: row.ingreso,
+              hora_salida: row.salida,
+            },
+          },
         })
       })
     })
@@ -1076,7 +1134,25 @@ export default function PartesDiariosPage() {
             </DialogHeader>
 
             <div className="my-4">
-              {getModifiedItems().length === 0 ? (
+              {/* Advertencia si hay registros editados que ya tenían persistencia */}
+              {getItemsToSubmit().some((row) => row.alreadySaved) && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-4">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                  <span>
+                    Atención: Está intentando editar los datos de{" "}
+                    <strong>{getItemsToSubmit().filter((row) => row.alreadySaved).length}</strong>{" "}
+                    registro
+                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
+                    ya{" "}
+                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1
+                      ? "fueron guardados"
+                      : "fue guardado"}{" "}
+                    anteriormente.
+                  </span>
+                </div>
+              )}
+
+              {getItemsToSubmit().length === 0 ? (
                 <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
                   No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
                   guardarán como &quot;Presente&quot; sin novedades.
@@ -1093,7 +1169,7 @@ export default function PartesDiariosPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {getModifiedItems().map((mRow) => {
+                      {getItemsToSubmit().map((mRow) => {
                         const tickeoNombre =
                           tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
                           mRow.tipo_tickeo ||
@@ -1105,7 +1181,13 @@ export default function PartesDiariosPage() {
                               {mRow.indices.join(", ")}
                             </td>
                             <td className="px-3 py-2 font-semibold text-foreground">
-                              {mRow.persona_nombres}
+                              <div>{mRow.persona_nombres}</div>
+                              {mRow.alreadySaved && (
+                                <div className="text-[10px] text-muted-foreground font-normal">
+                                  Anterior: {mRow.originalIngreso} - {mRow.originalSalida} (
+                                  {mRow.originalTipoTickeo})
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-2 text-center">
                               <Badge
