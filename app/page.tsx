@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useAuth } from "@/features/auth/application/useAuth"
-import { TopHeader } from "@/components/organisms/TopHeader"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { Calendar, Users, MapPin, FileSpreadsheet, Lock, Loader2 } from "lucide-react"
 import { toast } from "sonner"
@@ -52,12 +51,9 @@ export default function Home() {
   // 2. VARIANTE: USUARIO NO LOGUEADO (Solicitud de ingreso con Header visible y sin scroll horizontal)
   if (!isAuthenticated) {
     return (
-      <div className="relative min-h-screen w-full overflow-x-hidden bg-background text-foreground flex flex-col">
-        {/* Header superior */}
-        <TopHeader />
-
+      <AppLayout breadcrumbs={[]}>
         {/* Sección principal del Hero */}
-        <div className="umss-hero-section w-full px-4 flex-1 flex flex-col justify-center items-center relative overflow-hidden">
+        <div className="umss-hero-section w-full px-4 flex-1 flex flex-col justify-center items-center relative overflow-hidden h-full min-h-[calc(100vh-8rem)]">
           {/* Fondo decorativo con tramas suaves */}
           <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:16px_28px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)]" />
           <div className="absolute top-0 right-0 -z-10 h-[300px] w-[300px] sm:w-[500px] rounded-full bg-[#003770]/5 blur-[80px] dark:bg-[#003770]/10" />
@@ -137,7 +133,7 @@ export default function Home() {
             </div>
           </main>
         </div>
-      </div>
+      </AppLayout>
     )
   }
 
