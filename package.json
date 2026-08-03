@@ -12,6 +12,7 @@
   "dependencies": {
     "@copilotkit/react-core": "^1.61.2",
     "@copilotkit/react-ui": "^1.61.2",
+    "@umss/estilos-base": "git+http://167.157.60.21/sert07/estilos-base-umss",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
