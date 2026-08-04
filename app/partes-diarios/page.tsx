@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, memo, useCallback } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -8,6 +8,9 @@ import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useAuthStore } from "@/features/auth/application/authStore"
 import { partesApiClient, PartesApiError } from "@/shared/services/api/partesClient"
+import { GenerarParteDialog } from "@/features/partes-diarios/ui/GenerarParteDialog"
+import { PartesReportTable } from "@/features/partes-diarios/ui/PartesReportTable"
+import { PartesReportState } from "@/features/partes-diarios/ui/PartesReportState"
 import {
   Select,
   SelectTrigger,
@@ -15,6 +18,7 @@ import {
   SelectItem,
   SelectContent,
 } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -22,15 +26,6 @@ import { TimePicker } from "@/components/ui/time-picker"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -45,13 +40,13 @@ import {
   Printer,
   Search,
   ClipboardCheck,
-  Info,
-  FileText,
   Loader2,
   AlertCircle,
   Save,
   Lock,
 } from "lucide-react"
+
+const ALL_FILTER_VALUE = "__all__"
 
 interface ReferenciaOrigen {
   horario: {
@@ -80,6 +75,8 @@ interface ReporteDetalle {
   referencia_origen: ReferenciaOrigen | null
   observacion: string | null
   tipo_tickeo: string | null
+  detalle_partes_diarios_id?: number
+  id?: number
   persona_codigo?: string
   asignatura_codigo?: string
 }
@@ -96,33 +93,7 @@ interface ParteDiarioReporte {
   detalles: ReporteDetalle[]
 }
 
-interface GroupedRow {
-  key: string
-  indices: number[]
-  ids: number[]
-  persona_nombres: string
-  persona_codigo?: string
-  hora_inicio: string
-  hora_fin: string
-  detalles: {
-    asignatura_nombre: string
-    grupo_nombre: string
-    aula_codigo: string
-  }[]
-  // Estados editables de cada fila
-  ingreso: string
-  salida: string
-  retraso: number
-  tipo_tickeo: string
-  observacion: string
-  // Valores originales para comparación de cambios
-  originalIngreso: string
-  originalSalida: string
-  originalTipoTickeo: string
-  originalObservacion: string
-  // Control de persistencia previa
-  alreadySaved: boolean
-}
+import type { GroupedRow } from "@/features/partes-diarios/ui/PartesReportTable"
 
 function parseTimeToMinutes(timeStr: string): number {
   if (!timeStr) return 0
@@ -221,19 +192,10 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
       const defaultSalida = first.referencia_origen?.horario?.hora_salida || first.hora_fin
       const defaultTipoTickeo = first.tipo_tickeo || "presente"
       const defaultObservacion = first.observacion || ""
-      const defaultRetraso =
-        typeof first.minutos_retraso === "number"
-          ? first.minutos_retraso
-          : calculateTotalDelay(hora_inicio, defaultIngreso, hora_fin, defaultSalida)
+      const defaultRetraso = first.minutos_retraso
 
       const ids = group
-        .map(
-          (item) =>
-            item.detalle_partte_id ??
-            item.detalle_parte_id ??
-            item.id ??
-            item.detalle_partes_diarios_id
-        )
+        .map((item) => item.detalle_parte_id ?? item.id ?? item.detalle_partes_diarios_id)
         .map((val) => Number(val))
         .filter((val) => !isNaN(val) && val > 0)
 
@@ -267,219 +229,6 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
-function ObservationInput({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string
-  onChange: (val: string) => void
-  disabled?: boolean
-}) {
-  const [localValue, setLocalValue] = useState(value)
-  const [prevValue, setPrevValue] = useState(value)
-
-  if (value !== prevValue) {
-    setLocalValue(value)
-    setPrevValue(value)
-  }
-
-  return (
-    <Input
-      disabled={disabled}
-      type="text"
-      size="sm"
-      placeholder="Escribir observación..."
-      className="h-8 rounded-lg text-xs bg-background border border-border/80 shadow-sm focus-visible:ring-1 focus-visible:ring-primary w-full disabled:opacity-75 disabled:cursor-not-allowed"
-      value={localValue}
-      onChange={(e) => setLocalValue(e.target.value)}
-      onBlur={() => onChange(localValue)}
-    />
-  )
-}
-
-const PartesTableRow = memo(
-  ({
-    row,
-    tiposTickeo,
-    onRowChange,
-    isClosed,
-  }: {
-    row: GroupedRow
-    tiposTickeo: { codigo: string; nombre: string }[]
-    onRowChange: (key: string, field: keyof GroupedRow, value: string) => void
-    isClosed: boolean
-  }) => {
-    const isOverlap = row.detalles.length > 1
-
-    const handleCellClick = () => {
-      if (isClosed) {
-        toast.info("El parte diario está cerrado y no se permite realizar modificaciones.")
-      }
-    }
-
-    return (
-      <TableRow
-        className={isOverlap ? "bg-amber-50/20 dark:bg-amber-950/10 hover:bg-amber-50/30" : ""}
-      >
-        {/* N° */}
-        <TableCell className="text-center font-mono font-bold text-slate-500">
-          {row.indices.join(", ")}
-        </TableCell>
-
-        {/* Horario */}
-        <TableCell className="text-center font-mono font-medium whitespace-nowrap text-slate-800 dark:text-slate-200 leading-tight">
-          <div>{row.hora_inicio}</div>
-          <div className="text-slate-400 dark:text-slate-500 text-[10px]">↓</div>
-          <div>{row.hora_fin}</div>
-          <div className="flex flex-col gap-1 mt-1.5 items-center">
-            {isOverlap && (
-              <Badge className="bg-amber-500 hover:bg-amber-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                Solapado
-              </Badge>
-            )}
-            {row.alreadySaved ? (
-              row.ingreso !== row.originalIngreso ||
-              row.salida !== row.originalSalida ||
-              row.tipo_tickeo !== row.originalTipoTickeo ||
-              row.observacion !== row.originalObservacion ? (
-                <Badge className="bg-blue-600 hover:bg-blue-700 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                  Modificado
-                </Badge>
-              ) : (
-                <Badge className="bg-green-600 hover:bg-green-700 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                  Registrado
-                </Badge>
-              )
-            ) : (
-              <Badge className="bg-slate-500 hover:bg-slate-600 text-white border-none text-[8.5px] px-1 py-0.5 rounded">
-                Pendiente
-              </Badge>
-            )}
-          </div>
-        </TableCell>
-
-        {/* Docente */}
-        <TableCell className="font-bold text-slate-900 dark:text-white">
-          {row.persona_nombres}
-        </TableCell>
-
-        {/* Asignatura */}
-        <TableCell className="text-slate-700 dark:text-slate-300 text-xs">
-          {row.detalles.map((d, index) => (
-            <div
-              key={index}
-              className={
-                index > 0
-                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-semibold text-slate-900 dark:text-slate-100"
-                  : "font-semibold"
-              }
-            >
-              {d.asignatura_nombre}
-            </div>
-          ))}
-        </TableCell>
-
-        {/* Grupo */}
-        <TableCell className="text-center font-bold text-slate-800 dark:text-slate-200">
-          {row.detalles.map((d, index) => (
-            <div
-              key={index}
-              className={
-                index > 0
-                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-bold text-foreground"
-                  : "font-bold text-foreground"
-              }
-            >
-              {d.grupo_nombre}
-            </div>
-          ))}
-        </TableCell>
-
-        {/* Aula */}
-        <TableCell className="text-center font-mono font-semibold text-slate-700 dark:text-slate-300">
-          {row.detalles.map((d, index) => (
-            <div
-              key={index}
-              className={
-                index > 0
-                  ? "border-t border-slate-200 dark:border-slate-800 pt-1 mt-1 font-mono"
-                  : "font-mono"
-              }
-            >
-              {d.aula_codigo || "S/R"}
-            </div>
-          ))}
-        </TableCell>
-
-        {/* Ingreso (editable) */}
-        <TableCell className="text-center" onClick={handleCellClick}>
-          <TimePicker
-            value={row.ingreso}
-            onChange={(val) => onRowChange(row.key, "ingreso", val)}
-            className="h-8 w-24 mx-auto"
-            disabled={isClosed}
-          />
-        </TableCell>
-
-        {/* Salida (editable) */}
-        <TableCell className="text-center" onClick={handleCellClick}>
-          <TimePicker
-            value={row.salida}
-            onChange={(val) => onRowChange(row.key, "salida", val)}
-            className="h-8 w-24 mx-auto"
-            disabled={isClosed}
-          />
-        </TableCell>
-
-        {/* Minutos Retraso */}
-        <TableCell className="text-center">
-          <Badge
-            variant={row.retraso > 0 ? "destructive" : "secondary"}
-            className="font-mono text-xs px-2 py-0.5 rounded"
-          >
-            {row.retraso} min
-          </Badge>
-        </TableCell>
-
-        {/* Tipo Tickeo */}
-        <TableCell onClick={handleCellClick}>
-          <Select
-            value={row.tipo_tickeo}
-            onValueChange={(val) => onRowChange(row.key, "tipo_tickeo", val)}
-            disabled={isClosed}
-          >
-            <SelectTrigger
-              size="sm"
-              className="h-8 rounded-lg text-xs w-36 disabled:opacity-75 disabled:cursor-not-allowed"
-            >
-              <SelectValue placeholder="Seleccionar..." />
-            </SelectTrigger>
-            <SelectContent>
-              {tiposTickeo.map((t) => (
-                <SelectItem key={t.codigo} value={t.codigo}>
-                  {t.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </TableCell>
-
-        {/* Observación */}
-        <TableCell onClick={handleCellClick}>
-          <ObservationInput
-            value={row.observacion}
-            onChange={(val) => onRowChange(row.key, "observacion", val)}
-            disabled={isClosed}
-          />
-        </TableCell>
-      </TableRow>
-    )
-  }
-)
-
-PartesTableRow.displayName = "PartesTableRow"
-
 export default function PartesDiariosPage() {
   const { user } = useAuthStore()
   const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
@@ -490,17 +239,20 @@ export default function PartesDiariosPage() {
   const [fecha, setFecha] = useState<string>(() => new Date().toISOString().split("T")[0])
   const [horaInicio, setHoraInicio] = useState<string>("")
   const [horaFin, setHoraFin] = useState<string>("")
+  const [grupoTipo, setGrupoTipo] = useState<string>("")
+  const [tipoDesignacion, setTipoDesignacion] = useState<string>("")
 
   // Estados de carga y datos
   const [loading, setLoading] = useState<boolean>(false)
   const [generatingPdf, setGeneratingPdf] = useState<boolean>(false)
+  const [showPrintDialog, setShowPrintDialog] = useState<boolean>(false)
+  const [printColumns, setPrintColumns] = useState<string>("Ambos")
   const [reporteData, setReporteData] = useState<ParteDiarioReporte | null>(null)
   const [groupedRows, setGroupedRows] = useState<GroupedRow[]>([])
   const [hasSearched, setHasSearched] = useState<boolean>(false)
 
   // Control del modal de generación
   const [showGenerateModal, setShowGenerateModal] = useState<boolean>(false)
-  const [generatingParte, setGeneratingParte] = useState<boolean>(false)
 
   // Catálogo de tipos de tickeo
   const [tiposTickeo, setTiposTickeo] = useState<{ codigo: string; nombre: string }[]>([])
@@ -575,6 +327,8 @@ export default function PartesDiariosPage() {
       if (horaInicio && horaFin) {
         endpoint += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
       }
+      if (grupoTipo) endpoint += `&grupo_tipo=${grupoTipo}`
+      if (tipoDesignacion) endpoint += `&tipo_designacion=${tipoDesignacion}`
 
       const response = await partesApiClient.get<ParteDiarioReporte>(endpoint)
       setReporteData(response)
@@ -606,36 +360,6 @@ export default function PartesDiariosPage() {
     await fetchReporteData()
   }
 
-  const handleGenerarParte = async () => {
-    const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
-    if (!facultad) return
-
-    setGeneratingParte(true)
-    const toastId = toast.loading("Generando parte diario...")
-
-    try {
-      await partesApiClient.post("/partes-diarios", {
-        facultadCodigo: facultad.codigo,
-        fecha: fecha,
-      })
-
-      toast.success("Parte diario generado correctamente", { id: toastId })
-      setShowGenerateModal(false)
-      await fetchReporteData()
-    } catch (error) {
-      console.error("Error al generar parte diario:", error)
-      const apiErr = error as PartesApiError
-      toast.error(
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : "Error al generar el parte diario",
-        { id: toastId }
-      )
-    } finally {
-      setGeneratingParte(false)
-    }
-  }
-
   const handlePrint = async () => {
     if (!reporteData) return
 
@@ -653,6 +377,9 @@ export default function PartesDiariosPage() {
       if (horaInicio && horaFin) {
         url += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
       }
+      if (grupoTipo) url += `&grupo_tipo=${grupoTipo}`
+      if (tipoDesignacion) url += `&tipo_designacion=${tipoDesignacion}`
+      url += `&print_columns=${printColumns}`
 
       const res = await fetch(url)
       if (!res.ok) {
@@ -780,7 +507,7 @@ export default function PartesDiariosPage() {
         hora_salida: "",
       },
       usuario: {
-        id: user?.id || "unknown",
+        id: user?.sub || "unknown",
         nombre: user?.name || "Administrador",
         email: user?.email || "",
       },
@@ -1015,6 +742,52 @@ export default function PartesDiariosPage() {
                       />
                     </div>
                   )}
+
+                  {/* Filtros académicos opcionales */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      Grupo tipo{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </Label>
+                    <Select
+                      value={grupoTipo || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                        <SelectItem value="T">Teórico</SelectItem>
+                        <SelectItem value="P">Práctico</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5 m-0 p-0">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      Tipo de designación{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </Label>
+                    <Select
+                      value={tipoDesignacion || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Todos" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                        <SelectItem value="N">Normal</SelectItem>
+                        <SelectItem value="S">Suplente</SelectItem>
+                        <SelectItem value="A">Acéfalo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2 w-auto justify-end m-0 p-0">
@@ -1065,7 +838,7 @@ export default function PartesDiariosPage() {
 
                   <Button
                     type="button"
-                    onClick={handlePrint}
+                    onClick={() => setShowPrintDialog(true)}
                     disabled={!reporteData || generatingPdf}
                     className="bg-[#003770] hover:bg-[#00254d] text-white gap-1.5 rounded-xl h-9 text-xs px-4 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -1082,116 +855,108 @@ export default function PartesDiariosPage() {
           </Card>
 
           {/* Estados de carga e información */}
-          {!loading && !reporteData && !hasSearched && (
-            <Card className="border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
-              <CardContent className="flex flex-col items-center justify-center space-y-3">
-                <FileText className="w-12 h-12 text-[#003770]/60" />
-                <h3 className="font-bold text-base text-gray-800 dark:text-gray-200">
-                  Control de Partes Diarios
-                </h3>
-                <p className="text-xs text-gray-500 text-center max-w-md">
-                  Seleccione una facultad y fecha en los filtros superiores para comenzar el control
-                  de firmas, retrasos y faltas de los docentes.
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {loading && (
-            <Card className="border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
-              <CardContent className="flex flex-col items-center justify-center space-y-3">
-                <Loader2 className="w-10 h-10 animate-spin text-[#003770]" />
-                <p className="text-muted-foreground text-xs">Cargando horarios de clases...</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {!loading && !reporteData && hasSearched && (
-            <Card className="border-dashed border-2 bg-white dark:bg-slate-900/45 flex-grow flex-shrink flex flex-col justify-center items-center rounded-xl py-6 min-h-[300px]">
-              <CardContent className="flex flex-col items-center justify-center space-y-3">
-                <Info className="w-10 h-10 text-gray-400" />
-                <h3 className="font-bold text-base text-gray-700 dark:text-gray-200">
-                  No se encontraron resultados
-                </h3>
-                <p className="text-xs text-gray-500 max-w-md text-center">
-                  No hay clases registradas para la facultad y fecha seleccionada.
-                </p>
-              </CardContent>
-            </Card>
-          )}
+          {!reporteData && <PartesReportState loading={loading} hasSearched={hasSearched} />}
 
           {/* Grilla / Tabla principal */}
           {!loading && reporteData && groupedRows.length > 0 && (
-            <div className="overflow-x-auto max-h-[calc(100vh-270px)] border border-border/60 rounded-xl flex-grow">
-              <Table className="min-w-[1200px] w-full">
-                <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
-                  <TableRow>
-                    <TableHead className="w-12 text-center font-bold">N°</TableHead>
-                    <TableHead className="w-24 text-center font-bold">Horario</TableHead>
-                    <TableHead className="text-center font-bold">Docente</TableHead>
-                    <TableHead className="text-center font-bold">Asignatura</TableHead>
-                    <TableHead className="w-16 text-center font-bold">Grupo</TableHead>
-                    <TableHead className="w-20 text-center font-bold">Aula</TableHead>
-                    <TableHead className="w-28 text-center font-bold">Ingreso</TableHead>
-                    <TableHead className="w-28 text-center font-bold">Salida</TableHead>
-                    <TableHead className="w-28 text-center font-bold">Retraso (m)</TableHead>
-                    <TableHead className="w-32 text-center font-bold">Tipo Tickeo</TableHead>
-                    <TableHead className="min-w-[250px] text-center font-bold">
-                      Observación
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {groupedRows.map((row) => (
-                    <PartesTableRow
-                      key={row.key}
-                      row={row}
-                      tiposTickeo={tiposTickeo}
-                      onRowChange={handleRowChange}
-                      isClosed={isClosed}
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <PartesReportTable
+              rows={groupedRows}
+              tiposTickeo={tiposTickeo}
+              onRowChange={handleRowChange}
+              isClosed={Boolean(isClosed)}
+            />
           )}
         </div>
 
-        {/* Modal de Generación */}
-        <Dialog open={showGenerateModal} onOpenChange={setShowGenerateModal}>
-          <DialogContent className="sm:max-w-[425px] bg-background border border-border">
+        <GenerarParteDialog
+          open={showGenerateModal}
+          onOpenChange={setShowGenerateModal}
+          facultadCodigo={selectedFacultad?.codigo}
+          facultadNombre={selectedFacultad?.nombre}
+          fecha={fecha}
+          onGenerated={fetchReporteData}
+        />
+
+        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
+          <DialogContent className="sm:max-w-[480px] bg-background border border-border">
             <DialogHeader>
               <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <AlertCircle className="w-5 h-5 text-amber-500" />
-                Parte Diario no Encontrado
+                <Printer className="w-5 h-5 text-primary" />
+                Configurar impresión
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground pt-2">
-                No se generó un parte diario para la facultad{" "}
-                <strong>{selectedFacultad?.nombre || selectedFacultadId}</strong> en la fecha
-                seleccionada. ¿Desea proceder a generar el parte diario de asistencia?
+                Seleccione los filtros opcionales y las columnas de asistencia que desea imprimir.
               </DialogDescription>
             </DialogHeader>
-            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+            <div className="grid gap-4 py-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Grupo tipo</Label>
+                  <Select
+                    value={grupoTipo || ALL_FILTER_VALUE}
+                    onValueChange={(value) => setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                      <SelectItem value="T">Teórico</SelectItem>
+                      <SelectItem value="P">Práctico</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Tipo de designación</Label>
+                  <Select
+                    value={tipoDesignacion || ALL_FILTER_VALUE}
+                    onValueChange={(value) =>
+                      setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                      <SelectItem value="N">Normal</SelectItem>
+                      <SelectItem value="S">Suplente</SelectItem>
+                      <SelectItem value="A">Acéfalo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Columnas de asistencia</Label>
+                <Select value={printColumns} onValueChange={setPrintColumns}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Entrada">Entrada</SelectItem>
+                    <SelectItem value="Salida">Salida</SelectItem>
+                    <SelectItem value="Ambos">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
               <Button
                 variant="outline"
-                onClick={() => setShowGenerateModal(false)}
-                disabled={generatingParte}
+                onClick={() => setShowPrintDialog(false)}
+                disabled={generatingPdf}
               >
                 Cancelar
               </Button>
               <Button
-                onClick={handleGenerarParte}
-                disabled={generatingParte}
-                className="bg-primary text-primary-foreground hover:bg-primary/90"
+                onClick={() => {
+                  setShowPrintDialog(false)
+                  void handlePrint()
+                }}
+                disabled={generatingPdf}
+                className="umss-btn-primary"
               >
-                {generatingParte ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generando...
-                  </>
-                ) : (
-                  "Generar Parte"
-                )}
+                Imprimir / PDF
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1269,10 +1034,14 @@ export default function PartesDiariosPage() {
                             </td>
                             <td className="px-3 py-2 text-center">
                               <Badge
-                                variant={mRow.retraso > 0 ? "destructive" : "secondary"}
+                                variant={
+                                  mRow.retraso !== null && mRow.retraso > 0
+                                    ? "destructive"
+                                    : "secondary"
+                                }
                                 className="font-mono text-[10px] px-1.5 py-0"
                               >
-                                {mRow.retraso} min
+                                {mRow.retraso === null ? "-" : `${mRow.retraso} min`}
                               </Badge>
                             </td>
                             <td className="px-3 py-2 font-medium capitalize text-foreground">

@@ -138,6 +138,11 @@ export async function GET(request: NextRequest) {
   const userNameParam = searchParams.get("userName")
   const horaInicio = searchParams.get("hora_inicio")
   const horaFin = searchParams.get("hora_fin")
+  const grupoTipo = searchParams.get("grupo_tipo")
+  const tipoDesignacion = searchParams.get("tipo_designacion")
+  const printColumns = searchParams.get("print_columns") || "Ambos"
+  const showEntrada = printColumns === "Entrada" || printColumns === "Ambos"
+  const showSalida = printColumns === "Salida" || printColumns === "Ambos"
 
   if (!fecha || !nullSafeFacultadCodigo) {
     return NextResponse.json(
@@ -164,6 +169,8 @@ export async function GET(request: NextRequest) {
     if (horaInicio && horaFin) {
       fetchUrl += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
     }
+    if (grupoTipo) fetchUrl += `&grupo_tipo=${encodeURIComponent(grupoTipo)}`
+    if (tipoDesignacion) fetchUrl += `&tipo_designacion=${encodeURIComponent(tipoDesignacion)}`
 
     const res = await fetch(fetchUrl, { cache: "no-store" })
     if (!res.ok) {
@@ -238,7 +245,7 @@ export async function GET(request: NextRequest) {
             <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 60px; vertical-align: middle;">
               ${horarioCol}
             </td>
-            <td class="font-semibold text-gray-950" style="vertical-align: middle;">
+            <td class="font-semibold text-gray-950" style="vertical-align: middle; overflow-wrap: anywhere;">
               ${row.persona_nombres}
             </td>
             <td class="text-gray-700 text-[9.5px]" style="vertical-align: middle; padding: 4px 6px;">
@@ -250,12 +257,20 @@ export async function GET(request: NextRequest) {
             <td style="vertical-align: middle; padding: 4px 6px; width: 50px;">
               ${aulasHtml}
             </td>
-            <td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
+            ${
+              showEntrada
+                ? `<td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
-            </td>
-            <td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
+            </td>`
+                : ""
+            }
+            ${
+              showSalida
+                ? `<td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
-            </td>
+            </td>`
+                : ""
+            }
             <td style="position: relative; height: ${heightPx}px; width: 105px; vertical-align: middle;">
               <div style="border-bottom: 1px dotted #d1d5db; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
             </td>
@@ -287,6 +302,7 @@ export async function GET(request: NextRequest) {
             }
             .signatures-table {
               width: 100% !important;
+              table-layout: fixed !important;
               border-collapse: collapse !important;
               text-align: left;
               font-size: 9.5px;
@@ -366,12 +382,12 @@ export async function GET(request: NextRequest) {
                         <tr style="background-color: #f3f4f6;">
                           <th style="width: 30px; text-align: center;">N°</th>
                           <th style="width: 60px; text-align: center;">Horario</th>
-                          <th>Docente</th>
-                          <th>Asignatura</th>
+                          <th style="width: ${showEntrada && showSalida ? "18%" : "28%"};">Docente</th>
+                          <th style="width: 22%;">Asignatura</th>
                           <th style="width: 35px; text-align: center;">GP</th>
                           <th style="width: 50px; text-align: center;">Aula</th>
-                          <th style="width: 85px; text-align: center;">Ingreso</th>
-                          <th style="width: 85px; text-align: center;">Salida</th>
+                          ${showEntrada ? '<th style="width: 85px; text-align: center;">Ingreso</th>' : ""}
+                          ${showSalida ? '<th style="width: 85px; text-align: center;">Salida</th>' : ""}
                           <th style="width: 105px; text-align: center;">OBSERVACIONES</th>
                         </tr>
                       </thead>
