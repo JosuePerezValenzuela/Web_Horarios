@@ -13,6 +13,7 @@ import {
   MapPin,
   AlertCircle,
   ClipboardList,
+  Settings2,
 } from "lucide-react"
 
 interface SidebarItem {
@@ -51,6 +52,11 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Partes Diarios",
     href: "/partes-diarios",
     icon: ClipboardList,
+  },
+  {
+    title: "Reglas Asistencia",
+    href: "/configuracion-reglas-asistencia",
+    icon: Settings2,
   },
 ]
 
