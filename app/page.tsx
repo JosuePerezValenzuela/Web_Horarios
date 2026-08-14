@@ -5,6 +5,7 @@ import { useAuth } from "@/features/auth/application/useAuth"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { Calendar, Users, MapPin, FileSpreadsheet, Lock, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { UmssHeroSection, ServiceCard, Button } from "@umss/estilos-base/components"
 
 export default function Home() {
   const { isAuthenticated, isLoading, user } = useAuth()
@@ -48,18 +49,17 @@ export default function Home() {
     )
   }
 
-  // 2. VARIANTE: USUARIO NO LOGUEADO (Solicitud de ingreso con Header visible y sin scroll horizontal)
+  // 2. VARIANTE: USUARIO NO LOGUEADO (Solicitud de ingreso con Hero institucional de la librería)
   if (!isAuthenticated) {
     return (
       <AppLayout breadcrumbs={[]}>
-        {/* Sección principal del Hero */}
-        <div className="umss-hero-section w-full px-4 flex-1 flex flex-col justify-center items-center relative overflow-hidden h-full min-h-[calc(100vh-8rem)]">
+        <UmssHeroSection className="flex-1 flex flex-col justify-center items-center relative overflow-hidden h-full min-h-[calc(100vh-8rem)] py-6 pt-12 pb-12">
           {/* Fondo decorativo con tramas suaves */}
           <div className="absolute inset-0 -z-10 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:16px_28px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_80%,transparent_100%)]" />
           <div className="absolute top-0 right-0 -z-10 h-[300px] w-[300px] sm:w-[500px] rounded-full bg-[#003770]/5 blur-[80px] dark:bg-[#003770]/10" />
           <div className="absolute bottom-10 left-0 -z-10 h-[300px] w-[300px] sm:w-[500px] rounded-full bg-[#BC000C]/5 blur-[80px] dark:bg-[#BC000C]/10" />
 
-          <main className="z-10 flex w-full max-w-4xl flex-col items-center justify-center text-center py-6">
+          <main className="z-10 flex w-full max-w-4xl flex-col items-center justify-center text-center">
             <div className="flex flex-col items-center gap-6">
               {/* Contenedor del Escudo */}
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#eff6ff] dark:bg-slate-800 text-[#003770] dark:text-blue-400 ring-2 ring-[#003770]/15 dark:ring-slate-700 shadow-md">
@@ -77,12 +77,12 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Botón de Login */}
+              {/* Botón de Login utilizando el Button de la librería */}
               <div className="mt-2 flex flex-col items-center justify-center gap-3">
-                <button
+                <Button
                   onClick={handleLogin}
                   disabled={isConnecting}
-                  className="umss-btn-primary px-6 py-3.5 text-sm tracking-wide uppercase transition-all shadow-md hover:shadow-lg font-bold flex items-center gap-2.5 active:scale-95 group disabled:opacity-75 disabled:pointer-events-none"
+                  className="px-6 py-5 text-sm tracking-wide uppercase transition-all shadow-md hover:shadow-lg font-bold flex items-center gap-2.5 rounded-xl cursor-pointer bg-[#002855] text-white hover:bg-[#001b3a]"
                 >
                   {isConnecting ? (
                     <Loader2 className="h-4.5 w-4.5 animate-spin" />
@@ -90,54 +90,44 @@ export default function Home() {
                     <Lock className="h-4.5 w-4.5" />
                   )}
                   {isConnecting ? "Conectando..." : "Ingresar con SSO San Simón"}
-                </button>
-                <span className="text-[10px] text-gray-400 font-semibold tracking-wide uppercase">
+                </Button>
+                <span className="text-[10px] text-gray-450 dark:text-gray-400 font-semibold tracking-wide uppercase">
                   Autenticación unificada mediante Keycloak SSO institucional.
                 </span>
               </div>
             </div>
 
-            {/* Grilla informativa de Características */}
-            <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3 w-full text-left px-2">
-              <div className="rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-[#eff6ff] dark:bg-slate-800 text-[#003770] dark:text-blue-400">
-                  <Calendar className="h-4.5 w-4.5" />
-                </div>
-                <h3 className="umss-title-h3 text-sm">Planificación</h3>
-                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                  Visualizá solapamientos en tiempo real y asignaciones automáticas con la grilla
-                  dinámica adaptativa.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/20 text-[#BC000C] dark:text-red-400">
-                  <MapPin className="h-4.5 w-4.5" />
-                </div>
-                <h3 className="umss-title-h3 text-sm">Ambientes</h3>
-                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                  Buscá y reservá aulas en bloques y campus institucionales verificando su
-                  disponibilidad.
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-border bg-card/60 p-5 backdrop-blur-sm shadow-sm transition-all hover:shadow-md">
-                <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-950/20 text-emerald-600 dark:text-emerald-400">
-                  <FileSpreadsheet className="h-4.5 w-4.5" />
-                </div>
-                <h3 className="umss-title-h3 text-sm">Asistencia</h3>
-                <p className="mt-1.5 text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                  Generá partes diarios y consolidados de horas avanzadas para control académico.
-                </p>
-              </div>
+            {/* Grilla informativa utilizando las ServiceCard de la librería base */}
+            <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-3 w-full text-left px-2">
+              <ServiceCard
+                title="Planificación"
+                description="Visualizá solapamientos en tiempo real y asignaciones automáticas con la grilla dinámica adaptativa."
+                icon={Calendar}
+                color="blue"
+                actionLabel="MÁS INFORMACIÓN"
+              />
+              <ServiceCard
+                title="Ambientes"
+                description="Buscá y reservá aulas en bloques y campus institucionales verificando su disponibilidad en tiempo real."
+                icon={MapPin}
+                color="red"
+                actionLabel="VER DISPONIBILIDAD"
+              />
+              <ServiceCard
+                title="Asistencia"
+                description="Generá partes diarios y consolidados de horas avanzadas para un control académico de excelencia."
+                icon={FileSpreadsheet}
+                color="amber"
+                actionLabel="VER PARTES DIARIOS"
+              />
             </div>
           </main>
-        </div>
+        </UmssHeroSection>
       </AppLayout>
     )
   }
 
-  // 3. VARIANTE: USUARIO LOGUEADO (Simplificado y sin scroll vertical)
+  // 3. VARIANTE: USUARIO LOGUEADO (Con menú institucional principal y ServiceCards)
   return (
     <AppLayout breadcrumbs={[]}>
       <div className="flex flex-col gap-6 max-w-5xl mx-auto py-2 h-full justify-center">
@@ -153,51 +143,27 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Grilla de Tarjetas Compactas en 2 Columnas */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mx-auto mt-2">
+        {/* Grilla de Tarjetas utilizando las ServiceCard de estilos-base */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-3xl mx-auto mt-2">
           {/* Tarjeta 1: Horarios de Docentes */}
-          <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#eff6ff] dark:bg-slate-800 text-[#003770] dark:text-blue-400">
-                <Users className="h-5 w-5 stroke-[2]" />
-              </div>
-              <h3 className="font-roboto text-sm font-bold text-umss-dark-blue dark:text-gray-100 uppercase tracking-tight">
-                Docentes
-              </h3>
-              <p className="text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                Asignaciones horarias, visualización de la grilla semanal y control de
-                solapamientos.
-              </p>
-            </div>
-            <a
-              href="/docentes"
-              className="umss-btn-primary py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm text-center"
-            >
-              Abrir
-            </a>
-          </div>
+          <ServiceCard
+            title="Docentes"
+            description="Asignaciones horarias, visualización de la grilla semanal interactiva y control automático de solapamientos."
+            icon={Users}
+            href="/docentes"
+            color="blue"
+            actionLabel="ABRIR MÓDULO"
+          />
 
           {/* Tarjeta 2: Horarios */}
-          <div className="relative bg-white/90 dark:bg-[#242424]/90 backdrop-blur-sm p-5 rounded-3xl shadow-sm border border-gray-150 dark:border-[#333333] hover:shadow-md hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between gap-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-50 dark:bg-red-950/20 text-[#BC000C] dark:text-red-400">
-                <Calendar className="h-5 w-5 stroke-[2]" />
-              </div>
-              <h3 className="font-roboto text-sm font-bold text-umss-dark-blue dark:text-gray-100 uppercase tracking-tight">
-                Horarios
-              </h3>
-              <p className="text-[11px] leading-relaxed text-gray-550 dark:text-gray-450">
-                Visualización integral y filtros de horarios de clases por facultad, plan de
-                estudios y espacios físicos.
-              </p>
-            </div>
-            <a
-              href="/horarios"
-              className="umss-btn-primary py-2 px-3 text-[10px] font-bold tracking-wide uppercase rounded-md w-full shadow-sm text-center"
-            >
-              Abrir
-            </a>
-          </div>
+          <ServiceCard
+            title="Horarios"
+            description="Visualización integral y filtros de horarios de clases por facultad, plan de estudios y espacios físicos."
+            icon={Calendar}
+            href="/horarios"
+            color="red"
+            actionLabel="ABRIR MÓDULO"
+          />
         </div>
       </div>
     </AppLayout>
