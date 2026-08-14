@@ -1,14 +1,13 @@
 "use client"
 
 /**
- * Docentes pagination component
- * Enhanced with: pageSize selector, page numbers, first/last, records indicator
+ * Docentes pagination component using styles library elements
  */
 
 import { useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button, Input } from "@umss/estilos-base/components"
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 export function DocentesPagination() {
   const { pagination, loadingDocentes, setPage, setPageSize } = useDocentesStore()
@@ -111,17 +110,19 @@ export function DocentesPagination() {
   const handleLast = () => setPage(totalPages)
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2">
+    <div className="flex flex-wrap items-center justify-between gap-4 py-2">
       {/* Left: Records indicator */}
-      <span className="text-sm text-muted-foreground shrink-0">
-        {startRecord}-{endRecord} / {totalRecords}
+      <span className="text-xs font-semibold text-muted-foreground shrink-0 uppercase tracking-wide">
+        Mostrando {startRecord}-{endRecord} de {totalRecords} docentes
       </span>
 
       {/* Right: All navigation controls */}
-      <div className="flex flex-wrap items-center gap-1">
+      <div className="flex flex-wrap items-center gap-2">
         {/* PageSize input */}
-        <div className="flex shrink-0 items-center gap-1">
-          <span className="text-xs text-muted-foreground">Reg/pag</span>
+        <div className="flex shrink-0 items-center gap-1.5 mr-2">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Reg/pág:
+          </span>
           <Input
             type="text"
             inputMode="numeric"
@@ -130,51 +131,51 @@ export function DocentesPagination() {
             onChange={handlePageSizeChange}
             onBlur={applyPageSize}
             disabled={loadingDocentes}
-            className="h-8 w-14 text-center text-sm"
-            aria-label="Registros por pagina"
+            className="h-8 w-12 text-center text-xs font-semibold rounded-lg"
+            aria-label="Registros por página"
           />
         </div>
 
         {/* First */}
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
+          size="icon"
           onClick={handleFirst}
           disabled={currentPage === 1 || loadingDocentes}
-          aria-label="Primera"
-          className="size-8 px-0 shrink-0"
+          aria-label="Primera página"
+          className="rounded-lg shrink-0 cursor-pointer border-border size-8"
         >
-          &laquo;
+          <ChevronsLeft className="h-4 w-4" />
         </Button>
 
         {/* Previous */}
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
+          size="icon"
           onClick={handlePrevious}
           disabled={currentPage === 1 || loadingDocentes}
-          aria-label="Anterior"
-          className="size-8 px-0 shrink-0"
+          aria-label="Página anterior"
+          className="rounded-lg shrink-0 cursor-pointer border-border size-8"
         >
-          &lsaquo;
+          <ChevronLeft className="h-4 w-4" />
         </Button>
 
         {/* Page numbers - desktop */}
-        <div className="hidden md:flex items-center gap-0.5 shrink-0">
+        <div className="hidden md:flex items-center gap-1 shrink-0">
           {getPageNumbers().map((page, index) => (
             <span key={index}>
               {page === "..." ? (
-                <span className="px-1 text-muted-foreground">...</span>
+                <span className="px-1.5 text-xs text-muted-foreground">...</span>
               ) : (
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant={page === currentPage ? "primary" : "outline"}
+                  size="icon"
                   onClick={() => handlePageClick(page as number)}
                   disabled={loadingDocentes}
-                  className={`size-8 min-w-8 px-0 ${
+                  className={`rounded-lg cursor-pointer transition-all size-8 ${
                     page === currentPage
-                      ? "bg-[#002855] text-white hover:bg-[#001b3a] font-bold shadow-sm"
-                      : "hover:bg-muted text-gray-700 dark:text-gray-300"
+                      ? "bg-[#002855] text-white hover:bg-[#001b3a] font-bold border-transparent"
+                      : "border-border text-gray-700 dark:text-gray-300"
                   }`}
                 >
                   {page}
@@ -185,45 +186,45 @@ export function DocentesPagination() {
         </div>
 
         {/* Mobile page indicator */}
-        <span className="md:hidden text-sm text-muted-foreground px-1 shrink-0">
-          {currentPage}/{totalPages}
+        <span className="md:hidden text-xs font-bold text-muted-foreground px-1.5 shrink-0">
+          {currentPage} / {totalPages}
         </span>
 
         {/* Next */}
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
+          size="icon"
           onClick={handleNext}
           disabled={currentPage === totalPages || loadingDocentes}
-          aria-label="Siguiente"
-          className="size-8 px-0 shrink-0"
+          aria-label="Siguiente página"
+          className="rounded-lg shrink-0 cursor-pointer border-border size-8"
         >
-          &rsaquo;
+          <ChevronRight className="h-4 w-4" />
         </Button>
 
         {/* Last */}
         <Button
-          variant="ghost"
-          size="sm"
+          variant="outline"
+          size="icon"
           onClick={handleLast}
           disabled={currentPage === totalPages || loadingDocentes}
-          aria-label="Ultima"
-          className="size-8 px-0 shrink-0"
+          aria-label="Última página"
+          className="rounded-lg shrink-0 cursor-pointer border-border size-8"
         >
-          &raquo;
+          <ChevronsRight className="h-4 w-4" />
         </Button>
 
         {/* Go to page */}
-        <form onSubmit={handleInputSubmit} className="flex items-center shrink-0">
+        <form onSubmit={handleInputSubmit} className="flex items-center shrink-0 ml-1">
           <Input
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
-            placeholder="#"
+            placeholder="Ir a..."
             value={inputPage}
             onChange={handleInputChange}
-            className="w-12 h-8 text-center text-sm"
-            aria-label="Ir a pagina"
+            className="w-16 h-8 text-center text-xs font-semibold rounded-lg"
+            aria-label="Ir a página"
           />
         </form>
       </div>

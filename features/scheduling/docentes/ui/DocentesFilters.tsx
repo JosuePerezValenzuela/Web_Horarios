@@ -2,14 +2,12 @@
 
 /**
  * Docentes filters component
- * Faculty, Career, Subject dropdowns with search
+ * Faculty, Career, Subject dropdowns with SearchableSelect from library
  */
 
 import { useEffect, useRef, useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
-import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
+import { Input, SearchableSelect } from "@umss/estilos-base/components"
 
 export function DocentesFilters() {
   const {
@@ -29,10 +27,6 @@ export function DocentesFilters() {
     resetAsignaturas,
   } = useDocentesStore()
 
-  // Search filters for dropdowns
-  const [facultadSearch, setFacultadSearch] = useState("")
-  const [carreraSearch, setCarreraSearch] = useState("")
-  const [asignaturaSearch, setAsignaturaSearch] = useState("")
   const [localSearch, setLocalSearch] = useState(search)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -58,7 +52,6 @@ export function DocentesFilters() {
   const handleFacultadChange = (facultadId: string) => {
     resetCarreras()
     resetAsignaturas()
-    setFacultadSearch("")
     const newFacultadId = facultadId === "all" ? undefined : facultadId
     setFilters({ facultadId: newFacultadId })
     if (newFacultadId) {
@@ -69,7 +62,6 @@ export function DocentesFilters() {
   // Handle carrera change - cascade to reset asignatura
   const handleCarreraChange = (carreraId: string) => {
     resetAsignaturas()
-    setCarreraSearch("")
     const newCarreraId = carreraId === "all" ? undefined : carreraId
     setFilters({ carreraId: newCarreraId })
     if (newCarreraId && filters.facultadId) {
@@ -79,93 +71,95 @@ export function DocentesFilters() {
 
   // Handle asignatura change
   const handleAsignaturaChange = (asignaturaId: string) => {
-    setAsignaturaSearch("")
     const newAsignaturaId = asignaturaId === "all" ? undefined : asignaturaId
     setFilters({ asignaturaId: newAsignaturaId })
   }
 
-  // Handle search input (debounced via useEffect)
+  // Mapeamos los catálogos a las opciones esperadas por SearchableSelect
+  const facultadOptions = facultades.map((f) => ({
+    value: f.id,
+    label: f.nombre,
+  }))
 
-  // Filter helper
-  const filterItems = <T extends { nombre: string }>(items: T[], searchValue: string): T[] => {
-    if (!searchValue) return items
-    const lower = searchValue.toLowerCase()
-    return items.filter((item) => item.nombre.toLowerCase().includes(lower))
-  }
+  const carreraOptions = carreras.map((c) => ({
+    value: c.id,
+    label: c.nombre,
+  }))
+
+  const asignaturaOptions = asignaturas.map((a) => ({
+    value: a.id,
+    label: a.nombre,
+  }))
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
-      {/* Search Input - takes remaining space */}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 items-end">
+      {/* Search Input - de la librería */}
       <div className="min-w-0 sm:col-span-2 lg:col-span-6">
+        <label
+          htmlFor="search-input"
+          className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 block"
+        >
+          Buscar Docente
+        </label>
         <Input
+          id="search-input"
           type="text"
-          placeholder="Buscar por CI, codigo o nombre..."
+          placeholder="Buscar por CI, código o nombre..."
           value={localSearch}
           onChange={(e) => handleLocalSearchChange(e.target.value)}
+          className="h-10 rounded-xl"
         />
       </div>
 
-      {/* Faculty Select */}
+      {/* Faculty Select con SearchableSelect de estilos-base */}
       <div className="min-w-0 sm:col-span-1 lg:col-span-2">
-        <Select
-          value={filters.facultadId || "all"}
+        <SearchableSelect
+          id="facultad-select"
+          label="Facultad"
+          placeholder="Seleccione Facultad"
+          searchPlaceholder="Buscar facultad..."
+          options={facultadOptions}
+          value={filters.facultadId || ""}
           onValueChange={handleFacultadChange}
           disabled={loadingFacultades}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Facultad" />
-          </SelectTrigger>
-          <SearchableSelectContent onFilterChange={setFacultadSearch}>
-            <SelectItem value="all">Todas las facultades</SelectItem>
-            {filterItems(facultades, facultadSearch).map((facultad) => (
-              <SelectItem key={facultad.id} value={facultad.id}>
-                {facultad.nombre}
-              </SelectItem>
-            ))}
-          </SearchableSelectContent>
-        </Select>
+          allOption={true}
+          allLabel="Todas las facultades"
+          className="w-full"
+        />
       </div>
 
-      {/* Career Select */}
+      {/* Career Select con SearchableSelect de estilos-base */}
       <div className="min-w-0 sm:col-span-1 lg:col-span-2">
-        <Select
-          value={filters.carreraId || "all"}
+        <SearchableSelect
+          id="carrera-select"
+          label="Carrera"
+          placeholder="Seleccione Carrera"
+          searchPlaceholder="Buscar carrera..."
+          options={carreraOptions}
+          value={filters.carreraId || ""}
           onValueChange={handleCarreraChange}
           disabled={loadingCarreras || !filters.facultadId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Carrera" />
-          </SelectTrigger>
-          <SearchableSelectContent onFilterChange={setCarreraSearch}>
-            <SelectItem value="all">Todas las carreras</SelectItem>
-            {filterItems(carreras, carreraSearch).map((carrera) => (
-              <SelectItem key={carrera.id} value={carrera.id}>
-                {carrera.nombre}
-              </SelectItem>
-            ))}
-          </SearchableSelectContent>
-        </Select>
+          allOption={true}
+          allLabel="Todas las carreras"
+          className="w-full"
+        />
       </div>
 
-      {/* Subject Select */}
+      {/* Subject Select con SearchableSelect de estilos-base */}
       <div className="min-w-0 sm:col-span-2 lg:col-span-2">
-        <Select
-          value={filters.asignaturaId || "all"}
+        <SearchableSelect
+          id="asignatura-select"
+          label="Asignatura"
+          placeholder="Seleccione Asignatura"
+          searchPlaceholder="Buscar asignatura..."
+          options={asignaturaOptions}
+          value={filters.asignaturaId || ""}
           onValueChange={handleAsignaturaChange}
           disabled={!filters.carreraId}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Asignatura" />
-          </SelectTrigger>
-          <SearchableSelectContent onFilterChange={setAsignaturaSearch}>
-            <SelectItem value="all">Todas las asignaturas</SelectItem>
-            {filterItems(asignaturas, asignaturaSearch).map((asignatura) => (
-              <SelectItem key={asignatura.id} value={asignatura.id}>
-                {asignatura.nombre}
-              </SelectItem>
-            ))}
-          </SearchableSelectContent>
-        </Select>
+          allOption={true}
+          allLabel="Todas las asignaturas"
+          className="w-full"
+        />
       </div>
     </div>
   )

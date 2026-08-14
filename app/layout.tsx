@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono, Inter } from "next/font/google"
-import { Toaster } from "@/components/ui/sonner"
+import { Sonner } from "@umss/estilos-base/components"
 
 import "./theme.css"
 import { cn } from "@/lib/utils"
@@ -50,7 +50,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthInitializer>{children}</AuthInitializer>
-          <Toaster richColors position="top-right" closeButton />
+          <Sonner richColors position="top-right" closeButton />
         </ThemeProvider>
       </body>
     </html>
