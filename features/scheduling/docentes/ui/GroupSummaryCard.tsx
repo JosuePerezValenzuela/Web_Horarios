@@ -95,7 +95,7 @@ export function GroupSummaryCard({
               isWorkloadMismatched && "text-amber-700 dark:text-amber-400 font-semibold"
             )}
           >
-            {calculatedCarga} hrs
+            {calculatedCarga}
           </span>
 
           {/* Carga Horaria layout values */}
@@ -104,14 +104,14 @@ export function GroupSummaryCard({
               <span className="font-semibold text-foreground">
                 Carga Horaria Asignada al docente:
               </span>
-              <span className="text-muted-foreground">{group.carga_horaria} hrs</span>
+              <span className="text-muted-foreground">{group.carga_horaria}</span>
             </>
           )}
 
           {group.carga_horaria_grupo !== undefined && group.carga_horaria_grupo !== null && (
             <>
               <span className="font-semibold text-foreground">Carga Horaria total del grupo:</span>
-              <span className="text-muted-foreground">{group.carga_horaria_grupo} hrs</span>
+              <span className="text-muted-foreground">{group.carga_horaria_grupo}</span>
             </>
           )}
 
