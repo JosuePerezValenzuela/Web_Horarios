@@ -13,11 +13,12 @@ import type {
   InfraTipoAmbiente,
   NormalizedSchedule,
   SolapamientoInfo,
+  EditarHorarioItem,
+  EditarHorariosBatchRequest,
 } from "../domain/types"
 import {
   horariosApi,
   type BuscarAmbienteRequest,
-  type AsignarHorariosBatchRequest,
 } from "@/shared/services/api/client"
 import { infraApiClient } from "@/shared/services/api/infraClient"
 
@@ -179,7 +180,14 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
   setEntryAmbiente: (entryId: string, ambiente: InfraAmbiente) => {
     set((state) => ({
       entries: state.entries.map((e) =>
-        e.id === entryId ? { ...e, ambienteId: ambiente.id, ambienteLabel: ambiente.nombre } : e
+        e.id === entryId
+          ? {
+              ...e,
+              ambienteId: ambiente.id,
+              ambienteLabel: ambiente.nombre,
+              ambienteCodigo: ambiente.codigo,
+            }
+          : e
       ),
     }))
   },
@@ -345,11 +353,11 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
     let payloadItems: {
       entryId: string
-      item: { dia: number; hora_inicio: string; hora_fin: string; aula_id: number }
+      item: EditarHorarioItem
     }[] = []
 
     try {
-      // Build payload with entryId tracking for accurate error mapping
+      // Build payload matching the EditarHorarioItem structure for upsert creates (without id)
       payloadItems = validEntries.map((e) => ({
         entryId: e.id,
         item: {
@@ -357,17 +365,17 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
           hora_inicio: e.horaInicio,
           hora_fin: e.horaFin,
           aula_id: e.ambienteId!,
-        },
+        } as EditarHorarioItem,
       }))
 
-      const payload: AsignarHorariosBatchRequest = {
+      const payload: EditarHorariosBatchRequest = {
         persona_grupo_id: personaGrupoId,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
         horarios: payloadItems.map((pi) => pi.item),
       }
 
-      const response = await horariosApi.asignarBatch(payload)
+      const response = await horariosApi.editarBatch(payload)
       set({ submitting: false })
       return { success: true, message: response.message }
     } catch (error: unknown) {
@@ -375,7 +383,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
       if (error && typeof error === "object" && "status" in error) {
         const apiError = error as { status: number; body?: { message?: string } }
-        if (apiError.status === 400) {
+        if (apiError.status === 400 || apiError.status === 409) {
           const message = apiError.body?.message || "Error en la asignación"
           // Parse "Error en horario N: ..." to extract errorIndex
           const match = message.match(/Error en horario (\d+)/)

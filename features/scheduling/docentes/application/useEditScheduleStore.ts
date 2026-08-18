@@ -38,6 +38,7 @@ function mapScheduleToEntry(schedule: NormalizedSchedule): EditScheduleEntry {
       schedule.ambienteLabel && schedule.ambienteLabel !== "Sin ambiente"
         ? schedule.ambienteLabel
         : undefined,
+    ambienteCodigo: schedule.ambienteCodigo ?? undefined,
     fechaInicio: schedule.fechaInicioRaw ?? undefined,
     fechaFin: schedule.fechaFinRaw ?? undefined,
   }
@@ -231,7 +232,14 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   setEntryAmbiente: (entryId: string, ambiente: InfraAmbiente) => {
     set((state) => ({
       entries: state.entries.map((e) =>
-        e.id === entryId ? { ...e, ambienteId: ambiente.id, ambienteLabel: ambiente.nombre } : e
+        e.id === entryId
+          ? {
+              ...e,
+              ambienteId: ambiente.id,
+              ambienteLabel: ambiente.nombre,
+              ambienteCodigo: ambiente.codigo,
+            }
+          : e
       ),
     }))
   },
@@ -372,21 +380,38 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   },
 
   submitEdit: async () => {
-    const { entries, selectedGroup, dateRange } = get()
+    const { entries, existingSchedules, selectedGroup, dateRange } = get()
 
     if (!selectedGroup) {
       return { success: false, message: "No hay grupo seleccionado" }
     }
 
-    const updateItems = entries.filter(
-      (e) => e.dbId !== null && e.dia !== null && e.horaInicio && e.horaFin
-    )
+    const updateItems = entries.filter((e) => {
+      if (e.dbId === null || e.dia === null || !e.horaInicio || !e.horaFin) return false
+      // Find the corresponding original schedule
+      const original = existingSchedules.find((s) => s.dbId === e.dbId)
+      if (!original) return true // Send if it wasn't matched
+
+      // Check if any field changed
+      const originalDay = original.day - 1 // 1-6 -> 0-5
+      const originalStart = formatMinutes(original.startMin)
+      const originalEnd = formatMinutes(original.endMin)
+      const originalAmbiente = original.ambienteId ?? undefined
+
+      const dayChanged = e.dia !== originalDay
+      const startChanged = e.horaInicio !== originalStart
+      const endChanged = e.horaFin !== originalEnd
+      const ambienteChanged = e.ambienteId !== originalAmbiente
+
+      return dayChanged || startChanged || endChanged || ambienteChanged
+    })
+
     const createItems = entries.filter(
       (e) => e.dbId === null && e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId != null
     )
 
     if (updateItems.length === 0 && createItems.length === 0) {
-      return { success: false, message: "No hay horarios válidos para guardar" }
+      return { success: false, message: "No hay cambios o nuevos horarios para guardar" }
     }
 
     const hasInvalidTimes = [...updateItems, ...createItems].some(

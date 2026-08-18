@@ -286,7 +286,7 @@ export function WeeklyScheduleGrid({
         className
       )}
     >
-      <div className="h-full max-h-full overflow-x-auto overflow-y-auto">
+      <div className="h-full max-h-full overflow-x-auto overflow-y-hidden">
         <div className="min-w-[640px] lg:min-w-0">
           {/* Day header row */}
           <div
@@ -539,7 +539,7 @@ export function WeeklyScheduleGrid({
                       return (
                         <div
                           key={`admin-${admin.id}`}
-                          className="absolute inset-x-0 z-[1] pointer-events-auto cursor-default transition-all duration-200 bg-[var(--primary)]/[0.08] dark:bg-blue-400/[0.06] hover:bg-[var(--primary)]/[0.14] dark:hover:bg-blue-400/[0.1] border-y border-dashed border-[var(--primary)]/25 dark:border-blue-400/20 flex items-center justify-center p-2 overflow-hidden"
+                          className="absolute inset-x-0 z-[1] pointer-events-auto cursor-default transition-all duration-200 bg-slate-100/80 dark:bg-muted/40 hover:bg-slate-150/90 dark:hover:bg-muted/60 border-y border-dashed border-slate-200 dark:border-border/80 flex items-center justify-center p-2 overflow-hidden"
                           style={{
                             top: `${top}px`,
                             height: `${height}px`,
@@ -553,7 +553,7 @@ export function WeeklyScheduleGrid({
                           }
                           onMouseLeave={() => setActiveTimeRange(null)}
                         >
-                          <span className="text-[9px] md:text-[10px] font-bold text-[var(--primary)]/70 dark:text-blue-300/50 uppercase select-none tracking-wider text-center leading-none">
+                          <span className="text-[9px] md:text-[10px] font-bold text-slate-500 dark:text-muted-foreground/60 uppercase select-none tracking-wider text-center leading-none">
                             Horario administrativo
                           </span>
                         </div>

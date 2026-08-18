@@ -13,6 +13,7 @@ import type {
   CrearAsignacionHorarioResponse,
   PatchAsignacionHorarioRequest,
   PatchAsignacionHorarioResponse,
+  TipoAsignacionAdministrativo,
 } from "@/features/scheduling/docentes/domain/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
@@ -252,5 +253,22 @@ export const horariosApi = {
     payload: PatchAsignacionHorarioRequest
   ): Promise<PatchAsignacionHorarioResponse> => {
     return apiClient.patch<PatchAsignacionHorarioResponse>(`/asignacion-horario/${id}`, payload)
+  },
+
+  eliminarAsignacionHorario: (
+    id: number
+  ): Promise<{ success: boolean; data?: { message?: string } }> => {
+    return apiClient.delete<{ success: boolean; data?: { message?: string } }>(
+      `/asignacion-horario/${id}`
+    )
+  },
+
+  getTipoAsignacionHorarioAdministrativo: (
+    page: number,
+    pageSize: number
+  ): Promise<{ success: boolean; data: TipoAsignacionAdministrativo[] }> => {
+    return apiClient.get<{ success: boolean; data: TipoAsignacionAdministrativo[] }>(
+      `/tipo-asignacion-horario-administrativo?page=${page}&pageSize=${pageSize}`
+    )
   },
 }

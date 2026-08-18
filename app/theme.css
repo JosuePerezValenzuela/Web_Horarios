@@ -4,3 +4,11 @@
    usadas dentro del bundle compilado de @umss/estilos-base (dist/index.js)
    no se generan y sus componentes se renderizan sin estilos. */
 @source "../node_modules/@umss/estilos-base/dist";
+
+:root {
+  --theme-dark-modifier: 0;
+}
+
+.dark {
+  --theme-dark-modifier: 1;
+}

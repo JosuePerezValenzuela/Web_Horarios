@@ -90,17 +90,23 @@ function extractSchedules(payload: DocenteHorariosApiResponse): DocenteHorarioAp
       toStringValue(group.id, "") ||
       `${toStringValue(group.materia, "Sin materia")}::${toStringValue(group.grupo, "Sin grupo")}`
 
-    return toArray(group.horarios).map((schedule) => ({
-      ...schedule,
-      persona_grupo_id: schedule.persona_grupo_id ?? group.persona_grupo_id,
-      grupo_id: schedule.grupo_id ?? schedule.grupoId ?? group.id ?? group.groupKey ?? groupKey,
-      grupoId: schedule.grupoId ?? schedule.grupo_id ?? group.id ?? group.groupKey ?? groupKey,
-      grupo: schedule.grupo ?? schedule.grupoNombre ?? group.grupo,
-      grupoNombre: schedule.grupoNombre ?? schedule.grupo ?? group.grupo,
-      materia: schedule.materia ?? schedule.asignatura ?? group.materia,
-      carreras: schedule.carreras ?? group.carreras,
-      materia_codigo: schedule.materia_codigo ?? group.materia_codigo,
-    }))
+    return toArray(group.horarios).map(
+      (schedule) =>
+        ({
+          ...schedule,
+          persona_grupo_id: schedule.persona_grupo_id ?? group.persona_grupo_id,
+          grupo_id: schedule.grupo_id ?? schedule.grupoId ?? group.id ?? group.groupKey ?? groupKey,
+          grupoId: schedule.grupoId ?? schedule.grupo_id ?? group.id ?? group.groupKey ?? groupKey,
+          grupo: schedule.grupo ?? schedule.grupoNombre ?? group.grupo,
+          grupoNombre: schedule.grupoNombre ?? schedule.grupo ?? group.grupo,
+          materia:
+            schedule.materia ??
+            (typeof schedule.asignatura === "string" ? schedule.asignatura : undefined) ??
+            group.materia,
+          carreras: schedule.carreras ?? group.carreras,
+          materia_codigo: schedule.materia_codigo ?? group.materia_codigo,
+        }) as DocenteHorarioApiSchedule
+    )
   })
 
   const baseSource =
@@ -263,8 +269,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
   const materiaCodigo = toStringValue(
     (typeof schedule.asignatura === "object" ? schedule.asignatura?.codigo : undefined) ??
       schedule.materiaRef?.codigo ??
-      schedule.materia_codigo ??
-      schedule.materiaCodigo,
+      schedule.materia_codigo,
     ""
   )
   const grupo = toStringValue(
@@ -329,6 +334,7 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     fechaFinRaw,
     docente: docente || undefined,
     materiaCodigo: materiaCodigo || undefined,
+    ambienteCodigo: cleanAula || undefined,
   }
 }
 
@@ -385,9 +391,14 @@ function mergeGroupsWithApi(
       carrerasLabel:
         normalizeCarreras(group.carreras).join(", ") || existing?.carrerasLabel || "Sin carreras",
       countHorarios: Math.max(existing?.countHorarios ?? 0, countHorarios),
-      estado:
-        Math.max(existing?.countHorarios ?? 0, countHorarios) > 0 ? "Con Horarios" : "Sin Horarios",
+      estado: toStringValue(
+        group.estado,
+        Math.max(existing?.countHorarios ?? 0, countHorarios) > 0 ? "Con Horarios" : "Sin Horarios"
+      ),
       colorIndex: existing?.colorIndex ?? 0,
+      carga_horaria: toNumber(group.carga_horaria),
+      carga_horaria_grupo: toNumber(group.carga_horaria_grupo),
+      minutos_carga_horaria_especifico: toNumber(group.minutos_carga_horaria_especifico),
     })
   })
 
@@ -398,7 +409,14 @@ function assignStableColorIndices(
   groups: GroupSummary[],
   schedules: NormalizedSchedule[]
 ): { groups: GroupSummary[]; schedules: NormalizedSchedule[] } {
-  const groupOrder = Array.from(new Set(groups.map((group) => group.groupKey)))
+  // Sort groups alphabetically by materia and grupo to make order and color index assignments completely deterministic
+  const sortedGroups = [...groups].sort((a, b) => {
+    const matCompare = a.materia.localeCompare(b.materia, "es", { sensitivity: "base" })
+    if (matCompare !== 0) return matCompare
+    return a.grupo.localeCompare(b.grupo, "es", { numeric: true })
+  })
+
+  const groupOrder = Array.from(new Set(sortedGroups.map((group) => group.groupKey)))
   const colorByGroupKey = new Map<string, number>()
 
   groupOrder.forEach((groupKey, index) => {
@@ -412,7 +430,7 @@ function assignStableColorIndices(
   })
 
   return {
-    groups: groups.map((group) => ({
+    groups: sortedGroups.map((group) => ({
       ...group,
       colorIndex: colorByGroupKey.get(group.groupKey) ?? 0,
     })),

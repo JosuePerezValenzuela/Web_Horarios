@@ -1,6 +1,5 @@
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button, Input, ScrollArea } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
@@ -122,7 +121,7 @@ export function TeacherSchedulePage({
 
             {/* Vista Compacta Toggle */}
             <Button
-              variant={isCompactMode ? "outline" : "ghost"}
+              variant={isCompactMode ? "outline" : "secondary"}
               size="sm"
               onClick={() => setIsCompactMode((v) => !v)}
               className={
@@ -156,8 +155,8 @@ export function TeacherSchedulePage({
         </section>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch">
-        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 lg:h-full lg:max-h-full">
+      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
+        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 lg:h-full lg:max-h-full overflow-hidden">
           <div className="space-y-1.5">
             <Label htmlFor="periodo-horario" className="text-sm font-medium">
               Período (minutos)
@@ -178,30 +177,33 @@ export function TeacherSchedulePage({
               Resumen por grupo
             </p>
 
-            <div className="min-h-0 flex-1 space-y-1 overflow-y-auto pr-1">
-              {loading ? (
-                Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={`skeleton-card-${index + 1}`}
-                    className="h-20 animate-pulse rounded-3xl border border-border bg-muted"
-                  />
-                ))
-              ) : groups.length > 0 ? (
-                groups.map((group) => (
-                  <GroupSummaryCard
-                    key={group.groupKey}
-                    group={group}
-                    onAddClick={onAddClick ? handleAddClick : undefined}
-                    onEditClick={onEditClick ? handleEditClick : undefined}
-                    onDeleteClick={onDeleteClick ? handleDeleteClick : undefined}
-                  />
-                ))
-              ) : (
-                <p className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
-                  Sin grupos disponibles para este docente.
-                </p>
-              )}
-            </div>
+            <ScrollArea className="min-h-0 flex-1 pr-1" data-slot="aside-groups-scroll">
+              <div className="space-y-2.5">
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={`skeleton-card-${index + 1}`}
+                      className="h-20 animate-pulse rounded-3xl border border-border bg-muted"
+                    />
+                  ))
+                ) : groups.length > 0 ? (
+                  groups.map((group) => (
+                    <GroupSummaryCard
+                      key={group.groupKey}
+                      group={group}
+                      schedules={schedules}
+                      onAddClick={onAddClick ? handleAddClick : undefined}
+                      onEditClick={onEditClick ? handleEditClick : undefined}
+                      onDeleteClick={onDeleteClick ? handleDeleteClick : undefined}
+                    />
+                  ))
+                ) : (
+                  <p className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
+                    Sin grupos disponibles para este docente.
+                  </p>
+                )}
+              </div>
+            </ScrollArea>
           </div>
         </aside>
 
@@ -209,7 +211,7 @@ export function TeacherSchedulePage({
           {loading ? (
             <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
-            <div className="min-h-0 flex-1">
+            <ScrollArea className="min-h-0 flex-1" data-slot="main-schedule-scroll">
               <WeeklyScheduleGrid
                 schedules={schedules}
                 rows={rows}
@@ -219,7 +221,7 @@ export function TeacherSchedulePage({
                 adminSchedules={adminSchedules}
                 isCompactMode={isCompactMode}
               />
-            </div>
+            </ScrollArea>
           ) : (
             <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-border bg-muted/10 p-8 text-center shadow-xs">
               <Calendar className="size-12 text-muted-foreground/40 mb-3" />

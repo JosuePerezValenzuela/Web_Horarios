@@ -4,6 +4,7 @@ import { resolveColorToken, resolveAccentColor } from "./color-tokens"
 import type { ScheduleItem } from "./types"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { formatTime } from "./schedule-utils"
+import { Button } from "@umss/estilos-base/components"
 import type { NormalizedSchedule } from "@/features/scheduling/docentes/domain/types"
 import { Calendar, Clock, MapPin, GraduationCap, Award, Edit } from "lucide-react"
 
@@ -126,8 +127,8 @@ export function ScheduleCard({
     BASE_CARD_CLASSES,
     mode === "peek" ? PEEK_CLASSES : mode === "compact" ? COMPACT_CLASSES : FULL_CLASSES,
     isActive
-      ? "ring-2 ring-ring ring-offset-1 shadow-md -translate-y-[1px] border-primary/50"
-      : "focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
+      ? "ring-2 ring-primary ring-offset-1 shadow-md -translate-y-[1px]"
+      : "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1",
     (isClickable || mode === "full") && "cursor-pointer",
     className
   )
@@ -326,18 +327,17 @@ export function ScheduleCard({
         {isClickable && (
           <>
             <div className="h-px bg-border/60" />
-            <button
-              type="button"
+            <Button
               onClick={(e) => {
                 e.stopPropagation()
                 setIsOpen(false)
                 onClick(item)
               }}
-              className="umss-btn-primary flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-semibold cursor-pointer w-full transition"
+              className="rounded-xl w-full text-white"
             >
               <Edit className="size-3.5" />
               <span>Editar Horario</span>
-            </button>
+            </Button>
           </>
         )}
       </PopoverContent>

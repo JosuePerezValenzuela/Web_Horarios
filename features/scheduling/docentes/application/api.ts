@@ -14,6 +14,7 @@ import type {
   PatchAsignacionHorarioRequest,
   PatchAsignacionHorarioResponse,
   NormalizedSchedule,
+  TipoAsignacionAdministrativo,
 } from "../domain/types"
 
 export interface Facultad {
@@ -174,4 +175,17 @@ export async function patchAsignacionHorario(
   payload: PatchAsignacionHorarioRequest
 ): Promise<PatchAsignacionHorarioResponse> {
   return horariosApi.patchAsignacionHorario(id, payload)
+}
+
+export async function eliminarAsignacionHorario(
+  id: number
+): Promise<{ success: boolean; data?: { message?: string } }> {
+  return horariosApi.eliminarAsignacionHorario(id)
+}
+
+export async function fetchTipoAsignacionHorarioAdministrativo(
+  page: number,
+  pageSize: number
+): Promise<{ success: boolean; data: TipoAsignacionAdministrativo[] }> {
+  return horariosApi.getTipoAsignacionHorarioAdministrativo(page, pageSize)
 }

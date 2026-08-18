@@ -1,17 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { toast } from "sonner"
+import { useState, useEffect, useMemo } from "react"
+
+import { toast } from "@umss/estilos-base/components"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, AlertCircle, Pencil, HelpCircle } from "lucide-react"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog"
+  CalendarIcon,
+  AlertCircle,
+  Pencil,
+  HelpCircle,
+  Trash2,
+  ChevronDown,
+  ClipboardList,
+} from "lucide-react"
+import { UmssModal, Button, Checkbox } from "@umss/estilos-base/components"
 import {
   Table,
   TableHeader,
@@ -21,10 +24,9 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
 import {
   Select,
   SelectContent,
@@ -39,12 +41,25 @@ import type {
   HorarioCatalogoItem,
   CrearAsignacionHorarioRequest,
   PatchAsignacionHorarioRequest,
+  TipoAsignacionAdministrativo,
 } from "../domain/types"
 import {
   fetchHorarioCatalogo,
   crearAsignacionHorario,
   patchAsignacionHorario,
+  fetchTipoAsignacionHorarioAdministrativo,
+  eliminarAsignacionHorario,
 } from "../application/api"
+
+const DIA_LABELS: Record<number, string> = {
+  1: "Lunes",
+  2: "Martes",
+  3: "Miércoles",
+  4: "Jueves",
+  5: "Viernes",
+  6: "Sábado",
+  7: "Domingo",
+}
 
 interface AdminSchedulesModalProps {
   isOpen: boolean
@@ -89,10 +104,15 @@ export function AdminSchedulesModal({
   const [fechaInicio, setFechaInicio] = useState<Date>(new Date())
   const [fechaFin, setFechaFin] = useState<Date | undefined>(undefined)
   const [permiteClases, setPermiteClases] = useState(false)
+  const [selectedDias, setSelectedDias] = useState<number[]>([]) // Array of days (1-5)
+  const [selectedTipoId, setSelectedTipoId] = useState<number | "">("")
   const [catalogList, setCatalogList] = useState<HorarioCatalogoItem[]>([])
+  const [tipoList, setTipoList] = useState<TipoAsignacionAdministrativo[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(false)
+  const [loadingTipos, setLoadingTipos] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [overlapError, setOverlapError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
   // ── Edit-mode state ──────────────────────────────────────────────────────────
   const [isEditMode, setIsEditMode] = useState(false)
@@ -116,6 +136,32 @@ export function AdminSchedulesModal({
   })
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
+  // Get dynamic workload based on selected hours catalog match
+  const selectedCatalogItem = useMemo(() => {
+    if (!selectedCatalogId) return null
+    return catalogList.find((c) => c.id === Number(selectedCatalogId)) || null
+  }, [selectedCatalogId, catalogList])
+
+  // Handle Dia multi-checkbox logic
+  const handleDiaCheckboxChange = (dayNum: number, checked: boolean) => {
+    if (dayNum === 0) {
+      // Toggle All (1-5)
+      if (checked) {
+        setSelectedDias([1, 2, 3, 4, 5])
+      } else {
+        setSelectedDias([])
+      }
+    } else {
+      if (checked) {
+        setSelectedDias((prev) => [...prev, dayNum])
+      } else {
+        setSelectedDias((prev) => prev.filter((d) => d !== dayNum))
+      }
+    }
+  }
+
+  const isAllDaysSelected = selectedDias.length === 5
+
   const resetForm = () => {
     setSelectedCatalogId("")
     setSelectedStart("")
@@ -123,6 +169,8 @@ export function AdminSchedulesModal({
     setFechaInicio(new Date())
     setFechaFin(undefined)
     setPermiteClases(false)
+    setSelectedDias([])
+    setSelectedTipoId("")
     setOverlapError(null)
   }
 
@@ -207,31 +255,62 @@ export function AdminSchedulesModal({
   }
 
   // ── Effects ──────────────────────────────────────────────────────────────────
-  // Load catalog when form opens
+  // Reset states when modal closes or opens
   useEffect(() => {
-    if (isFormOpen && catalogList.length === 0) {
-      const load = async () => {
-        setLoadingCatalog(true)
-        try {
-          const res = await fetchHorarioCatalogo(1, 100)
-          if (res.success && res.data) setCatalogList(res.data)
-          else toast.error("Error al cargar el catálogo de horarios")
-        } catch (err) {
-          console.error(err)
-          toast.error("Error al cargar el catálogo de horarios")
-        } finally {
-          setLoadingCatalog(false)
-        }
-      }
-      load()
+    if (!isOpen) {
+      setIsFormOpen(false)
+      setIsEditMode(false)
+      resetForm()
     }
-  }, [isFormOpen, catalogList.length])
+  }, [isOpen])
+
+  // Load catalogs when form opens
+  useEffect(() => {
+    if (isFormOpen) {
+      if (catalogList.length === 0) {
+        const loadCatalog = async () => {
+          setLoadingCatalog(true)
+          try {
+            const res = await fetchHorarioCatalogo(1, 100)
+            if (res.success && res.data) setCatalogList(res.data)
+            else toast.error("Error al cargar el catálogo de horarios")
+          } catch (err) {
+            console.error(err)
+            toast.error("Error al cargar el catálogo de horarios")
+          } finally {
+            setLoadingCatalog(false)
+          }
+        }
+        loadCatalog()
+      }
+      if (tipoList.length === 0) {
+        const loadTipos = async () => {
+          setLoadingTipos(true)
+          try {
+            const res = await fetchTipoAsignacionHorarioAdministrativo(1, 100)
+            if (res.success && res.data) {
+              // Only active types can be selected for new assignments
+              setTipoList(res.data.filter((t) => t.activo))
+            } else {
+              toast.error("Error al cargar los tipos de asignación")
+            }
+          } catch (err) {
+            console.error(err)
+            toast.error("Error al cargar los tipos de asignación")
+          } finally {
+            setLoadingTipos(false)
+          }
+        }
+        loadTipos()
+      }
+    }
+  }, [isFormOpen, catalogList.length, tipoList.length])
 
   // Real-time overlap validation
   useEffect(() => {
     let computed: string | null = null
 
-    if (selectedCatalogId) {
+    if (selectedCatalogId && selectedDias.length > 0) {
       const cat = catalogList.find((c) => c.id === Number(selectedCatalogId))
       if (cat) {
         const startNewTime = timeToMinutes(cat.hora_entrada)
@@ -245,11 +324,12 @@ export function AdminSchedulesModal({
           for (const item of schedules) {
             const endExisting = item.fecha_fin ?? "9999-12-31"
             const datesOverlap = startNewDate <= endExisting && endNewDate >= item.fecha_inicio
-            if (datesOverlap) {
+            const matchesDay = selectedDias.includes(item.dia)
+            if (datesOverlap && matchesDay) {
               const startET = timeToMinutes(item.horario_catalogo.hora_entrada)
               const endET = timeToMinutes(item.horario_catalogo.hora_salida)
               if (startNewTime < endET && startET < endNewTime) {
-                computed = `El horario se solapa con '${item.horario_catalogo.descripcion}' (${formatTime(item.horario_catalogo.hora_entrada)} - ${formatTime(item.horario_catalogo.hora_salida)}) en el período ${formatDate(item.fecha_inicio)} a ${formatDate(item.fecha_fin, true)}.`
+                computed = `El horario se solapa el día ${DIA_LABELS[item.dia]} con '${item.horario_catalogo.descripcion}' (${formatTime(item.horario_catalogo.hora_entrada)} - ${formatTime(item.horario_catalogo.hora_salida)}) en el período ${formatDate(item.fecha_inicio)} a ${formatDate(item.fecha_fin, true)}.`
                 break
               }
             }
@@ -262,35 +342,81 @@ export function AdminSchedulesModal({
       const t = setTimeout(() => setOverlapError(computed), 0)
       return () => clearTimeout(t)
     }
-  }, [selectedCatalogId, fechaInicio, fechaFin, catalogList, schedules, overlapError])
+  }, [selectedCatalogId, fechaInicio, fechaFin, catalogList, schedules, overlapError, selectedDias])
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!docente || !selectedCatalogId || overlapError) return
+    if (
+      !docente ||
+      !selectedCatalogId ||
+      selectedDias.length === 0 ||
+      !selectedTipoId ||
+      overlapError
+    ) {
+      toast.error("Complete todos los campos requeridos")
+      return
+    }
     setIsSubmitting(true)
+    let successCount = 0
+    const failedDays: string[] = []
     try {
-      const payload: CrearAsignacionHorarioRequest = {
-        persona_codigo: docente.codigo,
-        horario_catalogo_id: Number(selectedCatalogId),
-        fecha_inicio: format(fechaInicio, "yyyy-MM-dd"),
-        fecha_fin: fechaFin ? format(fechaFin, "yyyy-MM-dd") : null,
-        permite_clases: permiteClases,
-      }
-      const res = await crearAsignacionHorario(payload)
-      if (res.success) {
-        toast.success(res.message || "Horario administrativo asignado con éxito")
+      // Sequence batch create for all selected days
+      await Promise.all(
+        selectedDias.map(async (d) => {
+          const payload: CrearAsignacionHorarioRequest = {
+            persona_codigo: docente.codigo,
+            horario_catalogo_id: Number(selectedCatalogId),
+            fecha_inicio: format(fechaInicio, "yyyy-MM-dd"),
+            fecha_fin: fechaFin ? format(fechaFin, "yyyy-MM-dd") : null,
+            permite_clases: permiteClases,
+            dia: d,
+            tipo_asignacion_horario_administrativo_id: Number(selectedTipoId),
+          }
+          const res = await crearAsignacionHorario(payload)
+          if (res.success) {
+            successCount++
+          } else {
+            failedDays.push(DIA_LABELS[d] || `Día ${d}`)
+          }
+        })
+      )
+
+      if (successCount > 0) {
+        toast.success(`Asignados correctamente ${successCount} horario(s) administrativo(s).`)
+        if (failedDays.length > 0) {
+          toast.error(`No se pudieron asignar los días: ${failedDays.join(", ")}`)
+        }
         resetForm()
         setIsFormOpen(false)
         onAssigned?.()
       } else {
-        toast.error(res.message || "Error al asignar el horario administrativo")
+        toast.error("Error al asignar los horarios administrativos.")
       }
     } catch (err) {
       console.error(err)
-      toast.error("Error inesperado al asignar el horario administrativo")
+      toast.error("Error inesperado al asignar los horarios administrativos")
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleDelete = async (id: number) => {
+    if (isDeleting !== null) return
+    setIsDeleting(id)
+    try {
+      const res = await eliminarAsignacionHorario(id)
+      if (res.success) {
+        toast.success("Asignación de horario eliminada correctamente")
+        onAssigned?.()
+      } else {
+        toast.error("Error al eliminar la asignación de horario")
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error("Error inesperado al eliminar la asignación")
+    } finally {
+      setIsDeleting(null)
     }
   }
 
@@ -345,187 +471,342 @@ export function AdminSchedulesModal({
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-3xl gap-4 overflow-hidden rounded-4xl bg-popover p-6 shadow-xl">
-        {/* ── Header ── */}
-        <DialogHeader className="flex flex-col gap-1 pb-1">
-          <DialogTitle className="font-roboto text-xl font-bold text-foreground">
-            Horario Administrativo
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground pb-2">
-            Listado de horarios activos.
-          </DialogDescription>
+    <UmssModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Horario Administrativo"
+      size="xl"
+      footer={
+        <div className="flex justify-end gap-2">
+          {isEditMode ? (
+            <>
+              <Button
+                variant="cancel"
+                onClick={cancelEditMode}
+                disabled={isSaving}
+                className="rounded-2xl text-sm"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSaveEdits}
+                disabled={isSaving}
+                className="rounded-2xl text-white"
+              >
+                {isSaving ? "Guardando..." : "Guardar Cambios"}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="outline"
+                onClick={enterEditMode}
+                disabled={sortedSchedules.length === 0}
+                className="rounded-2xl gap-1.5"
+              >
+                <Pencil className="size-3.5 text-muted-foreground" />
+                Editar Fechas
+              </Button>
+              <Button variant="outline" onClick={onClose} className="rounded-2xl">
+                Cerrar
+              </Button>
+            </>
+          )}
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {/* ── Subtitle and Docente Info ── */}
+        <div className="space-y-2">
+          <p className="text-sm text-muted-foreground">
+            Listado de horarios activos y control de asignaciones administrativas del docente.
+          </p>
           {docente && (
             <div className="text-xs text-muted-foreground pt-2 border-t border-border/40">
               Docente: {docente.nombres} · CI: {docente.documento || "—"} · SIS: {docente.codigo}
             </div>
           )}
-        </DialogHeader>
+        </div>
 
-        {/* ── Assign form (animated collapse) ── */}
+        {/* ── Collapsible form toggle button ── */}
+        {!isEditMode && (
+          <button
+            type="button"
+            onClick={() => setIsFormOpen((prev) => !prev)}
+            className="flex items-center justify-between w-full p-3.5 bg-muted/40 hover:bg-muted/80 rounded-2xl border border-border/60 transition-all font-roboto text-xs font-semibold text-foreground select-none shrink-0"
+          >
+            <span className="flex items-center gap-2">
+              <ClipboardList className="size-4 text-primary" />
+              {isFormOpen
+                ? "Ocultar Formulario de Registro"
+                : "Crear / Asignar Nuevo Horario Administrativo"}
+            </span>
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform duration-300",
+                isFormOpen && "rotate-180"
+              )}
+            />
+          </button>
+        )}
+
+        {/* ── Assign form (collapsible with transition) ── */}
         <div
           className={cn(
-            "grid transition-all duration-500 ease-in-out overflow-hidden",
-            isFormOpen
-              ? "grid-rows-[1fr] opacity-100 mb-3"
-              : "grid-rows-[0fr] opacity-0 mb-0 pointer-events-none"
+            "grid transition-all duration-300 ease-in-out overflow-hidden shrink-0",
+            isFormOpen && !isEditMode
+              ? "grid-rows-[1fr] opacity-100"
+              : "grid-rows-[0fr] opacity-0 pointer-events-none"
           )}
         >
           <div className="min-h-0">
             <form
               onSubmit={handleSubmit}
-              className="p-4 rounded-3xl border border-border bg-muted/20 space-y-4"
+              className="p-5 rounded-3xl border border-border bg-muted/10 space-y-4 mb-1"
             >
-              <h4 className="text-sm font-semibold text-foreground font-roboto">
-                Nueva Asignación de Horario
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {loadingCatalog ? (
-                  <div className="text-xs text-muted-foreground sm:col-span-2 py-2">
-                    Cargando catálogo de horarios...
-                  </div>
-                ) : (
-                  <>
-                    {/* Hora inicio */}
-                    <div className="space-y-1.5 flex flex-col">
-                      <label className="text-xs font-semibold text-foreground/80 font-roboto">
-                        Hora de Inicio <span className="text-red-500">*</span>
-                      </label>
-                      <Select value={selectedStart} onValueChange={handleStartChange}>
-                        <SelectTrigger className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground">
-                          <SelectValue placeholder="Seleccione hora inicio..." />
-                        </SelectTrigger>
-                        <SelectContent position="popper" align="start">
-                          {availableStartTimes.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Hora fin */}
-                    <div className="space-y-1.5 flex flex-col">
-                      <label className="text-xs font-semibold text-foreground/80 font-roboto">
-                        Hora de Fin <span className="text-red-500">*</span>
-                      </label>
-                      <Select value={selectedEnd} onValueChange={handleEndChange}>
-                        <SelectTrigger className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground">
-                          <SelectValue placeholder="Seleccione hora fin..." />
-                        </SelectTrigger>
-                        <SelectContent position="popper" align="start">
-                          {availableEndTimes.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {t}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </>
-                )}
-
-                {/* Fecha inicio */}
+              <div className="space-y-4">
+                {/* 1. Tipo de Asignación */}
                 <div className="space-y-1.5 flex flex-col">
-                  <label className="text-xs font-semibold text-foreground/80 font-roboto">
-                    Fecha de Inicio <span className="text-red-500">*</span>
+                  <label
+                    htmlFor="select-tipo-admin"
+                    className="text-xs font-semibold text-foreground/80 font-roboto"
+                  >
+                    Tipo de Asignación <span className="text-red-500">*</span>
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                  {loadingTipos ? (
+                    <div className="text-xs text-muted-foreground py-3">Cargando tipos...</div>
+                  ) : (
+                    <Select
+                      value={selectedTipoId.toString()}
+                      onValueChange={(val) => setSelectedTipoId(Number(val))}
+                    >
+                      <SelectTrigger
+                        id="select-tipo-admin"
+                        className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
-                        {fechaInicio ? format(fechaInicio, "dd-MM-yyyy") : "Seleccionar fecha"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={fechaInicio}
-                        onSelect={(date) => date && setFechaInicio(date)}
-                        locale={es}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
+                        <SelectValue placeholder="Seleccione tipo de asignación administrativa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tipoList.map((t) => (
+                          <SelectItem key={t.id} value={t.id.toString()}>
+                            {t.descripcion}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
 
-                {/* Fecha fin */}
-                <div className="space-y-1.5 flex flex-col">
+                {/* 2. Día de la semana checkboxes */}
+                <div className="space-y-2">
                   <label className="text-xs font-semibold text-foreground/80 font-roboto">
-                    Fecha de Fin{" "}
-                    <span className="text-muted-foreground font-normal">(Opcional)</span>
+                    Días a Asignar <span className="text-red-500">*</span>
                   </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
-                        {fechaFin ? format(fechaFin, "dd-MM-yyyy") : "Sin límite"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={fechaFin}
-                        onSelect={(date) => setFechaFin(date)}
-                        locale={es}
-                        initialFocus
+                  <div className="flex flex-wrap gap-x-5 gap-y-2 p-3 bg-white dark:bg-[#1a1a1a] rounded-xl border border-border">
+                    <div className="flex items-center gap-2 select-none border-r border-border pr-5 mr-1">
+                      <Checkbox
+                        id="day-all"
+                        checked={isAllDaysSelected}
+                        onCheckedChange={(checked) => handleDiaCheckboxChange(0, !!checked)}
                       />
-                    </PopoverContent>
-                  </Popover>
+                      <Label
+                        htmlFor="day-all"
+                        className="text-xs font-bold text-foreground cursor-pointer font-roboto"
+                      >
+                        Seleccionar todos
+                      </Label>
+                    </div>
+
+                    {[
+                      { val: 1, label: "Lunes" },
+                      { val: 2, label: "Martes" },
+                      { val: 3, label: "Miércoles" },
+                      { val: 4, label: "Jueves" },
+                      { val: 5, label: "Viernes" },
+                    ].map((d) => {
+                      const isChecked = selectedDias.includes(d.val)
+                      return (
+                        <div key={d.val} className="flex items-center gap-2 select-none">
+                          <Checkbox
+                            id={`day-${d.val}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => handleDiaCheckboxChange(d.val, !!checked)}
+                          />
+                          <Label
+                            htmlFor={`day-${d.val}`}
+                            className="text-xs text-foreground/85 cursor-pointer font-roboto"
+                          >
+                            {d.label}
+                          </Label>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* 3. Catálogo de Horas */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {loadingCatalog ? (
+                    <div className="text-xs text-muted-foreground sm:col-span-2 py-2">
+                      Cargando catálogo de horarios...
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1.5 flex flex-col">
+                        <label
+                          htmlFor="select-inicio-admin"
+                          className="text-xs font-semibold text-foreground/80 font-roboto"
+                        >
+                          Hora de Inicio <span className="text-red-500">*</span>
+                        </label>
+                        <Select value={selectedStart} onValueChange={handleStartChange}>
+                          <SelectTrigger
+                            id="select-inicio-admin"
+                            className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                          >
+                            <SelectValue placeholder="Seleccione hora inicio..." />
+                          </SelectTrigger>
+                          <SelectContent position="popper" align="start">
+                            {availableStartTimes.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5 flex flex-col">
+                        <label
+                          htmlFor="select-fin-admin"
+                          className="text-xs font-semibold text-foreground/80 font-roboto"
+                        >
+                          Hora de Fin <span className="text-red-500">*</span>
+                        </label>
+                        <Select value={selectedEnd} onValueChange={handleEndChange}>
+                          <SelectTrigger
+                            id="select-fin-admin"
+                            className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                          >
+                            <SelectValue placeholder="Seleccione hora fin..." />
+                          </SelectTrigger>
+                          <SelectContent position="popper" align="start">
+                            {availableEndTimes.map((t) => (
+                              <SelectItem key={t} value={t}>
+                                {t}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* dynamic load info collapsible transition */}
+                <div
+                  className={cn(
+                    "grid transition-all duration-350 ease-out overflow-hidden",
+                    selectedCatalogItem
+                      ? "grid-rows-[1fr] opacity-100 mt-2"
+                      : "grid-rows-[0fr] opacity-0"
+                  )}
+                >
+                  <div className="min-h-0">
+                    {selectedCatalogItem && (
+                      <div className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10 text-xs text-blue-700 dark:text-blue-400">
+                        <span className="font-bold font-roboto">
+                          Carga Horaria Diaria del bloque:
+                        </span>
+                        <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-none font-bold text-xs">
+                          {selectedCatalogItem.carga_horaria_diaria} hrs / día
+                        </Badge>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Fechas (Vigencia) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5 flex flex-col">
+                    <span className="text-xs font-semibold text-foreground/80 font-roboto">
+                      Fecha de Inicio <span className="text-red-500">*</span>
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                          {fechaInicio ? format(fechaInicio, "dd-MM-yyyy") : "Seleccionar fecha"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={fechaInicio}
+                          onSelect={(date) => date && setFechaInicio(date)}
+                          locale={es}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-1.5 flex flex-col">
+                    <span className="text-xs font-semibold text-foreground/80 font-roboto">
+                      Fecha de Fin{" "}
+                      <span className="text-muted-foreground font-normal">(Opcional)</span>
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                          {fechaFin ? format(fechaFin, "dd-MM-yyyy") : "Sin límite"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={fechaFin}
+                          onSelect={(date) => setFechaFin(date)}
+                          locale={es}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
 
                 {/* Permite clases checkbox */}
-                <div className="sm:col-span-2 flex items-center gap-2 py-1 select-none">
+                <div className="flex items-center gap-2 py-1 select-none">
                   <Checkbox
                     id="permite-clases"
                     checked={permiteClases}
                     onCheckedChange={(checked) => setPermiteClases(!!checked)}
                   />
-                  <label
+                  <Label
                     htmlFor="permite-clases"
                     className="text-xs font-semibold text-foreground/80 cursor-pointer font-roboto flex items-center gap-1"
                   >
                     Permitir dictar clases en este horario administrativo
-                  </label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className="text-muted-foreground hover:text-foreground outline-none transition-colors"
-                      >
-                        <HelpCircle className="size-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-72 p-3 text-xs leading-relaxed bg-popover rounded-2xl shadow-lg border border-border">
-                      <p className="font-semibold text-foreground mb-1 font-roboto">
-                        Habilitar compatibilidad de clases
-                      </p>
-                      <p className="text-muted-foreground">
-                        Permite registrar clases regulares simultáneas al docente dentro de este
-                        mismo bloque de horario asignado para labores administrativas.
-                      </p>
-                    </PopoverContent>
-                  </Popover>
+                  </Label>
                 </div>
 
-                {/* Error — above action buttons */}
+                {/* Error */}
                 {overlapError && (
-                  <div className="sm:col-span-2 p-3 rounded-2xl bg-red-500/10 border border-red-200/50 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
+                  <div className="p-3 rounded-2xl bg-red-500/10 border border-red-200/50 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
                     <AlertCircle className="size-4 shrink-0 mt-0.5" />
                     <span>{overlapError}</span>
                   </div>
                 )}
 
-                {/* Cancelar (left) + Asignar (right) */}
-                <div className="sm:col-span-2 flex items-center justify-end gap-2 pt-1">
+                {/* Cancelar + Registrar Form Button */}
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
                   <Button
                     type="button"
                     variant="outline"
@@ -539,10 +820,16 @@ export function AdminSchedulesModal({
                   </Button>
                   <Button
                     type="submit"
-                    disabled={isSubmitting || !selectedCatalogId || !!overlapError}
-                    className="rounded-2xl bg-umss-btn-blue hover:bg-[#001b3a] text-white px-6"
+                    disabled={
+                      isSubmitting ||
+                      !selectedCatalogId ||
+                      selectedDias.length === 0 ||
+                      !selectedTipoId ||
+                      !!overlapError
+                    }
+                    className="rounded-2xl text-white px-6"
                   >
-                    {isSubmitting ? "Asignando..." : "Asignar"}
+                    {isSubmitting ? "Registrando..." : "Registrar Horario"}
                   </Button>
                 </div>
               </div>
@@ -551,7 +838,7 @@ export function AdminSchedulesModal({
         </div>
 
         {/* ── Table ── */}
-        <div className="my-1 max-h-[400px] overflow-y-auto">
+        <div className="rounded-3xl border border-border">
           {sortedSchedules.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border p-8 text-center bg-muted/10">
               <AlertCircle className="size-10 text-muted-foreground/60 mb-2.5" />
@@ -569,9 +856,12 @@ export function AdminSchedulesModal({
                   <TableHead className="font-semibold text-xs text-foreground/80">
                     Descripción
                   </TableHead>
+                  <TableHead className="font-semibold text-xs text-foreground/80">Tipo</TableHead>
+                  <TableHead className="font-semibold text-xs text-foreground/80">Día</TableHead>
                   <TableHead className="font-semibold text-xs text-foreground/80">
                     Horario
                   </TableHead>
+                  <TableHead className="font-semibold text-xs text-foreground/80">Carga</TableHead>
                   <TableHead className="font-semibold text-xs text-foreground/80">Inicio</TableHead>
                   <TableHead className="font-semibold text-xs text-foreground/80">
                     {isEditMode ? "Fecha Fin" : "Fin"}
@@ -580,20 +870,33 @@ export function AdminSchedulesModal({
                     {isEditMode ? "Dicta Clases" : "Clases"}
                   </TableHead>
                   <TableHead className="font-semibold text-xs text-foreground/80">Estado</TableHead>
+                  <TableHead className="font-semibold text-xs text-foreground/80 w-10 text-center" />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sortedSchedules.map((schedule) => {
                   const isVigente = schedule.fecha_fin === null
                   const checkedValue = editPermiteClases[schedule.id] ?? schedule.permite_clases
+                  const diaLabel = DIA_LABELS[schedule.dia] || `Día ${schedule.dia}`
+                  const cargaDiaria =
+                    schedule.carga_horaria_diaria ??
+                    schedule.horario_catalogo.carga_horaria_diaria ??
+                    0
+                  const tipoLabel =
+                    schedule.tipo_asignacion_horario_administrativo?.descripcion || "Administrativo"
                   return (
                     <TableRow key={schedule.id} className="group">
                       <TableCell className="font-medium text-sm text-foreground">
                         {schedule.horario_catalogo.descripcion || "Actividad Administrativa"}
                       </TableCell>
+                      <TableCell className="text-sm text-foreground">{tipoLabel}</TableCell>
+                      <TableCell className="text-sm text-foreground">{diaLabel}</TableCell>
                       <TableCell className="text-sm text-foreground">
                         {formatTime(schedule.horario_catalogo.hora_entrada)} -{" "}
                         {formatTime(schedule.horario_catalogo.hora_salida)}
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground font-semibold">
+                        {cargaDiaria} hrs
                       </TableCell>
                       <TableCell className="text-sm text-foreground">
                         {formatDate(schedule.fecha_inicio)}
@@ -633,7 +936,7 @@ export function AdminSchedulesModal({
                               {/* Footer keeps height stable and adapts correctly without clipping */}
                               <div className="border-t border-border p-2">
                                 <Button
-                                  variant="ghost"
+                                  variant="cancel"
                                   size="sm"
                                   disabled={!editDates[schedule.id]}
                                   className="w-full text-xs text-muted-foreground disabled:opacity-30"
@@ -687,6 +990,26 @@ export function AdminSchedulesModal({
                           </Badge>
                         )}
                       </TableCell>
+                      <TableCell className="text-center">
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          disabled={isDeleting !== null}
+                          className="h-7 w-7 p-0 hover:bg-red-50 hover:text-destructive dark:hover:bg-red-950/20"
+                          onClick={() => {
+                            if (
+                              window.confirm(
+                                "¿Está seguro de eliminar físicamente esta asignación administrativa? Esta acción es irreversible."
+                              )
+                            ) {
+                              void handleDelete(schedule.id)
+                            }
+                          }}
+                          title="Eliminar asignación físicamente"
+                        >
+                          <Trash2 className="size-3.5 text-white" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -694,55 +1017,7 @@ export function AdminSchedulesModal({
             </Table>
           )}
         </div>
-
-        {/* ── Footer ── */}
-        <div className="flex justify-end gap-2 pt-2">
-          {isEditMode ? (
-            <>
-              <Button
-                variant="ghost"
-                onClick={cancelEditMode}
-                disabled={isSaving}
-                className="rounded-2xl text-sm"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSaveEdits}
-                disabled={isSaving}
-                className="rounded-2xl bg-umss-btn-blue hover:bg-[#001b3a] text-white"
-              >
-                {isSaving ? "Guardando..." : "Guardar Cambios"}
-              </Button>
-            </>
-          ) : (
-            <>
-              {!isFormOpen && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={enterEditMode}
-                    disabled={sortedSchedules.length === 0}
-                    className="rounded-2xl gap-1.5"
-                  >
-                    <Pencil className="size-3.5" />
-                    Editar Fechas
-                  </Button>
-                  <Button
-                    onClick={() => setIsFormOpen(true)}
-                    className="rounded-2xl bg-umss-btn-blue hover:bg-[#001b3a] text-white"
-                  >
-                    Asignar Horario
-                  </Button>
-                </>
-              )}
-              <Button variant="outline" onClick={onClose} className="rounded-2xl">
-                Cerrar
-              </Button>
-            </>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </UmssModal>
   )
 }

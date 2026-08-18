@@ -121,6 +121,11 @@ export interface DocenteHorarioApiGroup {
   carreras?: Array<string | DocenteHorarioApiCarrera> | null
   horarios?: DocenteHorarioApiSchedule[] | null
   materia_codigo?: string | null
+  carga_horaria?: number | string | null
+  carga_horaria_grupo?: number | string | null
+  minutos_carga_horaria_especifico?: number | string | null
+  cantidad_horarios?: number | string | null
+  estado?: string | null
 }
 
 export interface DocenteHorariosApiPayload {
@@ -181,6 +186,7 @@ export interface NormalizedSchedule {
   fechaFinRaw: string | null
   docente?: string
   materiaCodigo?: string
+  ambienteCodigo?: string
 }
 
 export interface GroupSummary {
@@ -190,8 +196,11 @@ export interface GroupSummary {
   grupo: string
   carrerasLabel: string
   countHorarios: number
-  estado: "Con Horarios" | "Sin Horarios"
+  estado: string
   colorIndex: number
+  carga_horaria?: number | null
+  carga_horaria_grupo?: number | null
+  minutos_carga_horaria_especifico?: number | null
 }
 
 export interface NormalizedDocenteHorarios {
@@ -308,6 +317,7 @@ export interface HorarioEntry {
   horaFin: string
   ambienteId?: number
   ambienteLabel?: string
+  ambienteCodigo?: string
   error?: string | null
 }
 
@@ -342,6 +352,7 @@ export interface EditScheduleEntry {
   horaFin: string
   ambienteId?: number
   ambienteLabel?: string
+  ambienteCodigo?: string
   fechaInicio?: string
   fechaFin?: string
   error?: string | null
@@ -479,11 +490,20 @@ export interface TeacherSchedulePageProps {
 
 export interface AdminScheduleRaw {
   id: number
+  dia: number
   horario_catalogo: {
     id: number
     descripcion: string
     hora_entrada: string
     hora_salida: string
+    carga_horaria_diaria?: number
+  }
+  carga_horaria_diaria?: number
+  tipo_asignacion_horario_administrativo?: {
+    id: number
+    codigo: string
+    descripcion: string
+    activo?: boolean
   }
   fecha_inicio: string
   fecha_fin: string | null
@@ -506,6 +526,14 @@ export interface HorarioCatalogoItem {
   descripcion: string
   hora_entrada: string
   hora_salida: string
+  carga_horaria_diaria: number
+}
+
+export interface TipoAsignacionAdministrativo {
+  id: number
+  codigo: string
+  descripcion: string
+  activo: boolean
 }
 
 export interface CrearAsignacionHorarioRequest {
@@ -514,6 +542,8 @@ export interface CrearAsignacionHorarioRequest {
   fecha_inicio: string
   fecha_fin: string | null
   permite_clases: boolean
+  dia: number
+  tipo_asignacion_horario_administrativo_id: number
 }
 
 export interface CrearAsignacionHorarioResponse {

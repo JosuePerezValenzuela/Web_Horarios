@@ -10,7 +10,7 @@ import type {
   InfraBloque,
 } from "../domain/types"
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MultiSelect } from "@/components/ui/multi-select"
@@ -224,6 +224,9 @@ export function AmbienteSearchPopover({
       <DialogContent className="sm:max-w-lg h-auto min-h-80 p-4" showCloseButton={false}>
         <DialogHeader className="pb-2">
           <DialogTitle className="text-sm font-semibold">Seleccionar ambiente</DialogTitle>
+          <DialogDescription className="sr-only">
+            Busca y selecciona un ambiente de infraestructura disponible para asignar al horario.
+          </DialogDescription>
         </DialogHeader>
 
         {/* ═══ Filters ═══ */}
@@ -343,7 +346,10 @@ export function AmbienteSearchPopover({
                         {amb.tiene_solapamiento_propio && (
                           <AlertTriangle className="size-3 shrink-0 text-amber-500" />
                         )}
-                        <span className="truncate font-medium text-foreground">{amb.nombre}</span>
+                        <span className="truncate font-semibold text-foreground">
+                          {amb.codigo ? `[${amb.codigo}] ` : ""}
+                          {amb.nombre}
+                        </span>
                         {amb.tiene_solapamiento_propio && (
                           <span className="shrink-0 text-[10px] text-amber-600 dark:text-amber-400">
                             Mismo docente

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { es } from "date-fns/locale"
 import { Plus, Trash2 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@umss/estilos-base/components"
 
 import type { BulkAssignmentModalProps, EditScheduleEntry, SolapamientoInfo } from "../domain/types"
 import {
@@ -26,8 +26,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+  Button,
+} from "@umss/estilos-base/components"
 import { DatePickerRange } from "@/components/ui/date-picker-range"
 import {
   Dialog,
@@ -499,13 +499,13 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                                   title={
                                     !canSelectAmbiente
                                       ? "Definí rango, día, hora inicio y hora fin para seleccionar ambiente"
-                                      : entry.ambienteLabel
-                                        ? `Cambiar ambiente (${entry.ambienteLabel})`
+                                      : entry.ambienteLabel || entry.ambienteCodigo
+                                        ? `Cambiar ambiente (${entry.ambienteCodigo || entry.ambienteLabel})`
                                         : "Seleccionar ambiente"
                                   }
                                 >
-                                  {entry.ambienteLabel
-                                    ? `Cambiar: ${entry.ambienteLabel}`
+                                  {entry.ambienteLabel || entry.ambienteCodigo
+                                    ? `Cambiar: ${entry.ambienteCodigo || entry.ambienteLabel}`
                                     : "Seleccionar"}
                                 </Button>
                               )
@@ -513,12 +513,12 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                           </td>
                           <td className="px-2 py-2 text-center align-middle">
                             <Button
-                              variant="ghost"
-                              size="icon-xs"
+                              variant="secondary"
+                              size="xs"
                               disabled={mode === "create" && entries.length <= 1}
                               onClick={() => handleRowDeleteClick(entry.id)}
-                              title="Eliminar horario"
-                              className="hover:bg-muted text-muted-foreground hover:text-foreground"
+                              title={mode === "create" ? "Remover de la lista" : "Eliminar horario"}
+                              className="h-7 w-7 p-0"
                             >
                               <Trash2 className="size-3.5" />
                             </Button>
@@ -565,7 +565,8 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
               <AlertDialogHeader>
                 <AlertDialogTitle>Eliminar horario</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta acción eliminará este horario de este grupo.
+                  Esta acción eliminará este horario de este grupo en la base de datos de manera
+                  irreversible.
                 </AlertDialogDescription>
               </AlertDialogHeader>
 
@@ -587,7 +588,9 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
                   </p>
                   <p>
                     <span className="font-semibold">Ambiente:</span>{" "}
-                    {pendingDeleteEntry.ambienteLabel || "Sin ambiente"}
+                    {pendingDeleteEntry.ambienteCodigo ||
+                      pendingDeleteEntry.ambienteLabel ||
+                      "Sin ambiente"}
                   </p>
                 </div>
               )}
@@ -595,7 +598,7 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
               <AlertDialogFooter>
                 <AlertDialogCancel disabled={deletingEntry}>Cancelar</AlertDialogCancel>
                 <AlertDialogAction
-                  variant="destructive"
+                  variant="danger"
                   disabled={deletingEntry}
                   onClick={(event) => {
                     event.preventDefault()

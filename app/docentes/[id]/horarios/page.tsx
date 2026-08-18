@@ -174,29 +174,30 @@ export default function DocenteHorariosRoutePage() {
     <ProtectedRoute>
       <AppLayout
         breadcrumbs={[{ name: "Docentes", href: "/docentes" }, { name: "Horario docente" }]}
-        className="h-[calc(100dvh-4rem)] overflow-hidden px-3 pb-3 md:px-4 md:pb-4 lg:px-5 xl:px-6"
       >
-        <TeacherSchedulePage
-          docente={docente}
-          groups={groups}
-          schedules={schedules}
-          period={period}
-          rows={rows}
-          timeRange={timeRange}
-          loading={loading}
-          error={error}
-          onRetry={() => fetchByDocenteId(docenteId)}
-          onBack={() => router.push("/docentes")}
-          onPeriodChange={setPeriod}
-          docenteId={docenteId}
-          onAddClick={handleAddClick}
-          onEditClick={handleEditClick}
-          onDeleteClick={handleDeleteClick}
-          onEditSchedule={handleEditSchedule}
-          onAssigned={() => fetchByDocenteId(docenteId)}
-          adminSchedules={adminSchedules}
-          rawAdminSchedules={rawAdminSchedules}
-        />
+        <div className="absolute inset-0 p-4 md:p-6 lg:p-8 flex flex-col min-h-0 overflow-hidden">
+          <TeacherSchedulePage
+            docente={docente}
+            groups={groups}
+            schedules={schedules}
+            period={period}
+            rows={rows}
+            timeRange={timeRange}
+            loading={loading}
+            error={error}
+            onRetry={() => fetchByDocenteId(docenteId)}
+            onBack={() => router.push("/docentes")}
+            onPeriodChange={setPeriod}
+            docenteId={docenteId}
+            onAddClick={handleAddClick}
+            onEditClick={handleEditClick}
+            onDeleteClick={handleDeleteClick}
+            onEditSchedule={handleEditSchedule}
+            onAssigned={() => fetchByDocenteId(docenteId)}
+            adminSchedules={adminSchedules}
+            rawAdminSchedules={rawAdminSchedules}
+          />
+        </div>
 
         <AlertDialog
           open={pendingDeleteGroup !== null}
