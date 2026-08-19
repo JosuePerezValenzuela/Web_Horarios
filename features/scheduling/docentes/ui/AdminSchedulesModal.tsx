@@ -474,7 +474,7 @@ export function AdminSchedulesModal({
     <UmssModal
       isOpen={isOpen}
       onClose={onClose}
-      title="Horario Administrativo"
+      title="Horario Academico Administrativo"
       size="xl"
       footer={
         <div className="flex justify-end gap-2">
