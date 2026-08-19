@@ -167,7 +167,7 @@ export default function ReglasAsistenciaPage() {
               <h1 className="umss-title-h1 text-xl md:text-2xl uppercase tracking-wide">
                 Reglas de Asistencia
               </h1>
-              <p className="text-xs text-muted-foreground font-medium">
+              <p className="text-xs text-shadow-secondary-foreground font-medium">
                 Defina los límites de tiempos, tolerancia y faltas para el control de asistencia.
               </p>
             </div>
@@ -179,8 +179,8 @@ export default function ReglasAsistenciaPage() {
             <div className="lg:col-span-5 flex flex-col min-h-0">
               <UmssCard className="flex flex-col border border-border/60 bg-card rounded-2xl shadow-sm overflow-hidden">
                 <UmssCardHeader className="border-b border-border p-4 shrink-0">
-                  <UmssCardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <Clock className="w-4 h-4 text-primary" />
+                  <UmssCardTitle className="text-sm font-bold uppercase tracking-wider text-shadow-secondary-foreground flex items-center gap-1.5">
+                    <Clock className="w-4 h-4 text-shadow-secondary-foreground" />
                     Registrar Nueva Regla
                   </UmssCardTitle>
                   <UmssCardDescription className="text-xs text-muted-foreground">
@@ -191,10 +191,10 @@ export default function ReglasAsistenciaPage() {
 
                 <UmssCardContent className="p-4 space-y-4">
                   {/* Mensaje Llamativo/Explicativo Institucional */}
-                  <div className="flex gap-2.5 p-3 rounded-xl border border-destructive/20 bg-destructive/5 text-red-800 dark:bg-destructive/10 dark:text-red-300">
-                    <AlertCircle className="w-5 h-5 shrink-0 text-umss-brand-red" />
+                  <div className="flex gap-2.5 p-3 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+                    <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-500" />
                     <div className="text-xs space-y-1">
-                      <p className="font-bold uppercase tracking-wide text-umss-brand-red">
+                      <p className="font-bold uppercase tracking-wide text-amber-700 dark:text-amber-400">
                         Importante sobre Asistencias
                       </p>
                       <p className="leading-relaxed">
@@ -377,7 +377,7 @@ export default function ReglasAsistenciaPage() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full h-9 rounded-xl font-bold bg-[#002855] text-white hover:bg-[#001b3a] transition-all cursor-pointer mt-2"
+                      className="w-full h-9 rounded-xl font-bold bg-umss-dark-blue text-white hover:bg-[#001b3a] transition-all cursor-pointer mt-2"
                     >
                       {loading ? "Registrando..." : "REGISTRAR CONFIGURACIÓN"}
                     </Button>
@@ -391,8 +391,8 @@ export default function ReglasAsistenciaPage() {
               <UmssCard className="flex flex-col h-full border border-border/60 bg-card rounded-2xl shadow-sm overflow-hidden min-h-0">
                 <UmssCardHeader className="border-b border-border p-4 shrink-0 flex flex-row items-center justify-between">
                   <div>
-                    <UmssCardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                      <TrendingUp className="w-4 h-4 text-primary" />
+                    <UmssCardTitle className="text-sm font-bold uppercase tracking-wider text-shadow-secondary-foreground flex items-center gap-1.5">
+                      <TrendingUp className="w-4 h-4" />
                       Historial de Reglas
                     </UmssCardTitle>
                     <UmssCardDescription className="text-xs text-muted-foreground">

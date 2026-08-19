@@ -88,7 +88,7 @@ export function GroupSummaryCard({
           </div>
 
           {/* Carga Horaria Calculada */}
-          <span className="font-semibold text-foreground">Carga Horaria Actual:</span>
+          <span className="font-semibold text-foreground">Carga Horaria Semanal:</span>
           <span
             className={cn(
               "text-muted-foreground",
@@ -105,13 +105,6 @@ export function GroupSummaryCard({
                 Carga Horaria Asignada al docente:
               </span>
               <span className="text-muted-foreground">{group.carga_horaria}</span>
-            </>
-          )}
-
-          {group.carga_horaria_grupo !== undefined && group.carga_horaria_grupo !== null && (
-            <>
-              <span className="font-semibold text-foreground">Carga Horaria total del grupo:</span>
-              <span className="text-muted-foreground">{group.carga_horaria_grupo}</span>
             </>
           )}
 
