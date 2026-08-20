@@ -5,16 +5,8 @@ import { useState, useEffect, useMemo } from "react"
 import { toast } from "@umss/estilos-base/components"
 import { format, parseISO } from "date-fns"
 import { es } from "date-fns/locale"
-import {
-  CalendarIcon,
-  AlertCircle,
-  Pencil,
-  HelpCircle,
-  Trash2,
-  ChevronDown,
-  ClipboardList,
-} from "lucide-react"
-import { UmssModal, Button, Checkbox } from "@umss/estilos-base/components"
+import { CalendarIcon, AlertCircle, Pencil, Trash2, ChevronDown, ClipboardList } from "lucide-react"
+import { UmssModal, Button, Checkbox, Badge } from "@umss/estilos-base/components"
 import {
   Table,
   TableHeader,
@@ -23,7 +15,6 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { Label } from "@/components/ui/label"
@@ -122,17 +113,27 @@ export function AdminSchedulesModal({
 
   // ── Sorted list (memoised inline) ────────────────────────────────────────────
   const sortedSchedules = [...schedules].sort((a, b) => {
+    // Primero, agrupar por vigentes (activos) arriba
     const aActive = a.fecha_fin === null
     const bActive = b.fecha_fin === null
 
     if (aActive && !bActive) return -1
     if (!aActive && bActive) return 1
 
-    if (aActive && bActive) {
-      return b.fecha_inicio.localeCompare(a.fecha_inicio)
+    // Si ambos tienen el mismo estado de vigencia, ordenar por día de la semana (Lunes = 1, Domingo = 7)
+    if (a.dia !== b.dia) {
+      return a.dia - b.dia
     }
 
-    return b.fecha_fin!.localeCompare(a.fecha_fin!)
+    // Si coinciden en vigencia y día, ordenar por hora de entrada
+    const aStart = timeToMinutes(a.horario_catalogo.hora_entrada)
+    const bStart = timeToMinutes(b.horario_catalogo.hora_entrada)
+    if (aStart !== bStart) {
+      return aStart - bStart
+    }
+
+    // Como último criterio, ordenar por fecha de inicio descendente
+    return b.fecha_inicio.localeCompare(a.fecha_inicio)
   })
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -499,12 +500,12 @@ export function AdminSchedulesModal({
           ) : (
             <>
               <Button
-                variant="outline"
+                variant="primary"
                 onClick={enterEditMode}
                 disabled={sortedSchedules.length === 0}
-                className="rounded-2xl gap-1.5"
+                className="rounded-2xl gap-1.5 text-white"
               >
-                <Pencil className="size-3.5 text-muted-foreground" />
+                <Pencil className="size-3.5" />
                 Editar Fechas
               </Button>
               <Button variant="outline" onClick={onClose} className="rounded-2xl">
@@ -970,22 +971,28 @@ export function AdminSchedulesModal({
                             />
                           </div>
                         ) : schedule.permite_clases ? (
-                          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20 text-[10px] uppercase px-2 py-0.5">
+                          <Badge variant="brand" className="text-[10px] uppercase px-2 py-0.5">
                             Permitido
                           </Badge>
                         ) : (
-                          <Badge className="bg-muted text-muted-foreground border-border hover:bg-muted text-[10px] uppercase px-2 py-0.5">
+                          <Badge variant="neutral" className="text-[10px] uppercase px-2 py-0.5">
                             Restringido
                           </Badge>
                         )}
                       </TableCell>
                       <TableCell>
                         {isVigente ? (
-                          <Badge className="bg-green-500/10 text-green-700 border-green-200/50 hover:bg-green-500/20 text-[10px] tracking-wide uppercase px-2 py-0.5">
+                          <Badge
+                            variant="brand"
+                            className="text-[10px] tracking-wide uppercase px-2 py-0.5"
+                          >
                             Vigente
                           </Badge>
                         ) : (
-                          <Badge className="bg-muted text-muted-foreground border-border hover:bg-muted text-[10px] tracking-wide uppercase px-2 py-0.5">
+                          <Badge
+                            variant="neutral"
+                            className="text-[10px] tracking-wide uppercase px-2 py-0.5"
+                          >
                             Concluido
                           </Badge>
                         )}

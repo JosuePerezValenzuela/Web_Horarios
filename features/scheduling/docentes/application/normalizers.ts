@@ -604,12 +604,15 @@ export function normalizeAdminSchedules(payload: AdminScheduleApiResponse): Admi
         return null
       }
 
+      // Se mapea el día devuelto por el backend (1 = Lunes, etc.)
+      const dayVal = typeof h.dia === "number" ? h.dia : 1
+
       return {
         id: h.id,
         startMin,
         endMin,
         label: h.horario_catalogo.descripcion || `Turno ${entrada}-${salida}`,
-        days: [1, 2, 3, 4, 5], // default Mon-Fri
+        days: [dayVal],
       }
     })
     .filter((admin): admin is AdminSchedule => admin !== null)

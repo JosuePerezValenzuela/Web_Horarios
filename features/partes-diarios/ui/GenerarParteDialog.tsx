@@ -1,27 +1,7 @@
-"use client"
-
 import { useEffect, useState } from "react"
-import { AlertCircle, Loader2 } from "lucide-react"
-import { toast } from "sonner"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { AlertCircle, Loader2, Check } from "lucide-react"
+import { toast, UmssModal, Button } from "@umss/estilos-base/components"
 import { partesApiClient, PartesApiError } from "@/shared/services/api/partesClient"
-import type { ConfiguracionAsistencia } from "@/features/partes-diarios/domain/types"
 
 interface GenerarParteDialogProps {
   open: boolean
@@ -32,13 +12,16 @@ interface GenerarParteDialogProps {
   onGenerated: () => Promise<void>
 }
 
-const columns: { key: keyof Omit<ConfiguracionAsistencia, "id">; label: string }[] = [
-  { key: "ingresoAnticipadoMinutos", label: "Ingreso Anticipado" },
-  { key: "toleranciaIngresoMinutos", label: "Tolerancia Ingreso" },
-  { key: "limiteFaltaIngresoMinutos", label: "Limite de Ingreso" },
-  { key: "toleranciaSalidaAnticipadaMinutos", label: "Salida anticipada" },
-  { key: "toleranciaSalidaPosteriorMinutos", label: "Salida limite" },
-]
+interface ConfiguracionVigente {
+  id: number
+  ingreso_anticipado_minutos: number
+  tolerancia_ingreso_minutos: number
+  limite_falta_ingreso_minutos: number
+  tolerancia_salida_posterior_minutos: number
+  tolerancia_salida_anticipada_minutos: number
+  valid_from: string
+  valid_to: string | null
+}
 
 export function GenerarParteDialog({
   open,
@@ -48,8 +31,7 @@ export function GenerarParteDialog({
   fecha,
   onGenerated,
 }: GenerarParteDialogProps) {
-  const [configuraciones, setConfiguraciones] = useState<ConfiguracionAsistencia[]>([])
-  const [selectedId, setSelectedId] = useState<number | null>(null)
+  const [configuracion, setConfiguracion] = useState<ConfiguracionVigente | null>(null)
   const [loading, setLoading] = useState(false)
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,34 +39,34 @@ export function GenerarParteDialog({
   useEffect(() => {
     if (!open) return
 
-    const load = async () => {
+    const loadConfig = async () => {
       setLoading(true)
       setError(null)
-      setSelectedId(null)
+      setConfiguracion(null)
       try {
-        const response = await partesApiClient.get<
-          ConfiguracionAsistencia[] | { data: ConfiguracionAsistencia[] }
-        >("/configuraciones-asistencia")
-        setConfiguraciones(Array.isArray(response) ? response : response.data)
+        const url = fecha
+          ? `/configuraciones-asistencia/vigente?fecha=${fecha}`
+          : "/configuraciones-asistencia/vigente"
+        const response = await partesApiClient.get<ConfiguracionVigente>(url)
+        setConfiguracion(response)
       } catch (requestError) {
         const apiError = requestError as PartesApiError
         const message =
           apiError.body && typeof apiError.body === "object" && "message" in apiError.body
             ? String(apiError.body.message)
-            : "No se pudieron cargar las configuraciones de asistencia"
+            : "No hay una configuración de asistencia vigente para la fecha."
         setError(message)
-        toast.error(message)
       } finally {
         setLoading(false)
       }
     }
 
-    void load()
-  }, [open])
+    void loadConfig()
+  }, [open, fecha])
 
   const handleGenerate = async () => {
-    if (!facultadCodigo || selectedId === null) {
-      toast.error("Por favor, seleccione una configuración de asistencia")
+    if (!facultadCodigo) {
+      toast.error("Por favor, seleccione una facultad")
       return
     }
 
@@ -92,7 +74,6 @@ export function GenerarParteDialog({
     const toastId = toast.loading("Generando parte diario...")
     try {
       await partesApiClient.post("/partes-diarios", {
-        configuracion_asistencia_id: selectedId,
         facultadCodigo,
         fecha,
       })
@@ -113,117 +94,97 @@ export function GenerarParteDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[850px] bg-background border border-border">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-            <AlertCircle className="w-5 h-5 text-muted-foreground" />
-            Parte Diario no Encontrado
-          </DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground pt-2">
-            No se generó un parte diario para la facultad{" "}
-            <strong>{facultadNombre || facultadCodigo}</strong> en la fecha seleccionada. ¿Desea
-            proceder a generar el parte diario de asistencia?
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-2 pt-4">
-          <p className="text-xs font-semibold text-foreground">
-            Configuración de asistencia <span className="text-destructive">*</span>
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Seleccione una configuración para generar el parte diario.
-          </p>
-          {loading ? (
-            <div className="flex items-center gap-2 rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" /> Cargando configuraciones disponibles...
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-              {error}
-            </div>
-          ) : configuraciones.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border p-3 text-xs text-muted-foreground">
-              No hay configuraciones de asistencia disponibles para generar el parte.
-            </div>
-          ) : (
-            <div className="max-h-[300px] overflow-y-auto rounded-xl border border-border">
-              <Table>
-                <TableHeader className="sticky top-0 bg-muted">
-                  <TableRow>
-                    <TableHead className="w-20 text-center text-[10px] font-bold">
-                      Seleccionar
-                    </TableHead>
-                    {columns.map((column) => (
-                      <TableHead key={column.key} className="text-center text-[10px] font-bold">
-                        {column.label}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {configuraciones.map((configuracion) => {
-                    const selected = selectedId === configuracion.id
-                    return (
-                      <TableRow
-                        key={configuracion.id}
-                        tabIndex={0}
-                        aria-selected={selected}
-                        onClick={() => setSelectedId(configuracion.id)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault()
-                            setSelectedId(configuracion.id)
-                          }
-                        }}
-                        className={`cursor-pointer transition-colors ${selected ? "bg-primary/10 hover:bg-primary/15" : "hover:bg-muted/60"}`}
-                      >
-                        <TableCell className="text-center">
-                          <input
-                            type="radio"
-                            name="configuracion-asistencia"
-                            value={configuracion.id}
-                            checked={selected}
-                            onChange={() => setSelectedId(configuracion.id)}
-                            onClick={(event) => event.stopPropagation()}
-                            aria-label={`Seleccionar configuración ${configuracion.id}`}
-                            className="h-4 w-4 accent-primary"
-                          />
-                        </TableCell>
-                        {columns.map((column) => (
-                          <TableCell key={column.key} className="text-center font-mono text-xs">
-                            {configuracion[column.key]}
-                          </TableCell>
-                        ))}
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </div>
-
-        <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+    <UmssModal
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="Parte Diario no Encontrado"
+      size="md"
+      footer={
+        <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={generating}>
             Cancelar
           </Button>
           <Button
             onClick={handleGenerate}
-            disabled={
-              generating ||
-              loading ||
-              configuraciones.length === 0 ||
-              selectedId === null ||
-              Boolean(error)
-            }
-            className="umss-btn-primary"
+            disabled={generating || loading || !configuracion || Boolean(error)}
+            className="text-white"
           >
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             {generating ? "Generando..." : "Generar Parte"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      }
+    >
+      <div className="space-y-4">
+        <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+          <AlertCircle className="size-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-500" />
+          <span>
+            No se encontró un parte diario para la facultad{" "}
+            <strong>{facultadNombre || facultadCodigo}</strong> en la fecha seleccionada. ¿Desea
+            proceder a generar el parte diario de asistencia en estado borrador?
+          </span>
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">
+            Configuración de asistencia vigente
+          </h4>
+          <p className="text-xs text-muted-foreground leading-normal">
+            El servidor asociará automáticamente la configuración de asistencia que rige para el día
+            de hoy:
+          </p>
+
+          {loading ? (
+            <div className="flex items-center gap-2 rounded-xl border border-dashed border-border p-4 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span>Consultando configuración de asistencia vigente...</span>
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-3.5 text-xs text-destructive flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          ) : configuracion ? (
+            <div className="rounded-2xl border border-border bg-muted/20 p-4 space-y-3">
+              <div className="flex items-center justify-between text-xs border-b border-border/50 pb-2">
+                <span className="font-semibold text-muted-foreground">Configuración ID:</span>
+                <span className="font-bold font-mono text-foreground">#{configuracion.id}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Ingreso Anticipado:</span>
+                  <span className="font-bold font-mono text-foreground mt-0.5">
+                    {configuracion.ingreso_anticipado_minutos} minutos
+                  </span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-muted-foreground">Tolerancia Ingreso:</span>
+                  <span className="font-bold font-mono text-foreground mt-0.5">
+                    {configuracion.tolerancia_ingreso_minutos} minutos
+                  </span>
+                </div>
+                <div className="flex flex-col col-span-2 border-t border-border/30 pt-2.5">
+                  <span className="text-muted-foreground">Límite de Falta Ingreso:</span>
+                  <span className="font-bold font-mono text-foreground mt-0.5">
+                    {configuracion.limite_falta_ingreso_minutos} minutos
+                  </span>
+                </div>
+                <div className="flex flex-col border-t border-border/30 pt-2.5">
+                  <span className="text-muted-foreground">Tolerancia Salida Posterior:</span>
+                  <span className="font-bold font-mono text-foreground mt-0.5">
+                    {configuracion.tolerancia_salida_posterior_minutos} minutos
+                  </span>
+                </div>
+                <div className="flex flex-col border-t border-border/30 pt-2.5">
+                  <span className="text-muted-foreground">Tolerancia Salida Anticipada:</span>
+                  <span className="font-bold font-mono text-foreground mt-0.5">
+                    {configuracion.tolerancia_salida_anticipada_minutos} minutos
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </UmssModal>
   )
 }

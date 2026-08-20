@@ -11,19 +11,11 @@ import { partesApiClient, PartesApiError } from "@/shared/services/api/partesCli
 import { GenerarParteDialog } from "@/features/partes-diarios/ui/GenerarParteDialog"
 import { PartesReportTable } from "@/features/partes-diarios/ui/PartesReportTable"
 import { PartesReportState } from "@/features/partes-diarios/ui/PartesReportState"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectItem,
-  SelectContent,
-} from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TimePicker } from "@/components/ui/time-picker"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -34,7 +26,15 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { toast } from "sonner"
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectItem,
+  SelectContent,
+} from "@/components/ui/select"
+import { toast, UmssModal, Button } from "@umss/estilos-base/components"
+import { infraService } from "@/shared/services/api/infraClient"
 import {
   Calendar as CalendarIcon,
   Printer,
@@ -72,6 +72,10 @@ interface ReporteDetalle {
   grupo_nombre: string
   aula_codigo: string
   minutos_retraso: number | null
+  minutos_anticipados: number | null
+  falta: boolean
+  hora_ingreso_tickeo?: string | null
+  hora_salida_tickeo?: string | null
   referencia_origen: ReferenciaOrigen | null
   observacion: string | null
   tipo_tickeo: string | null
@@ -88,8 +92,8 @@ interface ParteDiarioReporte {
   fecha: string
   facultad_codigo: string
   estado: string
-  campusNombre?: string
-  facultadNombre: string
+  campusNombre?: string | null
+  facultadNombre?: string | null
   detalles: ReporteDetalle[]
 }
 
@@ -101,23 +105,6 @@ function parseTimeToMinutes(timeStr: string): number {
   const h = Number(parts[0] || 0)
   const m = Number(parts[1] || 0)
   return h * 60 + m
-}
-
-function calculateTotalDelay(
-  scheduledStart: string,
-  actualStart: string,
-  scheduledEnd: string,
-  actualEnd: string
-): number {
-  const schedStartMin = parseTimeToMinutes(scheduledStart)
-  const actualStartMin = parseTimeToMinutes(actualStart)
-  const schedEndMin = parseTimeToMinutes(scheduledEnd)
-  const actualEndMin = parseTimeToMinutes(actualEnd)
-
-  const startDelay = Math.max(0, actualStartMin - schedStartMin)
-  const endDelay = Math.max(0, schedEndMin - actualEndMin)
-
-  return startDelay + endDelay
 }
 
 function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
@@ -188,11 +175,18 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
       const first = group[0]
       const alreadySaved = first.referencia_origen !== null
 
-      const defaultIngreso = first.referencia_origen?.horario?.hora_entrada || first.hora_inicio
-      const defaultSalida = first.referencia_origen?.horario?.hora_salida || first.hora_fin
+      // Usamos el tickeo ingresado o el cálculo devuelto. Si no hay, pre-cargamos con el horario ideal de la clase.
+      const defaultIngreso =
+        first.hora_ingreso_tickeo ||
+        first.referencia_origen?.horario?.hora_entrada ||
+        first.hora_inicio
+      const defaultSalida =
+        first.hora_salida_tickeo || first.referencia_origen?.horario?.hora_salida || first.hora_fin
       const defaultTipoTickeo = first.tipo_tickeo || "presente"
       const defaultObservacion = first.observacion || ""
       const defaultRetraso = first.minutos_retraso
+      const defaultAnticipado = first.minutos_anticipados
+      const defaultFalta = first.falta
 
       const ids = group
         .map((item) => item.detalle_parte_id ?? item.id ?? item.detalle_partes_diarios_id)
@@ -212,9 +206,13 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
           grupo_nombre: item.grupo_nombre,
           aula_codigo: item.aula_codigo,
         })),
+        hora_ingreso_tickeo: first.hora_ingreso_tickeo ?? null,
+        hora_salida_tickeo: first.hora_salida_tickeo ?? null,
         ingreso: defaultIngreso,
         salida: defaultSalida,
         retraso: defaultRetraso,
+        anticipado: defaultAnticipado,
+        falta: defaultFalta,
         tipo_tickeo: defaultTipoTickeo,
         observacion: defaultObservacion,
         originalIngreso: defaultIngreso,
@@ -241,6 +239,14 @@ export default function PartesDiariosPage() {
   const [horaFin, setHoraFin] = useState<string>("")
   const [grupoTipo, setGrupoTipo] = useState<string>("")
   const [tipoDesignacion, setTipoDesignacion] = useState<string>("")
+
+  // Filtros de infraestructura
+  const [selectedCampusId, setSelectedCampusId] = useState<string>("")
+  const [selectedFacultadInfraId, setSelectedFacultadInfraId] = useState<string>("")
+  const [campusList, setCampusList] = useState<{ id: string | number; nombre: string }[]>([])
+  const [facultadesInfraList, setFacultadesInfraList] = useState<
+    { id: string | number; nombre: string }[]
+  >([])
 
   // Estados de carga y datos
   const [loading, setLoading] = useState<boolean>(false)
@@ -269,6 +275,41 @@ export default function PartesDiariosPage() {
   useEffect(() => {
     fetchFacultades()
   }, [fetchFacultades])
+
+  // Cargar catálogos de infraestructura
+  useEffect(() => {
+    const loadInfra = async () => {
+      try {
+        const [cRes, fRes] = await Promise.all([
+          infraService.getCampus(),
+          infraService.getFacultades(),
+        ])
+
+        if (cRes) {
+          if (Array.isArray(cRes)) {
+            setCampusList(cRes)
+          } else if (cRes.data && Array.isArray(cRes.data)) {
+            setCampusList(cRes.data)
+          } else if (cRes.success && Array.isArray(cRes.data)) {
+            setCampusList(cRes.data)
+          }
+        }
+
+        if (fRes) {
+          if (Array.isArray(fRes)) {
+            setFacultadesInfraList(fRes)
+          } else if (fRes.data && Array.isArray(fRes.data)) {
+            setFacultadesInfraList(fRes.data)
+          } else if (fRes.success && Array.isArray(fRes.data)) {
+            setFacultadesInfraList(fRes.data)
+          }
+        }
+      } catch (err) {
+        console.error("Error al cargar catálogos de infraestructura:", err)
+      }
+    }
+    void loadInfra()
+  }, [])
 
   // Cargar catálogo de tipos de tickeo
   useEffect(() => {
@@ -321,15 +362,28 @@ export default function PartesDiariosPage() {
     const [year, month, day] = fecha.split("-")
     const fechaFormateada = `${day}-${month}-${year}`
 
+    const toastId = toast.loading("Cargando parte diario...")
     try {
-      let endpoint = `/partes-diarios/reporte?fecha=${fechaFormateada}&facultadCodigo=${facultad.codigo}`
+      const params = new URLSearchParams()
+      params.append("fecha", fechaFormateada)
+      params.append("facultadCodigo", facultad.codigo)
 
       if (horaInicio && horaFin) {
-        endpoint += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
+        params.append("hora_inicio", horaInicio)
+        params.append("hora_fin", horaFin)
       }
-      if (grupoTipo) endpoint += `&grupo_tipo=${grupoTipo}`
-      if (tipoDesignacion) endpoint += `&tipo_designacion=${tipoDesignacion}`
+      if (grupoTipo) {
+        params.append("grupo_tipo", grupoTipo)
+      }
+      if (tipoDesignacion) {
+        params.append("tipo_designacion", tipoDesignacion)
+      }
+      if (selectedCampusId && selectedFacultadInfraId) {
+        params.append("campus_id", selectedCampusId)
+        params.append("facultad_id", selectedFacultadInfraId)
+      }
 
+      const endpoint = `/partes-diarios/reporte?${params.toString()}`
       const response = await partesApiClient.get<ParteDiarioReporte>(endpoint)
       setReporteData(response)
 
@@ -337,17 +391,19 @@ export default function PartesDiariosPage() {
       const grouped = groupSchedules(response.detalles)
       setGroupedRows(grouped)
 
-      toast.success("Parte diario cargado correctamente")
+      toast.success("Parte diario cargado correctamente", { id: toastId })
     } catch (error) {
       console.error("Error al cargar reporte:", error)
       const apiErr = error as PartesApiError
       if (apiErr.status === 404) {
+        toast.dismiss(toastId)
         setShowGenerateModal(true)
       } else {
         toast.error(
           apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
             ? String(apiErr.body.message)
-            : "Error al consultar el servicio de partes diarios"
+            : "Error al consultar el servicio de partes diarios",
+          { id: toastId }
         )
       }
     } finally {
@@ -379,6 +435,9 @@ export default function PartesDiariosPage() {
       }
       if (grupoTipo) url += `&grupo_tipo=${grupoTipo}`
       if (tipoDesignacion) url += `&tipo_designacion=${tipoDesignacion}`
+      if (selectedCampusId && selectedFacultadInfraId) {
+        url += `&campus_id=${selectedCampusId}&facultad_id=${selectedFacultadInfraId}`
+      }
       url += `&print_columns=${printColumns}`
 
       const res = await fetch(url)
@@ -417,17 +476,6 @@ export default function PartesDiariosPage() {
       prev.map((row) => {
         if (row.key === key) {
           const updatedRow = { ...row, [field]: value }
-          // Recalcular minutos de retraso si cambia el ingreso o la salida
-          if (field === "ingreso" || field === "salida") {
-            const currentIngreso = field === "ingreso" ? value : row.ingreso
-            const currentSalida = field === "salida" ? value : row.salida
-            updatedRow.retraso = calculateTotalDelay(
-              row.hora_inicio,
-              currentIngreso,
-              row.hora_fin,
-              currentSalida
-            )
-          }
           // Desseleccionar "presente" si cambia el ingreso o la salida
           if (
             (field === "ingreso" || field === "salida") &&
@@ -442,31 +490,23 @@ export default function PartesDiariosPage() {
     )
   }, [])
 
-  // Obtener solo las filas que han sido modificadas de sus valores iniciales
-  const getModifiedItems = useCallback(() => {
-    const modified: GroupedRow[] = []
-    groupedRows.forEach((row) => {
-      const isIngresoChanged = row.ingreso !== row.originalIngreso
-      const isSalidaChanged = row.salida !== row.originalSalida
-      const isTickeoChanged = row.tipo_tickeo !== row.originalTipoTickeo
-      const isObsChanged = row.observacion !== row.originalObservacion
-      if (isIngresoChanged || isSalidaChanged || isTickeoChanged || isObsChanged) {
-        modified.push(row)
-      }
-    })
-    return modified
-  }, [groupedRows])
-
-  // Obtener los ítems que realmente se enviarán al endpoint (nuevos o modificados)
+  // Obtener los ítems que realmente se enviarán al endpoint:
+  // 1. Registros que NO se han guardado nunca (alreadySaved === false).
+  // 2. Registros que ya se guardaron (alreadySaved === true) pero sufrieron modificaciones.
   const getItemsToSubmit = useCallback(() => {
-    return groupedRows.filter((row) => {
+    const toSubmit: GroupedRow[] = []
+    groupedRows.forEach((row) => {
       const isModified =
         row.ingreso !== row.originalIngreso ||
         row.salida !== row.originalSalida ||
         row.tipo_tickeo !== row.originalTipoTickeo ||
         row.observacion !== row.originalObservacion
-      return !row.alreadySaved || isModified
+
+      if (!row.alreadySaved || isModified) {
+        toSubmit.push(row)
+      }
     })
+    return toSubmit
   }, [groupedRows])
 
   // Validar y abrir diálogo de guardado
@@ -521,15 +561,16 @@ export default function PartesDiariosPage() {
       row.ids.forEach((detalleId) => {
         itemsPayload.push({
           detalle_id: detalleId,
-          minutos_retraso: row.retraso,
+          hora_ingreso_tickeo: row.ingreso || null,
+          hora_salida_tickeo: row.salida || null,
           observacion: row.observacion || null,
           tipo_tickeo: row.tipo_tickeo || null,
           fuente_registro: "firma_manual",
           referencia_origen: {
             ...referencia_origen,
             horario: {
-              hora_entrada: row.ingreso,
-              hora_salida: row.salida,
+              hora_entrada: row.ingreso || "",
+              hora_salida: row.salida || "",
             },
           },
         })
@@ -626,7 +667,7 @@ export default function PartesDiariosPage() {
         breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Diarios" }]}
         className="pt-0 pb-0 md:pb-0"
       >
-        <div className="flex flex-col h-full gap-4">
+        <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] gap-4 w-full max-w-full overflow-hidden">
           {/* Encabezado */}
           <div className="flex items-center justify-between border-b border-border pb-2">
             <h1 className="text-xl font-roboto font-black text-[#001B47] dark:text-white flex items-center gap-2">
@@ -636,17 +677,13 @@ export default function PartesDiariosPage() {
           </div>
 
           {/* Panel de Filtros */}
-          <Card className="border-border/60 shadow-sm py-3">
+          <Card className="border-border/60 shadow-sm py-3 w-full">
             <CardContent className="p-3">
               <form
                 onSubmit={handleBuscar}
                 className="flex flex-wrap items-end justify-between gap-4 w-full"
               >
-                <div
-                  className={`grid grid-cols-1 sm:grid-cols-2 ${
-                    reporteData ? "md:grid-cols-2" : "md:grid-cols-4"
-                  } gap-3 flex-1 min-w-[300px]`}
-                >
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1 min-w-[300px]">
                   {/* Selector de Facultad */}
                   <div className="space-y-1.5 m-0 p-0">
                     <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
@@ -684,7 +721,7 @@ export default function PartesDiariosPage() {
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50 rounded-xl"
+                          className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50 rounded-xl px-3"
                         >
                           <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
                           {fecha ? (
@@ -710,38 +747,6 @@ export default function PartesDiariosPage() {
                       </PopoverContent>
                     </Popover>
                   </div>
-
-                  {/* Hora Inicio (Ocultar si hay búsqueda) */}
-                  {!reporteData && (
-                    <div className="space-y-1.5 m-0 p-0">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                        Hora Inicio{" "}
-                        <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                      </label>
-                      <TimePicker
-                        value={horaInicio}
-                        onChange={setHoraInicio}
-                        placeholder="00:00"
-                        className="rounded-xl h-9"
-                      />
-                    </div>
-                  )}
-
-                  {/* Hora Fin (Ocultar si hay búsqueda) */}
-                  {!reporteData && (
-                    <div className="space-y-1.5 m-0 p-0">
-                      <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                        Hora Fin{" "}
-                        <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                      </label>
-                      <TimePicker
-                        value={horaFin}
-                        onChange={setHoraFin}
-                        placeholder="00:00"
-                        className="rounded-xl h-9"
-                      />
-                    </div>
-                  )}
 
                   {/* Filtros académicos opcionales */}
                   <div className="space-y-1.5 m-0 p-0">
@@ -788,12 +793,91 @@ export default function PartesDiariosPage() {
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Hora Inicio */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      Hora Inicio{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </label>
+                    <TimePicker
+                      value={horaInicio}
+                      onChange={setHoraInicio}
+                      placeholder="00:00"
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+
+                  {/* Hora Fin */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
+                      Hora Fin{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </label>
+                    <TimePicker
+                      value={horaFin}
+                      onChange={setHoraFin}
+                      placeholder="00:00"
+                      className="rounded-xl h-9"
+                    />
+                  </div>
+
+                  {/* Campus ID (Geográfico) */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      Campus geográfico{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </Label>
+                    <Select
+                      value={selectedCampusId || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Todos los campus" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>Todos los campus</SelectItem>
+                        {campusList.map((c) => (
+                          <SelectItem key={c.id} value={String(c.id)}>
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Facultad ID (Geográfico) */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      Facultad geográfica{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </Label>
+                    <Select
+                      value={selectedFacultadInfraId || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Todas las fac. geográficas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>Todas las fac. geográficas</SelectItem>
+                        {facultadesInfraList.map((f) => (
+                          <SelectItem key={f.id} value={String(f.id)}>
+                            {f.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-auto justify-end m-0 p-0">
+                <div className="flex items-center gap-2 w-full justify-end m-0 pt-3 border-t border-border/40">
                   {reporteData && (
                     <Badge
-                      variant={reporteData.estado === "confirmado" ? "default" : "secondary"}
                       className={
                         reporteData.estado === "confirmado"
                           ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2.5 py-1.5 rounded-lg dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/40"
@@ -807,7 +891,7 @@ export default function PartesDiariosPage() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="umss-btn-primary rounded-xl px-4 h-9 text-xs font-semibold gap-1.5"
+                    className="rounded-xl px-4 h-9 text-xs font-semibold gap-1.5 text-white"
                   >
                     <Search className="w-3.5 h-3.5" />
                     Buscar
@@ -859,12 +943,14 @@ export default function PartesDiariosPage() {
 
           {/* Grilla / Tabla principal */}
           {!loading && reporteData && groupedRows.length > 0 && (
-            <PartesReportTable
-              rows={groupedRows}
-              tiposTickeo={tiposTickeo}
-              onRowChange={handleRowChange}
-              isClosed={Boolean(isClosed)}
-            />
+            <div className="w-full max-w-full overflow-hidden">
+              <PartesReportTable
+                rows={groupedRows}
+                tiposTickeo={tiposTickeo}
+                onRowChange={handleRowChange}
+                isClosed={Boolean(isClosed)}
+              />
+            </div>
           )}
         </div>
 
@@ -877,74 +963,18 @@ export default function PartesDiariosPage() {
           onGenerated={fetchReporteData}
         />
 
-        <Dialog open={showPrintDialog} onOpenChange={setShowPrintDialog}>
-          <DialogContent className="sm:max-w-[480px] bg-background border border-border">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Printer className="w-5 h-5 text-primary" />
-                Configurar impresión
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground pt-2">
-                Seleccione los filtros opcionales y las columnas de asistencia que desea imprimir.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Grupo tipo</Label>
-                  <Select
-                    value={grupoTipo || ALL_FILTER_VALUE}
-                    onValueChange={(value) => setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                      <SelectItem value="T">Teórico</SelectItem>
-                      <SelectItem value="P">Práctico</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Tipo de designación</Label>
-                  <Select
-                    value={tipoDesignacion || ALL_FILTER_VALUE}
-                    onValueChange={(value) =>
-                      setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Todos" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                      <SelectItem value="N">Normal</SelectItem>
-                      <SelectItem value="S">Suplente</SelectItem>
-                      <SelectItem value="A">Acéfalo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Columnas de asistencia</Label>
-                <Select value={printColumns} onValueChange={setPrintColumns}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Entrada">Entrada</SelectItem>
-                    <SelectItem value="Salida">Salida</SelectItem>
-                    <SelectItem value="Ambos">Ambos</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
+        <UmssModal
+          isOpen={showPrintDialog}
+          onClose={() => setShowPrintDialog(false)}
+          title="Configurar Impresión / Exportación PDF"
+          size="lg"
+          footer={
+            <div className="flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => setShowPrintDialog(false)}
                 disabled={generatingPdf}
+                className="rounded-2xl"
               >
                 Cancelar
               </Button>
@@ -954,13 +984,152 @@ export default function PartesDiariosPage() {
                   void handlePrint()
                 }}
                 disabled={generatingPdf}
-                className="umss-btn-primary"
+                className="rounded-2xl text-white"
               >
-                Imprimir / PDF
+                Generar PDF
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Revise o ajuste los filtros de búsqueda que se aplicarán al reporte impreso. De forma
+              predeterminada, se muestran los valores actualmente seleccionados en la pantalla de
+              consulta.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 1. Grupo Tipo */}
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="text-xs font-semibold text-foreground/80">Grupo tipo</Label>
+                <Select
+                  value={grupoTipo || ALL_FILTER_VALUE}
+                  onValueChange={(value) => setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)}
+                >
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                    <SelectItem value="T">Teórico</SelectItem>
+                    <SelectItem value="P">Práctico</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 2. Tipo Designación */}
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="text-xs font-semibold text-foreground/80">
+                  Tipo de designación
+                </Label>
+                <Select
+                  value={tipoDesignacion || ALL_FILTER_VALUE}
+                  onValueChange={(value) =>
+                    setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue placeholder="Todos" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
+                    <SelectItem value="N">Normal</SelectItem>
+                    <SelectItem value="S">Suplente</SelectItem>
+                    <SelectItem value="A">Acéfalo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 3. Hora Inicio */}
+              <div className="space-y-1.5 flex flex-col">
+                <label className="text-xs font-semibold text-foreground/80">Hora Inicio</label>
+                <TimePicker
+                  value={horaInicio}
+                  onChange={setHoraInicio}
+                  placeholder="00:00"
+                  className="rounded-lg h-10"
+                />
+              </div>
+
+              {/* 4. Hora Fin */}
+              <div className="space-y-1.5 flex flex-col">
+                <label className="text-xs font-semibold text-foreground/80">Hora Fin</label>
+                <TimePicker
+                  value={horaFin}
+                  onChange={setHoraFin}
+                  placeholder="00:00"
+                  className="rounded-lg h-10"
+                />
+              </div>
+
+              {/* 5. Campus Geográfico */}
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="text-xs font-semibold text-foreground/80">
+                  Campus geográfico
+                </Label>
+                <Select
+                  value={selectedCampusId || ALL_FILTER_VALUE}
+                  onValueChange={(value) =>
+                    setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue placeholder="Todos los campus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Todos los campus</SelectItem>
+                    {campusList.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 6. Facultad Geográfica */}
+              <div className="space-y-1.5 flex flex-col">
+                <Label className="text-xs font-semibold text-foreground/80">
+                  Facultad geográfica
+                </Label>
+                <Select
+                  value={selectedFacultadInfraId || ALL_FILTER_VALUE}
+                  onValueChange={(value) =>
+                    setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
+                  }
+                >
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue placeholder="Todas las fac. geográficas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_FILTER_VALUE}>Todas las fac. geográficas</SelectItem>
+                    {facultadesInfraList.map((f) => (
+                      <SelectItem key={f.id} value={String(f.id)}>
+                        {f.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* 7. Columnas de asistencia */}
+              <div className="space-y-1.5 flex flex-col sm:col-span-2 border-t border-border/40 pt-3">
+                <Label className="text-xs font-semibold text-foreground/80">
+                  Columnas de asistencia a imprimir
+                </Label>
+                <Select value={printColumns} onValueChange={setPrintColumns}>
+                  <SelectTrigger className="h-10 rounded-lg">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Entrada">Entrada</SelectItem>
+                    <SelectItem value="Ambos">Ambos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </UmssModal>
 
         {/* Modal de Guardado Lote Asistencia */}
         <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
@@ -978,16 +1147,16 @@ export default function PartesDiariosPage() {
 
             <div className="my-4">
               {/* Advertencia si hay registros editados que ya tenían persistencia */}
-              {getModifiedItems().some((row) => row.alreadySaved) && (
+              {getItemsToSubmit().some((row) => row.alreadySaved) && (
                 <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-4">
                   <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-500" />
                   <span>
                     Atención: Está intentando editar los datos de{" "}
-                    <strong>{getModifiedItems().filter((row) => row.alreadySaved).length}</strong>{" "}
+                    <strong>{getItemsToSubmit().filter((row) => row.alreadySaved).length}</strong>{" "}
                     registro
-                    {getModifiedItems().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
+                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
                     ya{" "}
-                    {getModifiedItems().filter((row) => row.alreadySaved).length > 1
+                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1
                       ? "fueron guardados"
                       : "fue guardado"}{" "}
                     anteriormente.
@@ -995,7 +1164,7 @@ export default function PartesDiariosPage() {
                 </div>
               )}
 
-              {getModifiedItems().length === 0 ? (
+              {getItemsToSubmit().length === 0 ? (
                 <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
                   No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
                   guardarán como &quot;Presente&quot; sin novedades.
@@ -1007,12 +1176,11 @@ export default function PartesDiariosPage() {
                       <tr>
                         <th className="px-3 py-2 text-center w-12">N°</th>
                         <th className="px-3 py-2">Docente</th>
-                        <th className="px-3 py-2 text-center w-24">Retraso</th>
                         <th className="px-3 py-2 w-32">Tipo Tickeo</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
-                      {getModifiedItems().map((mRow) => {
+                      {getItemsToSubmit().map((mRow) => {
                         const tickeoNombre =
                           tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
                           mRow.tipo_tickeo ||
@@ -1031,18 +1199,6 @@ export default function PartesDiariosPage() {
                                   {mRow.originalTipoTickeo})
                                 </div>
                               )}
-                            </td>
-                            <td className="px-3 py-2 text-center">
-                              <Badge
-                                variant={
-                                  mRow.retraso !== null && mRow.retraso > 0
-                                    ? "destructive"
-                                    : "secondary"
-                                }
-                                className="font-mono text-[10px] px-1.5 py-0"
-                              >
-                                {mRow.retraso === null ? "-" : `${mRow.retraso} min`}
-                              </Badge>
                             </td>
                             <td className="px-3 py-2 font-medium capitalize text-foreground">
                               {tickeoNombre}

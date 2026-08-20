@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Button, Input, ScrollArea } from "@umss/estilos-base/components"
+import { useState, useMemo } from "react"
+import { Button, Input, ScrollArea, Badge } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
@@ -85,6 +85,27 @@ export function TeacherSchedulePage({
     onDeleteClick?.(group)
   }
 
+  // Calcular la carga horaria administrativa total acumulada de horarios vigentes/activos
+  const totalCargaAdministrativa = useMemo(() => {
+    // Get local today string in YYYY-MM-DD
+    const today = new Date()
+    const y = today.getFullYear()
+    const m = String(today.getMonth() + 1).padStart(2, "0")
+    const d = String(today.getDate()).padStart(2, "0")
+    const todayStr = `${y}-${m}-${d}`
+
+    const activeAdmin = rawAdminSchedules.filter((h) => {
+      const startOk = h.fecha_inicio <= todayStr
+      const endOk = h.fecha_fin === null || h.fecha_fin >= todayStr
+      return startOk && endOk
+    })
+
+    return activeAdmin.reduce((acc, h) => {
+      const carga = h.carga_horaria_diaria ?? h.horario_catalogo?.carga_horaria_diaria ?? 0
+      return acc + Number(carga)
+    }, 0)
+  }, [rawAdminSchedules])
+
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
       <header className="rounded-3xl border border-border bg-card p-2 md:p-3">
@@ -95,7 +116,7 @@ export function TeacherSchedulePage({
               Volver
             </Button>
 
-            <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-2.5">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
               <h1 className="shrink-0 text-sm font-semibold text-foreground md:text-base">
                 Vista semanal del docente
               </h1>
@@ -103,6 +124,14 @@ export function TeacherSchedulePage({
                 {docente?.nombres ?? "Cargando..."} · CI: {docente?.documento ?? "--"} · Código:{" "}
                 {docente?.codigo ?? "--"}
               </p>
+              {totalCargaAdministrativa > 0 && (
+                <Badge
+                  variant="brand"
+                  className="text-[10px] font-bold py-0.5 px-2 rounded-lg shrink-0 w-fit"
+                >
+                  Carga Horaria Administrativa: {totalCargaAdministrativa} hrs
+                </Badge>
+              )}
             </div>
           </div>
 
