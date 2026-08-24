@@ -132,21 +132,20 @@ export function detectLocalConflicts(
     })
   })
 
-  // Add admin instances (Mon-Fri 1..5)
+  // Add admin instances (specific day 1..5 returned by the backend)
   adminSchedules.forEach((a) => {
-    for (let day = 1; day <= 5; day++) {
-      instances.push({
-        id: a.id,
-        type: "administrativo",
-        dia: day,
-        startMin: parseTimeToMinutes(a.hora_inicio),
-        endMin: parseTimeToMinutes(a.hora_fin),
-        fechaInicio: a.fecha_inicio,
-        fechaFin: a.fecha_fin,
-        label: a.horario_descripcion || "Horario Administrativo",
-        carreras: [],
-      })
-    }
+    const dayVal = typeof a.dia === "number" ? a.dia : 1
+    instances.push({
+      id: a.id,
+      type: "administrativo",
+      dia: dayVal,
+      startMin: parseTimeToMinutes(a.hora_inicio),
+      endMin: parseTimeToMinutes(a.hora_fin),
+      fechaInicio: a.fecha_inicio,
+      fechaFin: a.fecha_fin,
+      label: a.horario_descripcion || "Horario Administrativo",
+      carreras: [],
+    })
   })
 
   // Compare all pairs
@@ -339,12 +338,13 @@ export const useSolapamientosStore = create<SolapamientosState>()((set, get) => 
     const adminSchedules: AdminSchedule[] = activeAdminSchedules.map((a) => {
       const startMin = parseTimeToMinutes(a.hora_inicio)
       const endMin = parseTimeToMinutes(a.hora_fin)
+      const dayVal = typeof a.dia === "number" ? a.dia : 1
       return {
         id: a.id,
         startMin,
         endMin,
         label: a.horario_descripcion || "Horario Administrativo",
-        days: [1, 2, 3, 4, 5],
+        days: [dayVal],
       }
     })
 

@@ -22,13 +22,13 @@ export interface SolapamientoHorarioClase {
 
 export interface SolapamientoHorarioAdministrativo {
   id: number
-  dia: null
+  dia: number | null
   hora_inicio: string
   hora_fin: string
   fecha_inicio: string
   fecha_fin: string | null
   horario_descripcion: string
-  carreras: []
+  carreras: any[]
 }
 
 export interface SolapamientoDocente {
