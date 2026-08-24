@@ -16,10 +16,7 @@ import type {
   EditarHorarioItem,
   EditarHorariosBatchRequest,
 } from "../domain/types"
-import {
-  horariosApi,
-  type BuscarAmbienteRequest,
-} from "@/shared/services/api/client"
+import { horariosApi, type BuscarAmbienteRequest } from "@/shared/services/api/client"
 import { infraApiClient } from "@/shared/services/api/infraClient"
 
 interface BulkAsignacionState {
@@ -256,10 +253,6 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
         loadingAmbientesForEntry: null,
       }))
     } catch (error) {
-      const apiError = error as { status?: number; body?: { message?: string } }
-      const msg = (apiError?.body?.message || error || "Error al buscar ambientes").toString()
-      console.error("Error fetching ambientes for entry:", msg)
-      toast.error(msg)
       set({ loadingAmbientesForEntry: null })
     }
   },

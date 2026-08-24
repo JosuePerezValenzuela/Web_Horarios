@@ -310,10 +310,6 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
         loadingAmbientesForEntry: null,
       }))
     } catch (error) {
-      const apiError = error as { status?: number; body?: { message?: string } }
-      const msg = (apiError?.body?.message || error || "Error al buscar ambientes").toString()
-      console.error("Error fetching ambientes for entry:", msg)
-      toast.error(msg)
       set({ loadingAmbientesForEntry: null })
     }
   },
