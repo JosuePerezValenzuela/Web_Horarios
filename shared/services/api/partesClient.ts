@@ -1,6 +1,4 @@
-/**
- * API client for PARTES system (daily attendance control)
- */
+import { toast } from "sonner"
 
 const PARTES_BASE_URL = process.env.NEXT_PUBLIC_PARTES_URL ?? "http://localhost:3006"
 
@@ -32,11 +30,20 @@ class PartesApiClient {
         .json()
         .then((body) => {
           error.body = body
+          // Extract specific error messages if available from API client (ApiError)
+          const apiMsg = body?.message || `Error del servidor (${response.status})`
+          toast.error(apiMsg)
           throw error
         })
-        .catch(() => {
-          throw error
+        .catch((err) => {
+          if (!err.status) {
+            toast.error(`Error de red: ${response.statusText}`)
+          }
+          throw err
         })
+    }
+    if (response.status === 204) {
+      return Promise.resolve(null as unknown as T)
     }
     return response.json() as Promise<T>
   }
@@ -63,6 +70,18 @@ class PartesApiClient {
 
   async post<T>(endpoint: string, body: unknown, options: PartesApiClientOptions = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "POST", body })
+  }
+
+  async patch<T>(
+    endpoint: string,
+    body: unknown,
+    options: PartesApiClientOptions = {}
+  ): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "PATCH", body })
+  }
+
+  async delete<T>(endpoint: string, options: PartesApiClientOptions = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" })
   }
 }
 

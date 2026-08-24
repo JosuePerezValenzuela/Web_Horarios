@@ -16,6 +16,8 @@ import type {
   TipoAsignacionAdministrativo,
 } from "@/features/scheduling/docentes/domain/types"
 
+import { toast } from "sonner"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
 
 interface ApiClientOptions {
@@ -46,10 +48,16 @@ class ApiClient {
         .json()
         .then((body) => {
           error.body = body
+          // Extract specific error messages if available from API client (ApiError)
+          const apiMsg = body?.message || `Error del servidor (${response.status})`
+          toast.error(apiMsg)
           throw error
         })
-        .catch(() => {
-          throw error
+        .catch((err) => {
+          if (!err.status) {
+            toast.error(`Error de red: ${response.statusText}`)
+          }
+          throw err
         })
     }
     return response.json() as Promise<T>
