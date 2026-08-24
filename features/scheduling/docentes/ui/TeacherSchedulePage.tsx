@@ -108,15 +108,15 @@ export function TeacherSchedulePage({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
-      <header className="rounded-3xl border border-border bg-card p-2 md:p-3">
-        <div className="flex flex-row items-center justify-between gap-3">
-          <div className="flex flex-row items-center gap-3 min-w-0">
+      <header className="rounded-3xl border border-border bg-card p-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-row items-center gap-3 min-w-0 flex-wrap">
             <Button variant="outline" size="sm" onClick={onBack} className="shrink-0">
               <ArrowLeft className="mr-2 size-4" />
               Volver
             </Button>
 
-            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5 flex-wrap">
               <h1 className="shrink-0 text-sm font-semibold text-foreground md:text-base">
                 Vista semanal del docente
               </h1>
@@ -135,7 +135,7 @@ export function TeacherSchedulePage({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
             {/* Horarios Administrativos Button */}
             <Button
               variant="outline"
@@ -236,11 +236,11 @@ export function TeacherSchedulePage({
           </div>
         </aside>
 
-        <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden lg:h-full lg:max-h-full">
+        <main className="flex min-w-0 flex-1 flex-col lg:overflow-hidden lg:h-full lg:max-h-full">
           {loading ? (
             <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
-            <ScrollArea className="min-h-0 flex-1" data-slot="main-schedule-scroll">
+            <div className="flex-1 w-full lg:overflow-y-auto lg:overflow-x-hidden">
               <WeeklyScheduleGrid
                 schedules={schedules}
                 rows={rows}
@@ -250,7 +250,7 @@ export function TeacherSchedulePage({
                 adminSchedules={adminSchedules}
                 isCompactMode={isCompactMode}
               />
-            </ScrollArea>
+            </div>
           ) : (
             <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-border bg-muted/10 p-8 text-center shadow-xs">
               <Calendar className="size-12 text-muted-foreground/40 mb-3" />

@@ -175,7 +175,7 @@ export default function DocenteHorariosRoutePage() {
       <AppLayout
         breadcrumbs={[{ name: "Docentes", href: "/docentes" }, { name: "Horario docente" }]}
       >
-        <div className="absolute inset-0 p-4 md:p-6 lg:p-8 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex flex-col gap-4 lg:gap-5 w-full lg:h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)] lg:overflow-hidden">
           <TeacherSchedulePage
             docente={docente}
             groups={groups}
