@@ -25,6 +25,8 @@ import {
 } from "@umss/estilos-base/components"
 import { toast } from "sonner"
 import {
+  Pencil,
+  Trash,
   HelpCircle,
   AlertCircle,
   Calendar,
@@ -42,7 +44,8 @@ export default function ReglasAsistenciaPage() {
     setSidebarCollapsed(true)
   }, [setSidebarCollapsed])
 
-  const { configs, loading, fetchConfigs, createConfig } = useAttendanceConfigStore()
+  const { configs, loading, fetchConfigs, createConfig, updateConfig, deleteConfig } =
+    useAttendanceConfigStore()
 
   // Form State - initialized to empty strings so fields start empty but display their labels/placeholders
   const [ingresoAnticipado, setIngresoAnticipado] = useState<string>("")
@@ -51,6 +54,12 @@ export default function ReglasAsistenciaPage() {
   const [toleranciaSalidaPost, setToleranciaSalidaPost] = useState<string>("")
   const [toleranciaSalidaAnt, setToleranciaSalidaAnt] = useState<string>("")
   const [validFrom, setValidFrom] = useState<Date | undefined>(undefined)
+
+  // Edit/Delete state variables
+  const [editingConfig, setEditingConfig] = useState<any | null>(null)
+  const [editValidFrom, setEditValidFrom] = useState<Date | undefined>(undefined)
+  const [editValidTo, setEditValidTo] = useState<Date | undefined>(undefined)
+  const [deletingConfigId, setDeletingConfigId] = useState<number | null>(null)
 
   // Confirmation Alert Dialog State
   const [showConfirmDialog, setShowConfirmDialog] = useState<boolean>(false)
@@ -132,8 +141,48 @@ export default function ReglasAsistenciaPage() {
       setToleranciaSalidaAnt("")
       setValidFrom(undefined)
     } catch (err: unknown) {
-      const errMsg = err instanceof Error ? err.message : "Error al registrar la regla"
-      toast.error(errMsg)
+      // El cliente API muestra automáticamente el toast de error del servidor
+    }
+  }
+  const handleEditSubmit = async () => {
+    if (!editingConfig) return
+
+    // Construct updates payload with date validations
+    const updates: any = {}
+    if (editValidFrom) {
+      const offset = editValidFrom.getTimezoneOffset()
+      const localDate = new Date(editValidFrom.getTime() - offset * 60 * 1000)
+      updates.valid_from = localDate.toISOString().split("T")[0]
+    }
+    if (editValidTo) {
+      const offset = editValidTo.getTimezoneOffset()
+      const localDate = new Date(editValidTo.getTime() - offset * 60 * 1000)
+      updates.valid_to = localDate.toISOString().split("T")[0]
+    } else if (editValidTo === null) {
+      updates.valid_to = null
+    }
+
+    try {
+      await updateConfig(editingConfig.id, updates)
+      toast.success("Vigencia de la regla actualizada con éxito")
+      setEditingConfig(null)
+      setEditValidFrom(undefined)
+      setEditValidTo(undefined)
+      await fetchConfigs()
+    } catch (err: unknown) {
+      // El cliente API muestra automáticamente el toast de error del servidor
+    }
+  }
+
+  const handleDeleteSubmit = async () => {
+    if (deletingConfigId === null) return
+    try {
+      await deleteConfig(deletingConfigId)
+      toast.success("Regla de asistencia eliminada con éxito")
+      setDeletingConfigId(null)
+      await fetchConfigs()
+    } catch (err: unknown) {
+      // El cliente API muestra automáticamente el toast de error del servidor
     }
   }
 
@@ -433,8 +482,8 @@ export default function ReglasAsistenciaPage() {
                           }`}
                         >
                           {/* Cabecera del Item */}
-                          <div className="flex items-center justify-between border-b border-border/40 pb-2 mb-2">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border/40 pb-2 mb-2 gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                                 ID versión:{" "}
                                 <span className="font-mono text-foreground">{config.id}</span>
@@ -444,6 +493,44 @@ export default function ReglasAsistenciaPage() {
                                   Activa
                                 </span>
                               )}
+
+                              {/* Edit & Delete Action Buttons */}
+                              <div className="flex items-center gap-1.5 ml-2">
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  title="Editar vigencia de regla"
+                                  onClick={() => {
+                                    setEditingConfig(config)
+                                    setEditValidFrom(
+                                      config.valid_from
+                                        ? new Date(config.valid_from + "T00:00:00")
+                                        : undefined
+                                    )
+                                    setEditValidTo(
+                                      config.valid_to
+                                        ? new Date(config.valid_to + "T00:00:00")
+                                        : undefined
+                                    )
+                                  }}
+                                  className="h-6 w-6 p-0 border-border/60 hover:bg-muted text-foreground/80"
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  title="Eliminar regla de asistencia"
+                                  onClick={() => {
+                                    if (config.id !== undefined) {
+                                      setDeletingConfigId(config.id)
+                                    }
+                                  }}
+                                  className="h-6 w-6 p-0 border-destructive/20 hover:bg-destructive/10 text-destructive/80"
+                                >
+                                  <Trash className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
                             </div>
                             <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 flex items-center gap-1">
                               <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
@@ -544,6 +631,116 @@ export default function ReglasAsistenciaPage() {
                 className="rounded-xl h-9 text-xs font-bold bg-[#BC000C] text-white hover:bg-[#90000a] transition-all cursor-pointer"
               >
                 Aceptar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal para Editar Vigencia de Regla */}
+        <AlertDialog
+          open={editingConfig !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingConfig(null)
+            }
+          }}
+        >
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="font-bold text-foreground">
+                Editar Vigencia de Regla (ID: {editingConfig?.id})
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground">
+                Modifique el intervalo de vigencia de esta configuración. La actualización no
+                afectará a los umbrales de minutos si la regla ya está en uso.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-4 my-2">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                  Válido Desde (Inclusivo)
+                </label>
+                <DatePicker
+                  value={editValidFrom}
+                  onValueChange={setEditValidFrom}
+                  placeholder="Seleccione fecha de inicio"
+                  className="h-9 w-full bg-background rounded-xl border border-border text-xs"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                  Válido Hasta (Exclusivo)
+                </label>
+                <DatePicker
+                  value={editValidTo}
+                  onValueChange={setEditValidTo}
+                  placeholder="Sin fecha límite (Indefinido)"
+                  className="h-9 w-full bg-background rounded-xl border border-border text-xs"
+                />
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => setEditValidTo(undefined)}
+                  className="text-[10px] h-6 px-2 mt-1 rounded-lg"
+                >
+                  Establecer como Indefinido
+                </Button>
+              </div>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => setEditingConfig(null)}
+                className="rounded-xl h-9 text-xs"
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleEditSubmit}
+                className="rounded-xl h-9 text-xs font-bold bg-umss-dark-blue text-white hover:bg-[#001832] transition-all cursor-pointer"
+              >
+                Guardar Cambios
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Modal de Confirmación para Eliminar Regla */}
+        <AlertDialog
+          open={deletingConfigId !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDeletingConfigId(null)
+            }
+          }}
+        >
+          <AlertDialogContent className="max-w-md">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive font-bold">
+                ¿Eliminar Regla de Asistencia?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-foreground/80 leading-relaxed">
+                Esta acción eliminará de forma permanente esta versión de configuración (ID:{" "}
+                {deletingConfigId}). Las configuraciones vinculadas a partes diarios registrados en
+                borrador o confirmados no pueden ser eliminadas. ¿Desea continuar?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel
+                onClick={() => setDeletingConfigId(null)}
+                className="rounded-xl h-9 text-xs"
+              >
+                Cancelar
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteSubmit}
+                className="rounded-xl h-9 text-xs font-bold bg-destructive text-white hover:bg-destructive/90 transition-all cursor-pointer"
+              >
+                Confirmar Eliminación
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

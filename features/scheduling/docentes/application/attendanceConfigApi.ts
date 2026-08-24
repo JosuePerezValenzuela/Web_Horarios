@@ -21,4 +21,15 @@ export const attendanceConfigApi = {
     // Se utiliza partesApiClient que apunta al microservicio de Partes/Asistencias mediante NEXT_PUBLIC_PARTES_URL
     return partesApiClient.post<AttendanceConfig>("/configuraciones-asistencia", config)
   },
+
+  update: async (
+    id: number,
+    config: Partial<Omit<AttendanceConfig, "id">>
+  ): Promise<AttendanceConfig> => {
+    return partesApiClient.patch<AttendanceConfig>(`/configuraciones-asistencia/${id}`, config)
+  },
+
+  delete: async (id: number): Promise<void> => {
+    return partesApiClient.delete<void>(`/configuraciones-asistencia/${id}`)
+  },
 }
