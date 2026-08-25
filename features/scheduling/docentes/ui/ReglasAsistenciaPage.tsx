@@ -738,7 +738,8 @@ export default function ReglasAsistenciaPage() {
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteSubmit}
-                className="rounded-xl h-9 text-xs font-bold bg-destructive text-white hover:bg-destructive/90 transition-all cursor-pointer"
+                variant="danger"
+                className="rounded-xl h-9 text-xs font-bold transition-all cursor-pointer"
               >
                 Confirmar Eliminación
               </AlertDialogAction>

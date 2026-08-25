@@ -25,7 +25,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from "@umss/estilos-base/components"
 import { horariosApi } from "@/shared/services/api/client"
 
 type ApiLikeError = Error & {
@@ -248,7 +248,7 @@ export default function DocenteHorariosRoutePage() {
             <AlertDialogFooter>
               <AlertDialogCancel disabled={deletingGroup}>Cancelar</AlertDialogCancel>
               <AlertDialogAction
-                variant="destructive"
+                variant="danger"
                 disabled={deletingGroup}
                 onClick={(event) => {
                   event.preventDefault()
