@@ -8,7 +8,8 @@ import { useAuthStore } from "@/features/auth/application/authStore"
 import { usePartesMensualesStore } from "@/features/scheduling/docentes/application/usePartesMensualesStore"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { DatePicker } from "@umss/estilos-base/components"
+import { DatePickerRange } from "@/components/ui/date-picker-range"
+import type { DateRange } from "react-day-picker"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { Select, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select"
 import {
@@ -21,7 +22,7 @@ import {
 } from "@/components/ui/table"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { toast, Button } from "@umss/estilos-base/components"
+import { toast, Button, ScrollArea } from "@umss/estilos-base/components"
 import {
   Search,
   Printer,
@@ -41,8 +42,7 @@ export default function PartesMensualesPage() {
 
   // Filtros de Búsqueda
   const [selectedFacultadId, setSelectedFacultadId] = useState<string>("")
-  const [fechaDesde, setFechaDesde] = useState<Date | undefined>(undefined)
-  const [fechaHasta, setFechaHasta] = useState<Date | undefined>(undefined)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [facultadSearch, setFacultadSearch] = useState("")
   const [generatingPdf, setGeneratingPdf] = useState(false)
 
@@ -64,8 +64,8 @@ export default function PartesMensualesPage() {
       toast.error("Por favor seleccione una facultad")
       return
     }
-    if (!fechaDesde || !fechaHasta) {
-      toast.error("Por favor seleccione ambas fechas de rango")
+    if (!dateRange || !dateRange.from || !dateRange.to) {
+      toast.error("Por favor seleccione un rango de fechas")
       return
     }
 
@@ -82,8 +82,8 @@ export default function PartesMensualesPage() {
     try {
       await generarReporte({
         facultadCodigo: fac.codigo,
-        fechaDesde: toLocalYmd(fechaDesde),
-        fechaHasta: toLocalYmd(fechaHasta),
+        fechaDesde: toLocalYmd(dateRange.from),
+        fechaHasta: toLocalYmd(dateRange.to),
       })
       toast.success("Parte mensual consultado correctamente")
     } catch (err: any) {
@@ -303,7 +303,7 @@ export default function PartesMensualesPage() {
   return (
     <ProtectedRoute>
       <AppLayout breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Mensuales" }]}>
-        <div className="flex flex-col gap-4 lg:gap-5 w-full">
+        <div className="flex flex-col gap-4 lg:gap-5 w-full lg:h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)] lg:overflow-hidden">
           {/* Cabecera Principal */}
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-3 shrink-0 gap-3">
             <div className="flex items-center gap-2">
@@ -317,408 +317,410 @@ export default function PartesMensualesPage() {
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2.5">
-              <Button
-                variant="outline"
-                onClick={handleMockGenerate}
-                disabled={generatingPdf}
-                className="h-9 rounded-xl text-xs gap-1.5 border-dashed border-amber-500 text-amber-600 hover:bg-amber-50"
-              >
-                <FileText className="w-4 h-4" />
-                Generar PDF (Mock)
-              </Button>
-
-              {reporte && (
-                <Button
-                  onClick={handlePrint}
-                  disabled={generatingPdf}
-                  className="h-9 rounded-xl text-xs font-bold gap-1.5 bg-umss-dark-blue hover:bg-[#001c38] text-white"
-                >
-                  <Printer className="w-4 h-4" />
-                  Imprimir PDF Oficial
-                </Button>
-              )}
-            </div>
           </div>
 
-          {/* Formulario de Filtros */}
+          {/* Formulario de Filtros y Acciones */}
           <header className="rounded-3xl border border-border bg-card p-4 shadow-sm shrink-0">
             <form
               onSubmit={handleBuscar}
-              className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-end"
+              className="flex flex-col gap-4 md:flex-row md:items-end justify-between"
             >
-              {/* Facultad */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label htmlFor="facultad-select" className="text-xs font-semibold text-foreground">
-                  Facultad
-                </Label>
-                <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
-                  <SelectTrigger id="facultad-select" className="h-9 text-xs rounded-xl">
-                    <SelectValue placeholder="Seleccione Facultad" />
-                  </SelectTrigger>
-                  <SearchableSelectContent
-                    onFilterChange={setFacultadSearch}
-                    onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
+                {/* Facultad */}
+                <div className="space-y-1.5 flex flex-col">
+                  <Label
+                    htmlFor="facultad-select"
+                    className="text-xs font-semibold text-foreground"
                   >
-                    {filteredFacultades.map((f) => (
-                      <SelectItem key={f.id} value={String(f.id)}>
-                        {f.nombre}
-                      </SelectItem>
-                    ))}
-                  </SearchableSelectContent>
-                </Select>
+                    Facultad
+                  </Label>
+                  <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
+                    <SelectTrigger id="facultad-select" className="h-9 text-xs rounded-xl">
+                      <SelectValue placeholder="Seleccione Facultad" />
+                    </SelectTrigger>
+                    <SearchableSelectContent
+                      onFilterChange={setFacultadSearch}
+                      onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
+                    >
+                      {filteredFacultades.map((f) => (
+                        <SelectItem key={f.id} value={String(f.id)}>
+                          {f.nombre}
+                        </SelectItem>
+                      ))}
+                    </SearchableSelectContent>
+                  </Select>
+                </div>
+
+                {/* Rango de Fechas */}
+                <div className="space-y-1.5 flex flex-col">
+                  <Label className="text-xs font-semibold text-foreground">Rango de Fechas</Label>
+                  <DatePickerRange
+                    value={dateRange}
+                    onChange={setDateRange}
+                    placeholder="Seleccione Rango de Fechas"
+                    className="h-9 w-full bg-background rounded-xl border border-border text-xs"
+                  />
+                </div>
               </div>
 
-              {/* Fecha Desde */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground">Fecha Desde</Label>
-                <DatePicker
-                  value={fechaDesde}
-                  onValueChange={setFechaDesde}
-                  placeholder="Válido desde"
-                  className="h-9 w-full bg-background rounded-xl border border-border text-xs"
-                />
-              </div>
+              {/* Botones de Accion Inline */}
+              <div className="flex items-center gap-2 flex-wrap shrink-0">
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="h-9 rounded-xl font-bold bg-umss-dark-blue hover:bg-[#001c38] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                >
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4" />
+                  )}
+                  Consultar
+                </Button>
 
-              {/* Fecha Hasta */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground">Fecha Hasta</Label>
-                <DatePicker
-                  value={fechaHasta}
-                  onValueChange={setFechaHasta}
-                  placeholder="Válido hasta"
-                  className="h-9 w-full bg-background rounded-xl border border-border text-xs"
-                />
-              </div>
-
-              {/* Buscar */}
-              <Button
-                type="submit"
-                disabled={loading}
-                className="h-9 rounded-xl font-bold bg-umss-dark-blue hover:bg-[#001c38] text-white flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                {loading ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Search className="w-4 h-4" />
+                {reporte && (
+                  <Button
+                    type="button"
+                    onClick={handlePrint}
+                    disabled={generatingPdf}
+                    className="h-9 rounded-xl text-xs font-bold gap-1.5 bg-[#002855] hover:bg-[#001b3a] text-white"
+                  >
+                    <Printer className="w-4 h-4" />
+                    Generar PDF
+                  </Button>
                 )}
-                CONSULTAR REPORTE
-              </Button>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMockGenerate}
+                  disabled={generatingPdf}
+                  className="h-9 rounded-xl text-xs gap-1.5 border-dashed border-amber-500 text-amber-600 hover:bg-amber-50"
+                >
+                  <FileText className="w-4 h-4" />
+                  Generar Mock
+                </Button>
+              </div>
             </form>
           </header>
 
           {/* Resultados del Reporte */}
           {reporte ? (
-            <div className="space-y-6">
-              {/* Resumen Informativo */}
-              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm overflow-hidden">
-                <CardHeader className="bg-muted/40 p-4 border-b border-border">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4" />
-                    Detalles del Parte Mensual
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                      Facultad Evaluada
-                    </span>
-                    <span className="text-sm font-bold text-foreground">
-                      {reporte.facultad_codigo}
-                    </span>
-                  </div>
-                  <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                      Intervalo de Vigencia
-                    </span>
-                    <span className="text-sm font-bold text-foreground">
-                      {reporte.fecha_desde} al {reporte.fecha_hasta}
-                    </span>
-                  </div>
-                  <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                      Docentes Consolidados
-                    </span>
-                    <span className="text-sm font-bold text-foreground">
-                      {reporte.personas.length} funcionarios
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+            <ScrollArea className="flex-1 lg:min-h-0 pr-1" data-slot="monthly-report-scroll">
+              <div className="space-y-6 pb-4">
+                {/* Resumen Informativo */}
+                <Card className="border border-border/80 bg-card rounded-2xl shadow-sm overflow-hidden">
+                  <CardHeader className="bg-muted/40 p-4 border-b border-border">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <UserCheck className="w-4 h-4" />
+                      Detalles del Parte Mensual
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                        Facultad Evaluada
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {reporte.facultad_codigo}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                        Intervalo de Vigencia
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {reporte.fecha_desde} al {reporte.fecha_hasta}
+                      </span>
+                    </div>
+                    <div className="p-3 bg-muted/20 border border-border/40 rounded-xl">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                        Docentes Consolidados
+                      </span>
+                      <span className="text-sm font-bold text-foreground">
+                        {reporte.personas.length} funcionarios
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Listado Principal de Personas */}
-              <Card className="border border-border/80 bg-card rounded-2xl shadow-sm overflow-hidden">
-                <CardHeader className="bg-muted/40 p-4 border-b border-border">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
-                    <CalendarDays className="w-4 h-4" />
-                    Cargas Horarias y Asistencias Consolidadas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-muted/30">
-                      <TableRow>
-                        <TableHead className="w-12 text-center">N°</TableHead>
-                        <TableHead className="w-28 text-center">Código</TableHead>
-                        <TableHead>Nombre Completo</TableHead>
-                        <TableHead className="text-center w-28">Carga Mensual</TableHead>
-                        <TableHead className="text-center w-28">Minutos Retraso</TableHead>
-                        <TableHead className="text-center w-28">Minutos Ant.</TableHead>
-                        <TableHead className="text-center w-24">Retrasos</TableHead>
-                        <TableHead className="text-center w-24">Faltas</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reporte.personas.length === 0 ? (
+                {/* Listado Principal de Personas */}
+                <Card className="border border-border/80 bg-card rounded-2xl shadow-sm overflow-hidden">
+                  <CardHeader className="bg-muted/40 p-4 border-b border-border">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-primary flex items-center gap-1.5">
+                      <CalendarDays className="w-4 h-4" />
+                      Cargas Horarias y Asistencias Consolidadas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader className="bg-muted/30">
                         <TableRow>
-                          <TableCell
-                            colSpan={8}
-                            className="text-center text-muted-foreground text-xs py-8"
-                          >
-                            Sin datos consolidados de personal.
-                          </TableCell>
+                          <TableHead className="w-12 text-center">N°</TableHead>
+                          <TableHead className="w-28 text-center">Código</TableHead>
+                          <TableHead>Nombre Completo</TableHead>
+                          <TableHead className="text-center w-28">Carga Mensual</TableHead>
+                          <TableHead className="text-center w-28">Minutos Retraso</TableHead>
+                          <TableHead className="text-center w-28">Minutos Ant.</TableHead>
+                          <TableHead className="text-center w-24">Retrasos</TableHead>
+                          <TableHead className="text-center w-24">Faltas</TableHead>
                         </TableRow>
-                      ) : (
-                        reporte.personas.map((p, idx) => (
-                          <TableRow key={p.persona_codigo} className="hover:bg-muted/10">
-                            <TableCell className="text-center font-bold text-muted-foreground">
-                              {idx + 1}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs">
-                              {p.persona_codigo}
-                            </TableCell>
-                            <TableCell className="font-semibold text-foreground">
-                              {p.persona_nombres}
-                            </TableCell>
-                            <TableCell className="text-center font-semibold font-mono text-xs">
-                              {p.carga_horaria_mensual} hrs
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-amber-700 font-medium">
-                              {p.minutos_retraso} min
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-green-700 font-medium">
-                              {p.minutos_anticipados} min
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs">
-                              {p.cantidad_retrasos}
-                            </TableCell>
-                            <TableCell className="text-center font-bold font-mono text-xs text-red-600">
-                              {p.cantidad_faltas}
+                      </TableHeader>
+                      <TableBody>
+                        {reporte.personas.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={8}
+                              className="text-center text-muted-foreground text-xs py-8"
+                            >
+                              Sin datos consolidados de personal.
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Sección de Alertas - Retrasos */}
-              <Card className="border border-amber-200 bg-amber-50/5 dark:border-amber-900/40 dark:bg-amber-950/5 rounded-2xl shadow-sm overflow-hidden">
-                <CardHeader className="bg-amber-100/40 dark:bg-amber-950/20 p-4 border-b border-amber-200 dark:border-amber-900/40">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
-                    Alertas: Retrasos del Mes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-amber-50/20 dark:bg-amber-950/10">
-                      <TableRow>
-                        <TableHead className="w-28 text-center">Código</TableHead>
-                        <TableHead>Docente</TableHead>
-                        <TableHead className="w-28 text-center">Fecha</TableHead>
-                        <TableHead>Materia / Grupo</TableHead>
-                        <TableHead className="w-28 text-center">Horario Clase</TableHead>
-                        <TableHead className="w-28 text-center">Tickeo</TableHead>
-                        <TableHead className="w-28 text-center">Retraso</TableHead>
-                        <TableHead className="w-28 text-center">Aula</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reporte.alertas.retrasos.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={8}
-                            className="text-center text-muted-foreground text-xs py-6"
-                          >
-                            No se registraron alertas de retrasos en este periodo.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        reporte.alertas.retrasos.flatMap((grupo) =>
-                          grupo.evidencias.map((ev, evIdx) => (
-                            <TableRow
-                              key={`${grupo.persona_codigo}-ret-${ev.fecha}-${evIdx}`}
-                              className="hover:bg-amber-50/10"
-                            >
+                        ) : (
+                          reporte.personas.map((p, idx) => (
+                            <TableRow key={p.persona_codigo} className="hover:bg-muted/10">
+                              <TableCell className="text-center font-bold text-muted-foreground">
+                                {idx + 1}
+                              </TableCell>
                               <TableCell className="text-center font-mono text-xs">
-                                {grupo.persona_codigo}
+                                {p.persona_codigo}
                               </TableCell>
                               <TableCell className="font-semibold text-foreground">
-                                {grupo.persona_nombres}
+                                {p.persona_nombres}
                               </TableCell>
-                              <TableCell className="text-center text-xs">{ev.fecha}</TableCell>
-                              <TableCell className="text-xs font-medium">
-                                {ev.asignatura_nombre} (Gp: {ev.grupo_nombre})
+                              <TableCell className="text-center font-semibold font-mono text-xs">
+                                {p.carga_horaria_mensual} hrs
                               </TableCell>
-                              <TableCell className="text-center text-xs font-mono">
-                                {ev.hora_inicio} - {ev.hora_fin}
+                              <TableCell className="text-center font-mono text-xs text-amber-700 font-medium">
+                                {p.minutos_retraso} min
                               </TableCell>
-                              <TableCell className="text-center text-xs font-mono">
-                                {ev.hora_ingreso_tickeo || "S/R"}
+                              <TableCell className="text-center font-mono text-xs text-green-700 font-medium">
+                                {p.minutos_anticipados} min
                               </TableCell>
-                              <TableCell className="text-center text-xs font-mono font-bold text-amber-700">
-                                {ev.minutos_retraso} min
+                              <TableCell className="text-center font-mono text-xs">
+                                {p.cantidad_retrasos}
                               </TableCell>
-                              <TableCell className="text-center text-xs font-mono">
-                                {ev.aula_codigo || "S/R"}
+                              <TableCell className="text-center font-bold font-mono text-xs text-red-600">
+                                {p.cantidad_faltas}
                               </TableCell>
                             </TableRow>
                           ))
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
 
-              {/* Sección de Alertas - Faltas */}
-              <Card className="border border-red-200 bg-red-50/5 dark:border-red-900/40 dark:bg-red-950/5 rounded-2xl shadow-sm overflow-hidden">
-                <CardHeader className="bg-red-100/40 dark:bg-red-950/20 p-4 border-b border-red-200 dark:border-red-900/40">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-red-800 dark:text-red-300 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-500" />
-                    Alertas: Faltas del Mes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-red-50/20 dark:bg-red-950/10">
-                      <TableRow>
-                        <TableHead className="w-28 text-center">Código</TableHead>
-                        <TableHead>Docente</TableHead>
-                        <TableHead className="w-28 text-center">Fecha</TableHead>
-                        <TableHead>Materia / Grupo</TableHead>
-                        <TableHead className="w-28 text-center">Horario Clase</TableHead>
-                        <TableHead className="w-32 text-center">Estado</TableHead>
-                        <TableHead className="w-28 text-center">Aula</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reporte.alertas.faltas.length === 0 ? (
+                {/* Sección de Alertas - Retrasos */}
+                <Card className="border border-amber-200 bg-amber-50/5 dark:border-amber-900/40 dark:bg-amber-950/5 rounded-2xl shadow-sm overflow-hidden">
+                  <CardHeader className="bg-amber-100/40 dark:bg-amber-950/20 p-4 border-b border-amber-200 dark:border-amber-900/40">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                      Alertas: Retrasos del Mes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader className="bg-amber-50/20 dark:bg-amber-950/10">
                         <TableRow>
-                          <TableCell
-                            colSpan={7}
-                            className="text-center text-muted-foreground text-xs py-6"
-                          >
-                            No se registraron alertas de faltas en este periodo.
-                          </TableCell>
+                          <TableHead className="w-28 text-center">Código</TableHead>
+                          <TableHead>Docente</TableHead>
+                          <TableHead className="w-28 text-center">Fecha</TableHead>
+                          <TableHead>Materia / Grupo</TableHead>
+                          <TableHead className="w-28 text-center">Horario Clase</TableHead>
+                          <TableHead className="w-28 text-center">Tickeo</TableHead>
+                          <TableHead className="w-28 text-center">Retraso</TableHead>
+                          <TableHead className="w-28 text-center">Aula</TableHead>
                         </TableRow>
-                      ) : (
-                        reporte.alertas.faltas.flatMap((grupo) =>
-                          grupo.evidencias.map((ev, evIdx) => (
-                            <TableRow
-                              key={`${grupo.persona_codigo}-fal-${ev.fecha}-${evIdx}`}
-                              className="hover:bg-red-50/10"
+                      </TableHeader>
+                      <TableBody>
+                        {reporte.alertas.retrasos.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={8}
+                              className="text-center text-muted-foreground text-xs py-6"
                             >
-                              <TableCell className="text-center font-mono text-xs">
-                                {grupo.persona_codigo}
-                              </TableCell>
-                              <TableCell className="font-semibold text-foreground">
-                                {grupo.persona_nombres}
-                              </TableCell>
-                              <TableCell className="text-center text-xs">{ev.fecha}</TableCell>
-                              <TableCell className="text-xs font-medium">
-                                {ev.asignatura_nombre} (Gp: {ev.grupo_nombre})
-                              </TableCell>
-                              <TableCell className="text-center text-xs font-mono">
-                                {ev.hora_inicio} - {ev.hora_fin}
-                              </TableCell>
-                              <TableCell className="text-center text-xs font-bold text-red-600 uppercase tracking-wide">
-                                FALTA
-                              </TableCell>
-                              <TableCell className="text-center text-xs font-mono">
-                                {ev.aula_codigo || "S/R"}
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                              No se registraron alertas de retrasos en este periodo.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          reporte.alertas.retrasos.flatMap((grupo) =>
+                            grupo.evidencias.map((ev, evIdx) => (
+                              <TableRow
+                                key={`${grupo.persona_codigo}-ret-${ev.fecha}-${evIdx}`}
+                                className="hover:bg-amber-50/10"
+                              >
+                                <TableCell className="text-center font-mono text-xs">
+                                  {grupo.persona_codigo}
+                                </TableCell>
+                                <TableCell className="font-semibold text-foreground">
+                                  {grupo.persona_nombres}
+                                </TableCell>
+                                <TableCell className="text-center text-xs">{ev.fecha}</TableCell>
+                                <TableCell className="text-xs font-medium">
+                                  {ev.asignatura_nombre} (Gp: {ev.grupo_nombre})
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono">
+                                  {ev.hora_inicio} - {ev.hora_fin}
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono">
+                                  {ev.hora_ingreso_tickeo || "S/R"}
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono font-bold text-amber-700">
+                                  {ev.minutos_retraso} min
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono">
+                                  {ev.aula_codigo || "S/R"}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
 
-              {/* Sección de Alertas - Inasistencias Consecutivas */}
-              <Card className="border border-red-300 bg-red-100/5 dark:border-red-950/40 dark:bg-red-950/5 rounded-2xl shadow-sm overflow-hidden">
-                <CardHeader className="bg-red-200/20 dark:bg-red-950/30 p-4 border-b border-red-300 dark:border-red-900/40">
-                  <CardTitle className="text-sm font-bold uppercase tracking-wider text-red-900 dark:text-red-200 flex items-center gap-1.5">
-                    <AlertTriangle className="w-4 h-4 text-red-700 dark:text-red-400" />
-                    Alertas: Inasistencias Consecutivas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader className="bg-red-200/10">
-                      <TableRow>
-                        <TableHead className="w-28 text-center">Código</TableHead>
-                        <TableHead>Docente</TableHead>
-                        <TableHead className="w-48 text-center">Período de Inasistencia</TableHead>
-                        <TableHead className="w-28 text-center">Ocurrencias</TableHead>
-                        <TableHead>Materias Involucradas</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {reporte.alertas.inasistencias_consecutivas.length === 0 ? (
+                {/* Sección de Alertas - Faltas */}
+                <Card className="border border-red-200 bg-red-50/5 dark:border-red-900/40 dark:bg-red-950/5 rounded-2xl shadow-sm overflow-hidden">
+                  <CardHeader className="bg-red-100/40 dark:bg-red-950/20 p-4 border-b border-red-200 dark:border-red-900/40">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-red-800 dark:text-red-300 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-500" />
+                      Alertas: Faltas del Mes
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader className="bg-red-50/20 dark:bg-red-950/10">
                         <TableRow>
-                          <TableCell
-                            colSpan={5}
-                            className="text-center text-muted-foreground text-xs py-6"
-                          >
-                            No hay alertas de faltas consecutivas en este periodo.
-                          </TableCell>
+                          <TableHead className="w-28 text-center">Código</TableHead>
+                          <TableHead>Docente</TableHead>
+                          <TableHead className="w-28 text-center">Fecha</TableHead>
+                          <TableHead>Materia / Grupo</TableHead>
+                          <TableHead className="w-28 text-center">Horario Clase</TableHead>
+                          <TableHead className="w-32 text-center">Estado</TableHead>
+                          <TableHead className="w-28 text-center">Aula</TableHead>
                         </TableRow>
-                      ) : (
-                        reporte.alertas.inasistencias_consecutivas.flatMap((grupo) =>
-                          grupo.secuencias.map((sec, secIdx) => (
-                            <TableRow
-                              key={`${grupo.persona_codigo}-sec-${secIdx}`}
-                              className="hover:bg-red-50/5"
+                      </TableHeader>
+                      <TableBody>
+                        {reporte.alertas.faltas.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={7}
+                              className="text-center text-muted-foreground text-xs py-6"
                             >
-                              <TableCell className="text-center font-mono text-xs">
-                                {grupo.persona_codigo}
-                              </TableCell>
-                              <TableCell className="font-semibold text-foreground">
-                                {grupo.persona_nombres}
-                              </TableCell>
-                              <TableCell className="text-center text-xs font-semibold text-slate-700">
-                                Desde: {sec.fecha_inicio} <br /> Hasta: {sec.fecha_fin}
-                              </TableCell>
-                              <TableCell className="text-center font-bold text-xs text-red-700">
-                                {sec.cantidad_ocurrencias} clases
-                              </TableCell>
-                              <TableCell className="py-2.5">
-                                <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
-                                  {sec.evidencias.map((e: any, idx: number) => (
-                                    <li key={idx}>
-                                      <span className="font-medium text-foreground">{e.fecha}</span>
-                                      : {e.asignatura_nombre} ({e.hora_inicio} - {e.hora_fin})
-                                    </li>
-                                  ))}
-                                </ul>
-                              </TableCell>
-                            </TableRow>
-                          ))
-                        )
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
+                              No se registraron alertas de faltas en este periodo.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          reporte.alertas.faltas.flatMap((grupo) =>
+                            grupo.evidencias.map((ev, evIdx) => (
+                              <TableRow
+                                key={`${grupo.persona_codigo}-fal-${ev.fecha}-${evIdx}`}
+                                className="hover:bg-red-50/10"
+                              >
+                                <TableCell className="text-center font-mono text-xs">
+                                  {grupo.persona_codigo}
+                                </TableCell>
+                                <TableCell className="font-semibold text-foreground">
+                                  {grupo.persona_nombres}
+                                </TableCell>
+                                <TableCell className="text-center text-xs">{ev.fecha}</TableCell>
+                                <TableCell className="text-xs font-medium">
+                                  {ev.asignatura_nombre} (Gp: {ev.grupo_nombre})
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono">
+                                  {ev.hora_inicio} - {ev.hora_fin}
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-bold text-red-600 uppercase tracking-wide">
+                                  FALTA
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-mono">
+                                  {ev.aula_codigo || "S/R"}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Sección de Alertas - Inasistencias Consecutivas */}
+                <Card className="border border-red-300 bg-red-100/5 dark:border-red-950/40 dark:bg-red-950/5 rounded-2xl shadow-sm overflow-hidden">
+                  <CardHeader className="bg-red-200/20 dark:bg-red-950/30 p-4 border-b border-red-300 dark:border-red-900/40">
+                    <CardTitle className="text-sm font-bold uppercase tracking-wider text-red-900 dark:text-red-200 flex items-center gap-1.5">
+                      <AlertTriangle className="w-4 h-4 text-red-700 dark:text-red-400" />
+                      Alertas: Inasistencias Consecutivas
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader className="bg-red-200/10">
+                        <TableRow>
+                          <TableHead className="w-28 text-center">Código</TableHead>
+                          <TableHead>Docente</TableHead>
+                          <TableHead className="w-48 text-center">
+                            Período de Inasistencia
+                          </TableHead>
+                          <TableHead className="w-28 text-center">Ocurrencias</TableHead>
+                          <TableHead>Materias Involucradas</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {reporte.alertas.inasistencias_consecutivas.length === 0 ? (
+                          <TableRow>
+                            <TableCell
+                              colSpan={5}
+                              className="text-center text-muted-foreground text-xs py-6"
+                            >
+                              No hay alertas de faltas consecutivas en este periodo.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          reporte.alertas.inasistencias_consecutivas.flatMap((grupo) =>
+                            grupo.secuencias.map((sec, secIdx) => (
+                              <TableRow
+                                key={`${grupo.persona_codigo}-sec-${secIdx}`}
+                                className="hover:bg-red-50/5"
+                              >
+                                <TableCell className="text-center font-mono text-xs">
+                                  {grupo.persona_codigo}
+                                </TableCell>
+                                <TableCell className="font-semibold text-foreground">
+                                  {grupo.persona_nombres}
+                                </TableCell>
+                                <TableCell className="text-center text-xs font-semibold text-slate-700">
+                                  Desde: {sec.fecha_inicio} <br /> Hasta: {sec.fecha_fin}
+                                </TableCell>
+                                <TableCell className="text-center font-bold text-xs text-red-700">
+                                  {sec.cantidad_ocurrencias} clases
+                                </TableCell>
+                                <TableCell className="py-2.5">
+                                  <ul className="list-disc pl-4 text-xs text-muted-foreground space-y-0.5">
+                                    {sec.evidencias.map((e: any, idx: number) => (
+                                      <li key={idx}>
+                                        <span className="font-medium text-foreground">
+                                          {e.fecha}
+                                        </span>
+                                        : {e.asignatura_nombre} ({e.hora_inicio} - {e.hora_fin})
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            </ScrollArea>
           ) : (
-            <div className="flex flex-col items-center justify-center py-20 text-center border border-dashed border-border/80 rounded-3xl bg-muted/10">
+            <div className="flex-1 flex flex-col items-center justify-center py-20 text-center border border-dashed border-border/80 rounded-3xl bg-muted/10">
               <CalendarDays className="w-12 h-12 text-muted-foreground/35 mb-3" />
               <h3 className="text-base font-bold text-foreground">
                 Consolidación de Partes Mensuales
