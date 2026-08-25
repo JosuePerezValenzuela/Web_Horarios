@@ -14,6 +14,7 @@ import {
   AlertCircle,
   ClipboardList,
   Settings2,
+  CalendarDays,
 } from "lucide-react"
 
 interface SidebarItem {
@@ -52,6 +53,11 @@ const defaultSidebarItems: SidebarItem[] = [
     title: "Partes Diarios",
     href: "/partes-diarios",
     icon: ClipboardList,
+  },
+  {
+    title: "Partes Mensuales",
+    href: "/partes-mensuales",
+    icon: CalendarDays,
   },
   {
     title: "Reglas Asistencia",
