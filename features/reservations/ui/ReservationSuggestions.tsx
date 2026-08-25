@@ -1,8 +1,14 @@
 "use client"
 
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import {
+  UmssCard as Card,
+  UmssCardHeader as CardHeader,
+  UmssCardTitle as CardTitle,
+  UmssCardContent as CardContent,
+  UmssCardFooter as CardFooter,
+  Button,
+  Badge,
+} from "@umss/estilos-base/components"
 import { ShieldAlert, CheckCircle, ArrowRight, LayoutGrid } from "lucide-react"
 
 // Import types
@@ -100,7 +106,7 @@ export function ReservationSuggestions({
                     {sug.environments.map((env) => (
                       <Badge
                         key={env.id}
-                        variant="secondary"
+                        variant="outline"
                         className="text-[9px] font-mono font-bold bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-gray-300 rounded-lg px-2 py-0.5 border border-border"
                       >
                         ID: {env.id}

@@ -2,8 +2,7 @@
 
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button, Input, DatePicker } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -61,33 +60,17 @@ export function ReservationForm({
           <Label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
             <CalendarIcon className="w-3 h-3 text-[#002855] dark:text-blue-400" /> Fecha de Reserva
           </Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50"
-              >
-                {targetDate ? (
-                  format(targetDate, "dd 'de' MMMM, yyyy", { locale: es })
-                ) : (
-                  <span className="text-muted-foreground">Elegir fecha</span>
-                )}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={targetDate}
-                onSelect={(date) => {
-                  if (date) {
-                    const formatted = date.toISOString().split("T")[0]
-                    handleFieldChange("fecha", formatted)
-                  }
-                }}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
+          <DatePicker
+            value={targetDate}
+            onValueChange={(date) => {
+              if (date) {
+                const formatted = date.toISOString().split("T")[0]
+                handleFieldChange("fecha", formatted)
+              }
+            }}
+            placeholder="Elegir fecha"
+            className="h-9 w-full bg-background rounded-xl border border-border text-xs"
+          />
         </div>
 
         {/* Hora Inicio (2 cols) */}
@@ -97,7 +80,7 @@ export function ReservationForm({
           </Label>
           <TimePicker
             value={formData.horaInicio}
-            onChange={(val) => handleFieldChange("horaInicio", val)}
+            onChange={(val: string) => handleFieldChange("horaInicio", val)}
             className="h-9 text-xs"
           />
         </div>
@@ -109,7 +92,7 @@ export function ReservationForm({
           </Label>
           <TimePicker
             value={formData.horaFin}
-            onChange={(val) => handleFieldChange("horaFin", val)}
+            onChange={(val: string) => handleFieldChange("horaFin", val)}
             className="h-9 text-xs"
           />
         </div>
@@ -157,7 +140,7 @@ export function ReservationForm({
           </Label>
           <Select
             value={formData.tipoCapacidad}
-            onValueChange={(val: "total" | "examen") => handleFieldChange("tipoCapacidad", val)}
+            onValueChange={(val: string) => handleFieldChange("tipoCapacidad", val)}
           >
             <SelectTrigger className="h-9 text-xs">
               <SelectValue placeholder="Tipo" />
@@ -180,7 +163,7 @@ export function ReservationForm({
           </Label>
           <Select
             value={formData.agrupacion || "bloque"}
-            onValueChange={(val: "bloque" | "individual") => handleFieldChange("agrupacion", val)}
+            onValueChange={(val: string) => handleFieldChange("agrupacion", val)}
           >
             <SelectTrigger className="h-9 text-xs">
               <SelectValue placeholder="Agrupación" />

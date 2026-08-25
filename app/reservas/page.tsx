@@ -7,10 +7,9 @@ import { ReservationForm } from "@/features/reservations/ui/ReservationForm"
 import { ReservationSuggestions } from "@/features/reservations/ui/ReservationSuggestions"
 import { reservationService } from "@/features/reservations/application/reservationService"
 import { useAuth } from "@/features/auth/application/useAuth"
-import { Button } from "@/components/ui/button"
+import { Button, toast } from "@umss/estilos-base/components"
 import { useUIStore } from "@/shared/stores/uiStore"
 
-import { toast } from "sonner"
 import {
   CalendarClock,
   Sparkles,
@@ -106,11 +105,6 @@ export default function ReservasPage() {
       return res
     } catch (err: unknown) {
       console.error("Error consultando disponibilidad:", err)
-      const error = err as { body?: { message?: string | string[] }; message?: string }
-      const errorMsg = Array.isArray(error.body?.message)
-        ? error.body.message.join(", ")
-        : error.body?.message || error.message || "Error inesperado"
-      toast.error(`Error al consultar disponibilidad: ${errorMsg}`)
       setSuggestions([])
       setSearchMeta(null)
       throw err
