@@ -11,6 +11,7 @@ import {
   AlertCircle,
   ClipboardList,
   Settings2,
+  CalendarDays,
 } from "lucide-react"
 import { Layout, ScrollArea } from "@umss/estilos-base/components"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
@@ -47,6 +48,11 @@ const defaultSidebarItems = [
     title: "Partes Diarios",
     href: "/partes-diarios",
     icon: ClipboardList,
+  },
+  {
+    title: "Partes Mensuales",
+    href: "/partes-mensuales",
+    icon: CalendarDays,
   },
   {
     title: "Reglas Asistencia",
