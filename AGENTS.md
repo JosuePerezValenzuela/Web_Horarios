@@ -72,67 +72,39 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 
 - `alert.tsx`
   - Installed via shadcn; variants: `default`, `destructive`, **`success`**
-  - Use `success` variant (`className="border-green-500/50 text-green-700 dark:text-green-400"`) for success feedback
-  - Prefer **sonner toasts** (`toast.success`/`toast.error`) over inline Alerts for transient feedback — see `app/layout.tsx` for Toaster setup
+  - Use `success` variant for success feedback.
+  - Prefer **toast notifications** (`toast.success`/`toast.error` de la librería base `@umss/estilos-base`) over inline Alerts for transient feedback.
 - `button.tsx`
-  - Uses **CVA** variants: `default`, `outline`, `secondary`, `ghost`, `destructive`, `link`
-  - Sizes: `default`, `xs`, `sm`, `lg`, `icon`, `icon-xs`, `icon-sm`, `icon-lg`
-  - Supports `asChild`
-  - Use for: primary/secondary actions, toolbar buttons, dialog actions, icon buttons
-- `badge.tsx`
-  - Small status/count surface
-  - Use for: counters, statuses, small semantic labels, selected counts
-- `card.tsx`
-  - Provides `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`
-  - Uses large rounded surfaces and internal spacing variants via `size`
-  - Use for: grouped information, summary cards, clickable dashboard/list items
+  - Local button component containing customization styles y Radix layout sizes (`icon-xs`, `xs`, `icon-lg`).
+  - Prefer the official `<Button />` from `@umss/estilos-base/components` for general views unless specific layout sizes are required.
 - `input.tsx`
-  - Global text input with rounded-pill aesthetic and theme-based focus/invalid states
-  - Use for: text, number, time and other native input types when a specialized component does not exist
+  - Local input wrapper used by custom search dropdown inputs.
+  - Prefer the official `<Input />` from `@umss/estilos-base/components` for standard form views.
 - `label.tsx`
-  - Use for form labeling before creating custom text wrappers
-- `checkbox.tsx`
-  - Base checkbox control
-  - Use for: boolean selection inside custom lists, forms, and multi-selection UIs
+  - Local label control wrapper.
 - `dialog.tsx`
-  - Global modal/dialog primitive wrappers
-  - Use for: modal flows, confirmations, forms, and detail overlays that block the page
-- `alert-dialog.tsx`
-  - Destructive confirmation primitive (cancel/confirm pattern)
-  - Use for irreversible actions (e.g., physical deletes) instead of generic `dialog`
-  - Pair with `toast.success` / `toast.error` after server responses
+  - Global modal/dialog primitive wrappers for custom overlays.
 - `popover.tsx`
-  - Floating anchored surface wrapper
-  - Use for: lightweight anchored overlays like pickers, dropdown helpers, and custom floating panels
+  - Floating anchored surface wrapper.
 - `calendar.tsx`
-  - Global calendar/date selection UI
-  - Use for: single-date or range selection when the interaction is calendar-based
-- `date-picker-range.tsx`
-  - Reusable date range picker built on `Calendar` + `Popover`
-  - Use for: any date range selection flow across modules before building local alternatives
+  - Global calendar/date selection UI.
 - `select.tsx`
   - **Base select only**
-  - Provides `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`, `SelectValue`
-  - Use this for **simple selection without search**
-- `sonner.tsx`
-  - Premium custom Toast notification service (wraps Sonner).
-  - Automatically renders custom glassmorphism style alerts (success, error, info, warning) with rich icons and a synchronized progress bar at the bottom that shrinks according to auto-dismiss duration (pausing on hover).
-  - Custom `toast` object mirrors Sonner trigger interface: `toast.success(msg, desc?, duration?)`.
-
+  - Provides `Select`, `SelectTrigger`, `SelectContent`, `SelectItem`, `SelectLabel`, `SelectSeparator`, `SelectScrollUpButton`, `SelectScrollDownButton`, `SelectValue`.
+  - Use this for **simple selection without search** y to compose custom dropdown behaviors.
 - `searchable-select-content.tsx`
   - Specialized dropdown content for searchable selects.
   - Includes search input, search icon, autofocus on open, and blocks Radix typeahead while typing.
   - Supports `maxVisibleItems` property (defaults to `3`) to dynamically and mathematically compute and enforce `maxHeight` so dropdown viewport doesn't overflow vertically.
   - Use this when a `Select` needs in-panel filtering but selection remains **single-select**.
 - `multi-select.tsx`
-  - Searchable multi-selection dropdown with internal scroll, optional filter, selected-count badge, and **`selectAll`** prop
-  - `selectAll={true}` shows a "Seleccionar todos" / "Quitar todos" toggle as first item in the dropdown
+  - Searchable multi-selection dropdown with internal scroll, optional filter, selected-count badge, and **`selectAll`** prop.
+  - `selectAll={true}` shows a "Seleccionar todos" / "Quitar todos" toggle as first item in the dropdown.
   - Long content options are truncated with an ellipsis and use native `title` tooltips to reveal the full content on hover without breaking the dropdown structure.
-  - Use for: reusable **multi-select** cases (e.g. bloques, tipos, tags) where multiple values are required
+  - Use for: reusable **multi-select** cases (e.g. bloques, tipos, tags) where multiple values are required.
 - `table.tsx`
-  - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`
-  - Also includes `TableRowEven` and `TableRowOdd` helpers for alternating row backgrounds
-  - Use for: structured tabular data; prefer internal scroll containers over changing table semantics
+  - Provides `Table`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`, `TableCaption`.
+  - Also includes `TableRowEven` and `TableRowOdd` helpers for alternating row backgrounds.
 - `time-picker.tsx`
   - Hybrid 12-hour format time picker (segmented keyboard inputs + scrollable column picker popover).
   - Handles local 12h UX interaction (AM/PM selection) while outputting and managing standard 24h (`HH:mm`) format for integration with the scheduling stores.
@@ -140,12 +112,8 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
 ### `components/organisms/` — Existing layout-level components
 
 - `AppLayout.tsx`
-  - Protected layout shell using `TopHeader` + fixed `Sidebar`
-  - Main content scrolls independently; sidebar collapse comes from `useUIStore`
-- `Sidebar.tsx`
-  - Existing navigation shell; reuse before inventing alternate side navigation patterns
-- `TopHeader.tsx`
-  - Existing top bar/breadcrumb surface for app pages
+  - Protected layout shell using the navigation menus y theme layouts.
+  - Main content scrolls independently; sidebar collapse comes from `useUIStore`.
 
 ### Atomic folders status
 
@@ -222,10 +190,11 @@ When writing code, agents should follow this workflow:
 ## Common Mistakes to Avoid
 
 1. **Using non-theme colors** - Creates inconsistency and breaks dark mode
-2. **Duplicating global components** - If it exists in `components/ui/`, don't recreate it
+2. **Duplicating global components** - If it exists in `components/ui/` or `@umss/estilos-base`, don't recreate it
 3. **Skipping verification** - Always run Prettier, lint, and TypeScript verification before finishing
 4. **Fixed positioning for layout** - Use flexbox or grid for responsive layouts
 5. **Forgetting responsive prefixes** - Mobile first, then enhance with `sm:`, `md:`, `lg:`
+6. **Manual Toast Error Handling** - Do NOT catch API errors in views to show generic error toasts. Let the central network interceptor inside the HTTP clients handle notifying the user of server/network exceptions.
 
 ## Skill Registry
 
@@ -238,7 +207,7 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
   - `mode="edit"` → edits horarios (PATCH flow)
 - `AmbienteSearchPopover` is store-agnostic via adapter contract (`AmbienteSearchContract`), used by both create/edit stores.
 - In create/edit tables, ambiente selection should validate required fields first (rango/fecha source, día, hora inicio, hora fin) and provide explicit user feedback.
-- For destructive actions in this module (delete one/all horarios), use `alert-dialog.tsx` + server-driven toast messages.
+- For destructive actions in this module (delete one/all horarios), use `@umss/estilos-base` `AlertDialog` + server-driven toast messages.
 - `WeeklyScheduleGrid` uses adaptive timeline segment heights; avoid hardcoded floor heights that add dead space to the last row when real segment data exists.
 
 ### Zustand Stores & Vista Global
