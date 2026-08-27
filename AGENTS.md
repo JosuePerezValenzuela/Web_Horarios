@@ -115,12 +115,6 @@ This is the CURRENT state of the codebase. Prefer these components/patterns befo
   - Protected layout shell using the navigation menus y theme layouts.
   - Main content scrolls independently; sidebar collapse comes from `useUIStore`.
 
-### Atomic folders status
-
-- `components/atoms/` is currently **empty**
-- `components/molecules/` is currently **empty**
-- `components/templates/` is currently **empty**
-
 Do not document or generate fictional atoms/molecules/templates as if they already exist. If you create them later, update this file.
 
 ## Design System Rules
@@ -143,19 +137,13 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 - ✅ `bg-primary`, `hover:bg-muted`, `bg-card`
 - ❌ `bg-surface-container-low`, `bg-stone-50`, `border-outline-variant`
 
-### 3. Component Hierarchy
-
-- **`components/ui/`** = shadcn/ui base components (GLOBAL, reusable everywhere)
-- **`features/*/ui/`** = Feature-specific components (LOCAL, single feature)
-- **Rule**: If it's reusable across features, move to `components/ui/`
-
-### 4. Before Creating New Components
+### 3. Before Creating New Components
 
 - Before creating a new component, **always verify first** if there is already a suitable base in `components/ui/` or if it can be built by composing existing shadcn/ui primitives already configured in this project or install using npx.
 - Prefer **extending or composing** the current shadcn/ui setup instead of creating parallel custom primitives.
 - Only create a brand-new component when the existing global base components do not cover the interaction or visual requirement.
 
-### 5. API Service Boundaries
+### 4. API Service Boundaries
 
 - Before consuming or creating a new API service, verify if the request belongs to one of the existing global clients in `shared/services/api/`.
 - Current global API clients:
@@ -163,29 +151,10 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
   - `shared/services/api/infraClient.ts` → infrastructure/physical resources API (`NEXT_PUBLIC_INFRA_URL`)
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
-### 6. Unified UMSS Design System (CRITICAL)
+### 5. Unified UMSS Design System (CRITICAL)
 
-- Toda implementación de vistas, pantallas o componentes visuales debe seguir estrictamente las reglas tipográficas, de paleta de colores, atmósfera y utilidades definidas en la guía de estilos [design-system-umss.md](file:///home/josue/dev/Web_Horarios/design-system-umss.md) (referenciado como design-style.md en la raíz).
+- Toda implementación de vistas, pantallas o componentes visuales debe seguir estrictamente las reglas tipográficas, de paleta de colores, atmósfera y utilidades definidas en la guía de estilos [design-system-umss.md](/design-system-umss.md).
 - Priorizar el uso de las clases de utilidad provistas en dicho archivo (como `umss-btn-primary`, `umss-title-h1`, `umss-input`, etc.) para asegurar una experiencia institucional coherente y uniforme.
-
-## Formatting Workflow (IMPORTANT)
-
-When writing code, agents should follow this workflow:
-
-1. **Write the files** - Implement the code normally
-2. **DO NOT run format after each file** - This causes unnecessary file changes
-3. **At the end of each implementation session**, format with Prettier first
-   ```bash
-   pnpm prettier --write <modified-files>
-   ```
-4. **Then run the linter** on the affected files / project
-   ```bash
-   pnpm lint
-   ```
-5. **Then run TypeScript check** focused on modified files when feasible; otherwise run project-level typecheck
-   ```bash
-   pnpm tsc --noEmit
-   ```
 
 ## Common Mistakes to Avoid
 
@@ -199,16 +168,6 @@ When writing code, agents should follow this workflow:
 ## Skill Registry
 
 Sub-agents and workflows should reference `.atl/skill-registry.md` for available skills and project-specific patterns.
-
-## Scheduling Module Notes (Docentes & Global)
-
-- `BulkAssignmentModal` now supports two modes:
-  - `mode="create"` → creates horarios (POST flow)
-  - `mode="edit"` → edits horarios (PATCH flow)
-- `AmbienteSearchPopover` is store-agnostic via adapter contract (`AmbienteSearchContract`), used by both create/edit stores.
-- In create/edit tables, ambiente selection should validate required fields first (rango/fecha source, día, hora inicio, hora fin) and provide explicit user feedback.
-- For destructive actions in this module (delete one/all horarios), use `@umss/estilos-base` `AlertDialog` + server-driven toast messages.
-- `WeeklyScheduleGrid` uses adaptive timeline segment heights; avoid hardcoded floor heights that add dead space to the last row when real segment data exists.
 
 ### Zustand Stores & Vista Global
 
