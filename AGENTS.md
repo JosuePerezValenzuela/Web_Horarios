@@ -255,6 +255,23 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
 
 ## Testing
 
-- **Status**: Not configured yet
-- **Recommendation**: Vitest + React Testing Library when needed
-<!-- END:project-conventions -->
+- **Testing Engine**: Configured inside the docker container to avoid global dependency issues.
+- **Unit & Integration Tests**: Powered by **Vitest** + **React Testing Library** + **jsdom** + **@testing-library/jest-dom**.
+  - Files should follow the `*.test.tsx` or `*.spec.ts` naming convention.
+  - Run tests:
+    ```bash
+    docker exec web_horarios sh -c "pnpm vitest run"
+    ```
+- **End-to-End (E2E) Testing**: Powered by **Playwright**.
+  - Confirms system integrations, routing, login portals, and database updates.
+  - Run Playwright:
+    ```bash
+    docker exec web_horarios sh -c "pnpm playwright test"
+    ```
+- **UI/UX Visual Testing**: Covered by Playwright's native visual comparison snapshots (e.g., `expect(page).toHaveScreenshot()`).
+- **Resilience & Security Testing**:
+  - Run simulated network failures (offline mock service workers) and slow connection latency configurations inside tests to verify client graceful-degradation (e.g., infinite loaders, error alerts).
+  - Secure input validators (Zod schemas) under `shared/validators/` should have unit testing coverage verifying SQL Injection, XSS, and boundary inputs.
+- **Performance & Performance Audits**:
+  - Covered by Lighthouse / Web Vitals metrics checking, specifically monitoring chunk sizes and heavy layout re-renders on the weekly grid container.
+  <!-- END:project-conventions -->
