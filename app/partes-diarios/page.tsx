@@ -16,8 +16,6 @@ import { SearchableSelectContent } from "@/components/ui/searchable-select-conte
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TimePicker } from "@/components/ui/time-picker"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -33,7 +31,14 @@ import {
   SelectItem,
   SelectContent,
 } from "@/components/ui/select"
-import { toast, UmssModal, Button } from "@umss/estilos-base/components"
+import {
+  toast,
+  UmssModal,
+  Button,
+  Badge,
+  UmssCard,
+  UmssCardContent,
+} from "@umss/estilos-base/components"
 import { infraService } from "@/shared/services/api/infraClient"
 import {
   Calendar as CalendarIcon,
@@ -677,8 +682,8 @@ export default function PartesDiariosPage() {
           </div>
 
           {/* Panel de Filtros */}
-          <Card className="border-border/60 shadow-sm py-3 w-full">
-            <CardContent className="p-3">
+          <UmssCard className="border-border/60 shadow-sm py-3 w-full">
+            <UmssCardContent className="p-3">
               <form
                 onSubmit={handleBuscar}
                 className="flex flex-wrap items-end justify-between gap-4 w-full"
@@ -878,11 +883,8 @@ export default function PartesDiariosPage() {
                 <div className="flex items-center gap-2 w-full justify-end m-0 pt-3 border-t border-border/40">
                   {reporteData && (
                     <Badge
-                      className={
-                        reporteData.estado === "confirmado"
-                          ? "bg-green-100 text-green-800 border-green-200 text-[10px] px-2.5 py-1.5 rounded-lg dark:bg-green-950/40 dark:text-green-300 dark:border-green-800/40"
-                          : "bg-amber-100 text-amber-800 border-amber-200 text-[10px] px-2.5 py-1.5 rounded-lg dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40"
-                      }
+                      variant={reporteData.estado === "confirmado" ? "neutral" : "warning"}
+                      className="text-[10px] px-2.5 py-1 rounded-lg"
                     >
                       {reporteData.estado.toUpperCase()}
                     </Badge>
@@ -935,8 +937,8 @@ export default function PartesDiariosPage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
+            </UmssCardContent>
+          </UmssCard>
 
           {/* Estados de carga e información */}
           {!reporteData && <PartesReportState loading={loading} hasSearched={hasSearched} />}

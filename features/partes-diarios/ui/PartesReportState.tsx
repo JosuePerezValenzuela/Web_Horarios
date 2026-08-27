@@ -1,7 +1,7 @@
 "use client"
 
 import { FileText, Info, Loader2 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
+import { UmssCard as Card, UmssCardContent as CardContent } from "@umss/estilos-base/components"
 
 export function PartesReportState({
   loading,

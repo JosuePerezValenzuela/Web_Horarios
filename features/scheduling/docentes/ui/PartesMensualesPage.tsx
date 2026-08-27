@@ -20,9 +20,17 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { toast, Button, ScrollArea } from "@umss/estilos-base/components"
+import {
+  toast,
+  Button,
+  ScrollArea,
+  Badge,
+  UmssCard as Card,
+  UmssCardHeader as CardHeader,
+  UmssCardTitle as CardTitle,
+  UmssCardDescription as CardDescription,
+  UmssCardContent as CardContent,
+} from "@umss/estilos-base/components"
 import {
   Search,
   Printer,
