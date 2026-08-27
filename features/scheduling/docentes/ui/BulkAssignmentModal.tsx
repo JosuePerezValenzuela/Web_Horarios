@@ -27,8 +27,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  DateRangePicker,
 } from "@umss/estilos-base/components"
-import { DatePickerRange } from "@/components/ui/date-picker-range"
 import {
   Dialog,
   DialogContent,
@@ -325,9 +325,9 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
             <div className="mb-4">
               <Label className="text-xs">Rango de fechas</Label>
               <div className="mt-1">
-                <DatePickerRange
+                <DateRangePicker
                   value={dateRange}
-                  onChange={(range) => {
+                  onValueChange={(range) => {
                     if (!range?.from || !range?.to) return
                     if (mode === "create") {
                       bulk.setDateRange(range)

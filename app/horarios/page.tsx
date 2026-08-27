@@ -31,8 +31,7 @@ import { SearchableSelectContent } from "@/components/ui/searchable-select-conte
 import { MultiSelect } from "@/components/ui/multi-select"
 import { TimePicker } from "@/components/ui/time-picker"
 import type { DateRange } from "react-day-picker"
-import { DatePickerRange } from "@/components/ui/date-picker-range"
-import { Badge } from "@umss/estilos-base/components"
+import { Badge, DateRangePicker } from "@umss/estilos-base/components"
 import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
 import type { ScheduleItem } from "@/components/ui/weekly-schedule-grid/types"
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
@@ -786,9 +785,9 @@ export default function HorariosListPage() {
                       {/* Filtro Rango de Fechas */}
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Fechas</Label>
-                        <DatePickerRange
+                        <DateRangePicker
                           value={dateRangeValue}
-                          onChange={handleDateRangeChange}
+                          onValueChange={handleDateRangeChange}
                           disabled={!isMandatoryFiltersSet}
                           className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
                           placeholder="Seleccionar rango"

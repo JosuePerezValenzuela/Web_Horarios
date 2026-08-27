@@ -8,7 +8,6 @@ import { useAuthStore } from "@/features/auth/application/authStore"
 import { usePartesMensualesStore } from "@/features/scheduling/docentes/application/usePartesMensualesStore"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
-import { DatePickerRange } from "@/components/ui/date-picker-range"
 import type { DateRange } from "react-day-picker"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import { Select, SelectTrigger, SelectValue, SelectItem } from "@/components/ui/select"
@@ -25,6 +24,7 @@ import {
   Button,
   ScrollArea,
   Badge,
+  DateRangePicker,
   UmssCard as Card,
   UmssCardHeader as CardHeader,
   UmssCardTitle as CardTitle,
@@ -362,9 +362,9 @@ export default function PartesMensualesPage() {
                 {/* Rango de Fechas */}
                 <div className="space-y-1.5 flex flex-col">
                   <Label className="text-xs font-semibold text-foreground">Rango de Fechas</Label>
-                  <DatePickerRange
+                  <DateRangePicker
                     value={dateRange}
-                    onChange={setDateRange}
+                    onValueChange={setDateRange}
                     placeholder="Seleccione Rango de Fechas"
                     className="h-9 w-full bg-background rounded-xl border border-border text-xs"
                   />
