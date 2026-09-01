@@ -127,7 +127,7 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 
 ### 2. Color System (MUST USE)
 
-- **ALL colors MUST come from `app/globals.css` theme variables**
+- **ALL colors MUST come from `app/theme.css` theme variables**
 - NEVER use custom colors like `surface-container-*`, `stone-*`, `zinc-*`, etc.
 - NEVER use `outline-variant` (it doesn't exist in theme)
 

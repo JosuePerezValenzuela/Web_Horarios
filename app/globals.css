@@ -1,6 +1,0 @@
-@import "@umss/estilos-base";
-
-/* Tailwind v4 no escanea node_modules por defecto: sin esto, las clases
-   usadas dentro del bundle compilado de @umss/estilos-base (dist/index.js)
-   no se generan y sus componentes se renderizan sin estilos. */
-@source "../node_modules/@umss/estilos-base/dist";
