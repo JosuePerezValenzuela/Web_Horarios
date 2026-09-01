@@ -14,12 +14,15 @@ interface AttendanceConfigState {
   deleteConfig: (id: number) => Promise<void>
 }
 
-export const useAttendanceConfigStore = create<AttendanceConfigState>()((set) => ({
+export const useAttendanceConfigStore = create<AttendanceConfigState>()((set, get) => ({
   configs: [],
   loading: false,
   error: null,
 
   fetchConfigs: async () => {
+    // Salvaguarda: evitar peticiones paralelas concurrentes
+    if (get().loading) return
+
     set({ loading: true, error: null })
     try {
       const data = await attendanceConfigApi.list()

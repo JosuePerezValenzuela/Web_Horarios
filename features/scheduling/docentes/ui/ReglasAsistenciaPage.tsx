@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useAttendanceConfigStore } from "@/features/scheduling/docentes/application/useAttendanceConfigStore"
+import type { AttendanceConfig } from "@/features/scheduling/docentes/application/attendanceConfigApi"
 import { useUIStore } from "@/shared/stores/uiStore"
 import {
   UmssCard,
@@ -56,7 +57,7 @@ export default function ReglasAsistenciaPage() {
   const [validFrom, setValidFrom] = useState<Date | undefined>(undefined)
 
   // Edit/Delete state variables
-  const [editingConfig, setEditingConfig] = useState<any | null>(null)
+  const [editingConfig, setEditingConfig] = useState<AttendanceConfig | null>(null)
   const [editValidFrom, setEditValidFrom] = useState<Date | undefined>(undefined)
   const [editValidTo, setEditValidTo] = useState<Date | undefined>(undefined)
   const [deletingConfigId, setDeletingConfigId] = useState<number | null>(null)
@@ -145,7 +146,7 @@ export default function ReglasAsistenciaPage() {
     }
   }
   const handleEditSubmit = async () => {
-    if (!editingConfig) return
+    if (!editingConfig || editingConfig.id === undefined) return
 
     // Construct updates payload with date validations
     const updates: any = {}
