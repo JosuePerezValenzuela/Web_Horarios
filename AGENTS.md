@@ -147,8 +147,9 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 
 - Before consuming or creating a new API service, verify if the request belongs to one of the existing global clients in `shared/services/api/`.
 - Current global API clients:
-  - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`)
-  - `shared/services/api/infraClient.ts` → infrastructure/physical resources API (`NEXT_PUBLIC_INFRA_URL`)
+  - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`) para auth, docentes, horarios y asignaciones.
+  - `shared/services/api/infraClient.ts` → infrastructure API (`NEXT_PUBLIC_INFRA_URL`) para campus, bloques, ambientes y espacios físicos.
+  - `shared/services/api/partesClient.ts` → partes y asistencias API (`NEXT_PUBLIC_PARTES_URL`) para partes diarios, partes mensuales y reglas de asistencia.
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
 ### 5. Unified UMSS Design System (CRITICAL)
@@ -171,15 +172,22 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
 
 ### Zustand Stores & Vista Global
 
-- **Stores de Catálogos Modulares** (`shared/stores/catalogos/`):
+- **Stores de Catálogos Compartidos** (`shared/stores/catalogos/`):
   - `useFacultadesStore`: Obtiene y cachea facultades (`/facultad/all`).
-  - `useCarrerasStore`: Obtiene y cachea carreras/planes (`/carrera/all`).
-  - `useAsignaturasStore`: Obtiene y cachea asignaturas (`/asignatura/all`).
-  - `useDocentesSearchStore`: Búsqueda debounced interactiva de docentes (`/docentes?search=...`).
-- **Store de Horarios Globales** (`features/scheduling/docentes/application/useHorariosListStore.ts`):
-  - Maneja la consulta `GET /horario-clases` con filtros complejos (`facultad_codigo`, `plan_estudio_codigo`, `asignatura_codigo`, `grupo`, `persona_documento`, `aula_id`, etc.).
-  - Valida reglas de negocio en frontend (el filtro de grupo requiere código de asignatura, rangos de fechas/horas válidos) antes de llamar a la API.
-  - Paginación establecida por defecto a `1000` registros para evitar scrollbar global en la ventana de navegación, delegando la visualización única en la grilla semanal (`WeeklyScheduleGrid`) con scroll interno.
+  - `useCarrerasStore`: Obtiene y cachea carreras/planes por facultad (`/carrera/all`).
+  - `useAsignaturasStore`: Obtiene y cachea asignaturas por carrera/facultad (`/asignatura/all`).
+  - `useInfraStore`: Obtiene y cachea campus, bloques y ambientes del microservicio de infraestructura.
+- **Stores de Estado Global de la Aplicación**:
+  - `authStore` (`features/auth/application/authStore.ts`): Estado de sesión, usuario autenticado y verificación de token.
+  - `useUIStore` (`shared/stores/uiStore.ts`): Estado de UI compartido (sidebar colapsado, copilot abierto, modales).
+- **Stores de Características (Feature Stores)**:
+  - `useHorariosListStore`: Consulta y filtros para la grilla semanal global de horarios.
+  - `useDocentesStore`: Listado paginado y filtros de búsqueda de docentes.
+  - `docenteHorariosStore`: Gestión de horarios específicos asignados a un docente.
+  - `useBulkAsignacionStore`: Creación y asignación de múltiples horarios por lote.
+  - `useEditScheduleStore`: Edición individual y por lote de horarios existentes.
+  - `useAttendanceConfigStore`: Listado, registro, edición y baja de reglas/umbrales de asistencia.
+  - `useSolapamientosStore`: Detección y listado de cruces/solapamientos de horarios.
 
 ## Testing
 
