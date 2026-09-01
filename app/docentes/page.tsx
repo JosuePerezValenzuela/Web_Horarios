@@ -7,21 +7,12 @@ import { DocentesFilters } from "@/features/scheduling/docentes/ui/DocentesFilte
 import { DocentesTable } from "@/features/scheduling/docentes/ui/DocentesTable"
 import { DocentesPagination } from "@/features/scheduling/docentes/ui/DocentesPagination"
 import { useDocentesStore } from "@/features/scheduling/docentes/application/docentesStore"
-import { toast } from "@umss/estilos-base/components"
-
 export default function DocentesPage() {
-  const { fetchDocentes, error } = useDocentesStore()
+  const { fetchDocentes } = useDocentesStore()
 
   useEffect(() => {
     fetchDocentes()
   }, [fetchDocentes])
-
-  // Despliega un toast de error si la consulta al backend falla
-  useEffect(() => {
-    if (error) {
-      toast.error(error)
-    }
-  }, [error])
 
   return (
     <ProtectedRoute>

@@ -7,25 +7,21 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useDocentesStore } from "../application/docentesStore"
+import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
+import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
+import { useAsignaturasStore } from "@/shared/stores/catalogos/useAsignaturasStore"
 import { Input, SearchableSelect } from "@umss/estilos-base/components"
 
 export function DocentesFilters() {
+  const { filters, search, setFilters, setSearch } = useDocentesStore()
+  const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
   const {
-    facultades,
     carreras,
-    asignaturas,
-    filters,
-    search,
-    loadingFacultades,
-    loadingCarreras,
-    setFilters,
-    setSearch,
-    fetchFacultades,
+    loading: loadingCarreras,
     fetchCarreras,
-    fetchAsignaturas,
-    resetCarreras,
-    resetAsignaturas,
-  } = useDocentesStore()
+    clear: clearCarreras,
+  } = useCarrerasStore()
+  const { asignaturas, fetchAsignaturas, clear: clearAsignaturas } = useAsignaturasStore()
 
   const [localSearch, setLocalSearch] = useState(search)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -41,19 +37,17 @@ export function DocentesFilters() {
     }, 300)
   }
 
-  // Load facultades on mount
+  // Load facultades on mount using cached store
   useEffect(() => {
-    if (facultades.length === 0) {
-      fetchFacultades()
-    }
-  }, [facultades.length, fetchFacultades])
+    fetchFacultades()
+  }, [fetchFacultades])
 
   // Handle facultad change - cascade to reset carrera and asignatura
   const handleFacultadChange = (facultadId: string) => {
-    resetCarreras()
-    resetAsignaturas()
+    clearCarreras()
+    clearAsignaturas()
     const newFacultadId = facultadId === "all" ? undefined : facultadId
-    setFilters({ facultadId: newFacultadId })
+    setFilters({ facultadId: newFacultadId, carreraId: undefined, asignaturaId: undefined })
     if (newFacultadId) {
       fetchCarreras(newFacultadId)
     }
@@ -61,9 +55,9 @@ export function DocentesFilters() {
 
   // Handle carrera change - cascade to reset asignatura
   const handleCarreraChange = (carreraId: string) => {
-    resetAsignaturas()
+    clearAsignaturas()
     const newCarreraId = carreraId === "all" ? undefined : carreraId
-    setFilters({ carreraId: newCarreraId })
+    setFilters({ carreraId: newCarreraId, asignaturaId: undefined })
     if (newCarreraId && filters.facultadId) {
       fetchAsignaturas(newCarreraId, filters.facultadId)
     }
@@ -77,17 +71,17 @@ export function DocentesFilters() {
 
   // Mapeamos los catálogos a las opciones esperadas por SearchableSelect
   const facultadOptions = facultades.map((f) => ({
-    value: f.id,
+    value: f.id.toString(),
     label: f.nombre,
   }))
 
   const carreraOptions = carreras.map((c) => ({
-    value: c.id,
+    value: c.id.toString(),
     label: c.nombre,
   }))
 
   const asignaturaOptions = asignaturas.map((a) => ({
-    value: a.id,
+    value: a.id.toString(),
     label: a.nombre,
   }))
 

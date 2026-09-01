@@ -4,22 +4,11 @@
 
 import { create } from "zustand"
 import type { Docente, DocentesFilters, Pagination } from "../domain/types"
-import {
-  fetchDocentes,
-  fetchFacultades,
-  fetchCarreras,
-  fetchAsignaturas,
-  type Facultad,
-  type Carrera,
-  type Asignatura,
-} from "./api"
+import { fetchDocentes } from "./api"
 
 interface DocentesState {
   // Data
   docentes: Docente[]
-  facultades: Facultad[]
-  carreras: Carrera[]
-  asignaturas: Asignatura[]
 
   // Filters
   filters: DocentesFilters
@@ -29,10 +18,6 @@ interface DocentesState {
   pagination: Pagination
 
   // Loading states
-  loading: boolean
-  loadingFacultades: boolean
-  loadingCarreras: boolean
-  loadingAsignaturas: boolean
   loadingDocentes: boolean
 
   // Error
@@ -45,13 +30,6 @@ interface DocentesState {
   setPageSize: (pageSize: number) => void
 
   fetchDocentes: () => Promise<void>
-  fetchFacultades: () => Promise<void>
-  fetchCarreras: (facultadId?: string) => Promise<void>
-  fetchAsignaturas: (carreraId?: string, facultadId?: string) => Promise<void>
-
-  // Reset helpers
-  resetCarreras: () => void
-  resetAsignaturas: () => void
   clearFilters: () => void
 }
 
@@ -74,21 +52,13 @@ const defaultFilters: DocentesFilters = {
 export const useDocentesStore = create<DocentesState>()((set, get) => ({
   // Initial state
   docentes: [],
-  facultades: [],
-  carreras: [],
-  asignaturas: [],
 
   filters: defaultFilters,
   search: "",
 
   pagination: defaultPagination,
 
-  loading: false,
-  loadingFacultades: false,
-  loadingCarreras: false,
-  loadingAsignaturas: false,
   loadingDocentes: false,
-
   error: null,
 
   // Filter actions
@@ -133,6 +103,9 @@ export const useDocentesStore = create<DocentesState>()((set, get) => ({
 
   // Data fetching actions
   fetchDocentes: async () => {
+    // Salvaguarda: evitar peticiones paralelas concurrentes
+    if (get().loadingDocentes) return
+
     const { filters, pagination } = get()
     set({ loadingDocentes: true, error: null })
 
@@ -165,65 +138,12 @@ export const useDocentesStore = create<DocentesState>()((set, get) => ({
     }
   },
 
-  fetchFacultades: async () => {
-    set({ loadingFacultades: true, error: null })
-
-    try {
-      const data = await fetchFacultades()
-      set({ facultades: data, loadingFacultades: false })
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : "Failed to fetch facultades",
-        loadingFacultades: false,
-      })
-    }
-  },
-
-  fetchCarreras: async (facultadId?: string) => {
-    set({ loadingCarreras: true, error: null })
-
-    try {
-      const data = await fetchCarreras(facultadId)
-      set({ carreras: data, loadingCarreras: false })
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : "Failed to fetch carreras",
-        loadingCarreras: false,
-      })
-    }
-  },
-
-  fetchAsignaturas: async (carreraId?: string, facultadId?: string) => {
-    set({ loadingAsignaturas: true, error: null })
-
-    try {
-      const data = await fetchAsignaturas(carreraId, facultadId)
-      set({ asignaturas: data, loadingAsignaturas: false })
-    } catch (error) {
-      set({
-        error: error instanceof Error ? error.message : "Failed to fetch asignaturas",
-        loadingAsignaturas: false,
-      })
-    }
-  },
-
-  // Reset helpers
-  resetCarreras: () => {
-    set({ carreras: [], filters: { ...get().filters, carreraId: undefined } })
-  },
-
-  resetAsignaturas: () => {
-    set({ asignaturas: [], filters: { ...get().filters, asignaturaId: undefined } })
-  },
-
   clearFilters: () => {
     set({
       filters: defaultFilters,
       search: "",
       pagination: { ...defaultPagination },
       docentes: [],
-      carreras: [],
-      asignaturas: [],
     })
   },
 }))
