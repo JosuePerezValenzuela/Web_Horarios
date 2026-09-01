@@ -5,7 +5,10 @@ import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useAuthStore } from "@/features/auth/application/authStore"
-import { usePartesMensualesStore } from "@/features/scheduling/docentes/application/usePartesMensualesStore"
+import {
+  partesMensualesApi,
+  type ReporteMensualResponse,
+} from "@/features/scheduling/docentes/application/partesMensualesApi"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import type { DateRange } from "react-day-picker"
@@ -46,7 +49,10 @@ import {
 export default function PartesMensualesPage() {
   const { facultades, fetchFacultades } = useFacultadesStore()
   const { user } = useAuthStore()
-  const { reporte, loading, error, generarReporte } = usePartesMensualesStore()
+
+  // Estado local del reporte
+  const [reporte, setReporte] = useState<ReporteMensualResponse | null>(null)
+  const [loading, setLoading] = useState(false)
 
   // Filtros de Búsqueda
   const [selectedFacultadId, setSelectedFacultadId] = useState<string>("")
@@ -87,15 +93,19 @@ export default function PartesMensualesPage() {
       return local.toISOString().split("T")[0]
     }
 
+    setLoading(true)
     try {
-      await generarReporte({
+      const data = await partesMensualesApi.generar({
         facultadCodigo: fac.codigo,
         fechaDesde: toLocalYmd(dateRange.from),
         fechaHasta: toLocalYmd(dateRange.to),
       })
+      setReporte(data)
       toast.success("Parte mensual consultado correctamente")
     } catch (err: any) {
-      // Los errores ya son interceptados por partesClient, pero podemos capturar local
+      // Los errores ya son interceptados por partesClient
+    } finally {
+      setLoading(false)
     }
   }
 
