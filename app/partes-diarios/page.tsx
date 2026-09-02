@@ -75,15 +75,19 @@ interface ReporteDetalle {
   persona_nombres: string
   asignatura_nombre: string
   grupo_nombre: string
+  grupo_tipo?: string
   aula_codigo: string
+  tipo_designacion?: string
   minutos_retraso: number | null
   minutos_anticipados: number | null
   falta: boolean
   hora_ingreso_tickeo?: string | null
   hora_salida_tickeo?: string | null
-  referencia_origen: ReferenciaOrigen | null
-  observacion: string | null
-  tipo_tickeo: string | null
+  referencia_origen?: ReferenciaOrigen | null
+  observacion?: string | null
+  tipo_tickeo?: string | null
+  virtual?: boolean
+  asignatura_tipo?: "Te" | "Ti" | "Ta" | string
   detalle_partes_diarios_id?: number
   id?: number
   persona_codigo?: string
@@ -113,7 +117,10 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
-  const itemsWithIndex = detalles.map((d, idx) => ({
+  // Aseguramos excluir cualquier detalle marcado como virtual
+  const nonVirtualDetalles = detalles.filter((d) => d.virtual !== true)
+
+  const itemsWithIndex = nonVirtualDetalles.map((d, idx) => ({
     ...d,
     originalIndex: idx + 1,
   }))
@@ -244,6 +251,7 @@ export default function PartesDiariosPage() {
   const [horaFin, setHoraFin] = useState<string>("")
   const [grupoTipo, setGrupoTipo] = useState<string>("")
   const [tipoDesignacion, setTipoDesignacion] = useState<string>("")
+  const [asignaturaTipo, setAsignaturaTipo] = useState<string>("")
 
   // Filtros de infraestructura
   const [selectedCampusId, setSelectedCampusId] = useState<string>("")
@@ -354,6 +362,13 @@ export default function PartesDiariosPage() {
       toast.error("Para filtrar por hora, debe ingresar tanto la hora de inicio como la de fin")
       return
     }
+    if (
+      (selectedCampusId && !selectedFacultadInfraId) ||
+      (!selectedCampusId && selectedFacultadInfraId)
+    ) {
+      toast.error("Los filtros de Campus y Facultad geográfica deben seleccionarse juntos")
+      return
+    }
 
     const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
     if (!facultad) return
@@ -371,7 +386,7 @@ export default function PartesDiariosPage() {
     try {
       const params = new URLSearchParams()
       params.append("fecha", fechaFormateada)
-      params.append("facultadCodigo", facultad.codigo)
+      params.append("facultad_codigo", facultad.codigo)
 
       if (horaInicio && horaFin) {
         params.append("hora_inicio", horaInicio)
@@ -382,6 +397,9 @@ export default function PartesDiariosPage() {
       }
       if (tipoDesignacion) {
         params.append("tipo_designacion", tipoDesignacion)
+      }
+      if (asignaturaTipo) {
+        params.append("asignatura_tipo", asignaturaTipo)
       }
       if (selectedCampusId && selectedFacultadInfraId) {
         params.append("campus_id", selectedCampusId)
@@ -428,24 +446,23 @@ export default function PartesDiariosPage() {
     if (!facultad) return
 
     setGeneratingPdf(true)
-    const toastId = toast.loading("Generando documento PDF oficial en el servidor...")
+    const toastId = toast.loading("Generando documento PDF oficial...")
 
     const [year, month, day] = fecha.split("-")
     const fechaFormateada = `${day}-${month}-${year}`
 
     try {
-      let url = `/api/pdf/reporte-partes?fecha=${fechaFormateada}&facultadCodigo=${facultad.codigo}&facultadNombre=${encodeURIComponent(facultad.nombre)}&userName=${encodeURIComponent(user?.name || "")}`
-      if (horaInicio && horaFin) {
-        url += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
-      }
-      if (grupoTipo) url += `&grupo_tipo=${grupoTipo}`
-      if (tipoDesignacion) url += `&tipo_designacion=${tipoDesignacion}`
-      if (selectedCampusId && selectedFacultadInfraId) {
-        url += `&campus_id=${selectedCampusId}&facultad_id=${selectedFacultadInfraId}`
-      }
-      url += `&print_columns=${printColumns}`
+      const res = await fetch("/api/pdf/reporte-partes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reporte: reporteData,
+          facultadNombre: facultad.nombre,
+          userName: user?.name || "Administrador",
+          printColumns,
+        }),
+      })
 
-      const res = await fetch(url)
       if (!res.ok) {
         const errorData = await res.json()
         throw new Error(errorData.error || "No se pudo compilar el archivo PDF en el servidor")
@@ -795,6 +812,30 @@ export default function PartesDiariosPage() {
                         <SelectItem value="N">Normal</SelectItem>
                         <SelectItem value="S">Suplente</SelectItem>
                         <SelectItem value="A">Acéfalo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Tipo de Asignatura */}
+                  <div className="space-y-1.5 m-0 p-0">
+                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                      Tipo de asignatura{" "}
+                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                    </Label>
+                    <Select
+                      value={asignaturaTipo || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setAsignaturaTipo(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                    >
+                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Todas" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>Todas</SelectItem>
+                        <SelectItem value="Teorico">Teórico</SelectItem>
+                        <SelectItem value="Taller">Taller</SelectItem>
+                        <SelectItem value="Titulacion">Titulación</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

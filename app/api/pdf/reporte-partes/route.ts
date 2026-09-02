@@ -11,14 +11,15 @@ interface ReporteDetalle {
   grupo_nombre: string
   aula_codigo: string
   persona_codigo?: string
+  virtual?: boolean
 }
 
 interface ParteDiarioReporte {
   fecha: string
   facultad_codigo: string
   estado: string
-  campusNombre?: string
-  facultadNombre: string
+  campusNombre?: string | null
+  facultadNombre?: string | null
   detalles: ReporteDetalle[]
 }
 
@@ -45,7 +46,10 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
-  const itemsWithIndex = detalles.map((d, idx) => ({
+  // Aseguramos excluir cualquier detalle marcado como virtual
+  const nonVirtualDetalles = detalles.filter((d) => d.virtual !== true)
+
+  const itemsWithIndex = nonVirtualDetalles.map((d, idx) => ({
     ...d,
     originalIndex: idx + 1,
   }))
@@ -130,67 +134,38 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
-export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url)
-  const fecha = searchParams.get("fecha")
-  const nullSafeFacultadCodigo = searchParams.get("facultadCodigo")
-  const facultadNombreParam = searchParams.get("facultadNombre")
-  const userNameParam = searchParams.get("userName")
-  const horaInicio = searchParams.get("hora_inicio")
-  const horaFin = searchParams.get("hora_fin")
-  const grupoTipo = searchParams.get("grupo_tipo")
-  const tipoDesignacion = searchParams.get("tipo_designacion")
-  const printColumns = searchParams.get("print_columns") || "Ambos"
-  const showEntrada = printColumns === "Entrada" || printColumns === "Ambos"
-  const showSalida = printColumns === "Salida" || printColumns === "Ambos"
-
-  if (!fecha || !nullSafeFacultadCodigo) {
-    return NextResponse.json(
-      { error: "Faltan parámetros requeridos: fecha y facultadCodigo" },
-      { status: 400 }
-    )
-  }
-
-  const userName = userNameParam ? decodeURIComponent(userNameParam) : "Administrador"
-
+export async function POST(request: NextRequest) {
   let browser: Browser | null = null
 
   try {
-    let backendUrl = process.env.NEXT_PUBLIC_PARTES_URL ?? "http://localhost:3006"
+    const body = await request.json()
+    const { reporte, facultadNombre, userName, printColumns = "Ambos" } = body
 
-    if (backendUrl.includes("localhost")) {
-      backendUrl = backendUrl.replace("localhost", "host.docker.internal")
-    } else if (backendUrl.includes("127.0.0.1")) {
-      backendUrl = backendUrl.replace("127.0.0.1", "host.docker.internal")
+    if (!reporte) {
+      return NextResponse.json(
+        { error: "Faltan los datos del reporte en el cuerpo de la solicitud" },
+        { status: 400 }
+      )
     }
 
-    let fetchUrl = `${backendUrl}/partes-diarios/reporte?fecha=${fecha}&facultadCodigo=${nullSafeFacultadCodigo}`
+    const data: ParteDiarioReporte = reporte
+    const fecha = data.fecha || ""
+    const facultadCodigo = data.facultad_codigo || ""
+    const showEntrada = printColumns === "Entrada" || printColumns === "Ambos"
+    const showSalida = printColumns === "Salida" || printColumns === "Ambos"
 
-    if (horaInicio && horaFin) {
-      fetchUrl += `&hora_inicio=${horaInicio}&hora_fin=${horaFin}`
+    const displayFacultadNombre = facultadNombre || data.facultadNombre || facultadCodigo
+    const displayUserName = userName || "Administrador"
+
+    const [dayStr, monthStr, yearStr] = fecha.includes("-") ? fecha.split("-") : ["", "", ""]
+    let nombreDia = ""
+    if (dayStr && monthStr && yearStr) {
+      const dateObj =
+        yearStr.length === 4
+          ? new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr))
+          : new Date(Number(dayStr), Number(monthStr) - 1, Number(yearStr))
+      nombreDia = dateObj.toLocaleDateString("es-BO", { weekday: "long" })
     }
-    if (grupoTipo) fetchUrl += `&grupo_tipo=${encodeURIComponent(grupoTipo)}`
-    if (tipoDesignacion) fetchUrl += `&tipo_designacion=${encodeURIComponent(tipoDesignacion)}`
-
-    const res = await fetch(fetchUrl, { cache: "no-store" })
-    if (!res.ok) {
-      if (res.status === 404) {
-        return NextResponse.json(
-          { error: "No se encontró el parte diario para la facultad y fecha indicadas" },
-          { status: 404 }
-        )
-      }
-      throw new Error(`Error del backend de partes: ${res.statusText}`)
-    }
-
-    const data: ParteDiarioReporte = await res.json()
-    const facultadNombre = facultadNombreParam
-      ? decodeURIComponent(facultadNombreParam)
-      : data.facultadNombre
-
-    const [dayStr, monthStr, yearStr] = fecha.split("-")
-    const dateObj = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr))
-    const nombreDia = dateObj.toLocaleDateString("es-BO", { weekday: "long" })
 
     let logoBase64 = ""
     try {
@@ -355,7 +330,7 @@ export async function GET(request: NextRequest) {
                     <div class="flex flex-col gap-1">
                       <div>
                         <span class="font-bold text-gray-950">Facultad: </span>
-                        ${facultadNombre} (${nullSafeFacultadCodigo})
+                        ${displayFacultadNombre} (${facultadCodigo})
                       </div>
                       ${data.campusNombre ? `<div><span class="font-bold text-gray-950">Campus: </span>${data.campusNombre}</div>` : ""}
                     </div>
