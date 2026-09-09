@@ -1,6 +1,4 @@
-/**
- * API client for INFRA system (physical resources)
- */
+import { toast } from "@umss/estilos-base/components"
 
 const INFRA_BASE_URL = process.env.NEXT_PUBLIC_INFRA_URL ?? "http://localhost:3002/api"
 
@@ -17,26 +15,28 @@ interface InfraError extends Error {
 
 class InfraApiClient {
   private baseUrl: string
+  private inFlightGetRequests = new Map<string, Promise<unknown>>()
 
   constructor(baseUrl: string = INFRA_BASE_URL) {
     this.baseUrl = baseUrl
   }
 
-  private handleResponse<T>(response: Response): Promise<T> {
+  private async handleResponse<T>(response: Response): Promise<T> {
     if (!response.ok) {
       const error: InfraError = new Error(
         `HTTP ${response.status}: ${response.statusText}`
       ) as InfraError
       error.status = response.status
-      return response
-        .json()
-        .then((body) => {
-          error.body = body
-          throw error
-        })
-        .catch(() => {
-          throw error
-        })
+      try {
+        const body = await response.json()
+        error.body = body
+        const apiMsg = body?.message || `Error de infraestructura (${response.status})`
+        toast.error(apiMsg, { id: apiMsg })
+      } catch {
+        const msg = `Error de infraestructura (${response.status}: ${response.statusText})`
+        toast.error(msg, { id: msg })
+      }
+      throw error
     }
     return response.json() as Promise<T>
   }
@@ -47,18 +47,40 @@ class InfraApiClient {
       ...(options.headers ?? {}),
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: options.method ?? "GET",
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      credentials: "include",
-    })
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: options.method ?? "GET",
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        credentials: "include",
+      })
 
-    return this.handleResponse<T>(response)
+      return await this.handleResponse<T>(response)
+    } catch (error) {
+      if (error && typeof error === "object" && "status" in error) {
+        throw error
+      }
+      const networkError: InfraError = new Error(
+        "No se pudo conectar con el servicio de infraestructura."
+      ) as InfraError
+      networkError.status = 0
+      toast.error(networkError.message, { id: "infra-network-error" })
+      throw networkError
+    }
   }
 
   async get<T>(endpoint: string, options: InfraApiClientOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: "GET" })
+    const cacheKey = `GET:${endpoint}`
+    if (this.inFlightGetRequests.has(cacheKey)) {
+      return this.inFlightGetRequests.get(cacheKey) as Promise<T>
+    }
+
+    const promise = this.request<T>(endpoint, { ...options, method: "GET" }).finally(() => {
+      this.inFlightGetRequests.delete(cacheKey)
+    })
+
+    this.inFlightGetRequests.set(cacheKey, promise)
+    return promise
   }
 
   async post<T>(endpoint: string, body: unknown, options: InfraApiClientOptions = {}): Promise<T> {

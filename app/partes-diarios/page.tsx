@@ -417,17 +417,10 @@ export default function PartesDiariosPage() {
       toast.success("Parte diario cargado correctamente", { id: toastId })
     } catch (error) {
       console.error("Error al cargar reporte:", error)
+      toast.dismiss(toastId)
       const apiErr = error as PartesApiError
       if (apiErr.status === 404) {
-        toast.dismiss(toastId)
         setShowGenerateModal(true)
-      } else {
-        toast.error(
-          apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-            ? String(apiErr.body.message)
-            : "Error al consultar el servicio de partes diarios",
-          { id: toastId }
-        )
       }
     } finally {
       setLoading(false)

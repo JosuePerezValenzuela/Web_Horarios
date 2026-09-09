@@ -26,8 +26,8 @@ export const useFacultadesStore = create<FacultadesState>()((set, get) => ({
   error: null,
 
   fetchFacultades: async () => {
-    // Si ya tenemos facultades cargadas, evitamos la llamada (caché en memoria)
-    if (get().facultades.length > 0) return
+    // Si ya tenemos facultades cargadas o está cargando, evitamos la llamada duplicada
+    if (get().facultades.length > 0 || get().loading) return
 
     set({ loading: true, error: null })
     try {

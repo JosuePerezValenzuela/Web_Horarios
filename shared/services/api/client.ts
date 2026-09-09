@@ -14,9 +14,10 @@ import type {
   PatchAsignacionHorarioRequest,
   PatchAsignacionHorarioResponse,
   TipoAsignacionAdministrativo,
+  TipoCargosApiResponse,
 } from "@/features/scheduling/docentes/domain/types"
 
-import { toast } from "sonner"
+import { toast } from "@umss/estilos-base/components"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
 
@@ -33,6 +34,7 @@ export interface ApiError extends Error {
 
 class ApiClient {
   private baseUrl: string
+  private inFlightGetRequests = new Map<string, Promise<unknown>>()
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl
@@ -50,12 +52,13 @@ class ApiClient {
           error.body = body
           // Extract specific error messages if available from API client (ApiError)
           const apiMsg = body?.message || `Error del servidor (${response.status})`
-          toast.error(apiMsg)
+          toast.error(apiMsg, { id: apiMsg })
           throw error
         })
         .catch((err) => {
           if (!err.status) {
-            toast.error(`Error de red: ${response.statusText}`)
+            const msg = `Error de red: ${response.statusText}`
+            toast.error(msg, { id: msg })
           }
           throw err
         })
@@ -69,32 +72,57 @@ class ApiClient {
       ...(options.headers ?? {}),
     }
 
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      method: options.method ?? "GET",
-      headers,
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      credentials: "include",
-    })
+    try {
+      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+        method: options.method ?? "GET",
+        headers,
+        body: options.body ? JSON.stringify(options.body) : undefined,
+        credentials: "include",
+      })
 
-    if (response.status === 401) {
-      if (typeof window !== "undefined") {
-        const { useAuthStore } = await import("@/features/auth/application/authStore")
-        useAuthStore.getState().logout()
+      if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          const { useAuthStore } = await import("@/features/auth/application/authStore")
+          useAuthStore.getState().logout()
 
-        if (window.location.pathname !== "/" && !window.location.pathname.startsWith("/reservas")) {
-          window.location.href = "/"
+          if (
+            window.location.pathname !== "/" &&
+            !window.location.pathname.startsWith("/reservas")
+          ) {
+            window.location.href = "/"
+          }
         }
+        const error: ApiError = new Error("Unauthorized") as ApiError
+        error.status = 401
+        throw error
       }
-      const error: ApiError = new Error("Unauthorized") as ApiError
-      error.status = 401
-      throw error
-    }
 
-    return this.handleResponse<T>(response)
+      return await this.handleResponse<T>(response)
+    } catch (error) {
+      if (error && typeof error === "object" && "status" in error) {
+        throw error
+      }
+      const networkError: ApiError = new Error(
+        "No se pudo conectar con el servidor principal. Verifique su conexión o intente más tarde."
+      ) as ApiError
+      networkError.status = 0
+      toast.error(networkError.message, { id: "main-network-error" })
+      throw networkError
+    }
   }
 
   async get<T>(endpoint: string, options: ApiClientOptions = {}): Promise<T> {
-    return this.request<T>(endpoint, { ...options, method: "GET" })
+    const cacheKey = `GET:${endpoint}`
+    if (this.inFlightGetRequests.has(cacheKey)) {
+      return this.inFlightGetRequests.get(cacheKey) as Promise<T>
+    }
+
+    const promise = this.request<T>(endpoint, { ...options, method: "GET" }).finally(() => {
+      this.inFlightGetRequests.delete(cacheKey)
+    })
+
+    this.inFlightGetRequests.set(cacheKey, promise)
+    return promise
   }
 
   async post<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
@@ -278,5 +306,9 @@ export const horariosApi = {
     return apiClient.get<{ success: boolean; data: TipoAsignacionAdministrativo[] }>(
       `/tipo-asignacion-horario-administrativo?page=${page}&pageSize=${pageSize}`
     )
+  },
+
+  getTipoCargos: (page: number = 1, pageSize: number = 50): Promise<TipoCargosApiResponse> => {
+    return apiClient.get<TipoCargosApiResponse>(`/tipo-cargos?page=${page}&pageSize=${pageSize}`)
   },
 }

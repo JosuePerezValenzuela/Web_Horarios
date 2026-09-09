@@ -49,8 +49,8 @@ export const useInfraStore = create<InfraStoreState>()((set, get) => ({
   error: null,
 
   fetchCampus: async () => {
-    // Avoid double fetch if already loaded
-    if (get().campus.length > 0) return
+    // Avoid double fetch if already loaded or in progress
+    if (get().campus.length > 0 || get().loading) return
 
     set({ loading: true, error: null })
     try {
@@ -66,8 +66,8 @@ export const useInfraStore = create<InfraStoreState>()((set, get) => ({
   },
 
   fetchFacultades: async () => {
-    // Avoid double fetch if already loaded
-    if (get().facultades.length > 0) return
+    // Avoid double fetch if already loaded or in progress
+    if (get().facultades.length > 0 || get().loading) return
 
     set({ loading: true, error: null })
     try {
