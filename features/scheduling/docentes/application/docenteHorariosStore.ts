@@ -108,10 +108,15 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
       // Adjust timeRange to incorporate administrative hours
       let startMin = normalized.timeRange.startMin
       let endMin = normalized.timeRange.endMin
-      adminSchedules.forEach((admin) => {
-        startMin = Math.min(startMin, admin.startMin)
-        endMin = Math.max(endMin, admin.endMin)
-      })
+      if (normalized.schedules.length === 0 && adminSchedules.length > 0) {
+        startMin = Math.min(...adminSchedules.map((a) => a.startMin))
+        endMin = Math.max(...adminSchedules.map((a) => a.endMin))
+      } else {
+        adminSchedules.forEach((admin) => {
+          startMin = Math.min(startMin, admin.startMin)
+          endMin = Math.max(endMin, admin.endMin)
+        })
+      }
       const adjustedTimeRange = { startMin, endMin }
 
       set({

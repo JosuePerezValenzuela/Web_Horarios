@@ -3,10 +3,10 @@
 import { useState, useEffect, useMemo } from "react"
 
 import { toast } from "@umss/estilos-base/components"
-import { format, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { CalendarIcon, AlertCircle, Pencil, Trash2, ChevronDown, ClipboardList } from "lucide-react"
-import { UmssModal, Button, Checkbox, Badge } from "@umss/estilos-base/components"
+import { UmssModal, Button, Checkbox, Badge, SearchableSelect } from "@umss/estilos-base/components"
 import {
   Table,
   TableHeader,
@@ -33,12 +33,14 @@ import type {
   CrearAsignacionHorarioRequest,
   PatchAsignacionHorarioRequest,
   TipoAsignacionAdministrativo,
+  TipoCargo,
 } from "../domain/types"
 import {
   fetchHorarioCatalogo,
   crearAsignacionHorario,
   patchAsignacionHorario,
   fetchTipoAsignacionHorarioAdministrativo,
+  fetchTipoCargos,
   eliminarAsignacionHorario,
 } from "../application/api"
 
@@ -67,8 +69,9 @@ const formatTime = (timeStr: string) => {
 
 const formatDate = (dateStr: string | null, isEndDate = false) => {
   if (!dateStr) return isEndDate ? "Sin límite" : "—"
-  const parts = dateStr.split("-")
-  if (parts.length !== 3) return dateStr
+  const cleanStr = dateStr.slice(0, 10)
+  const parts = cleanStr.split("-")
+  if (parts.length !== 3) return cleanStr
   return `${parts[2]}-${parts[1]}-${parts[0]}`
 }
 
@@ -78,6 +81,23 @@ function timeToMinutes(timeStr: string): number {
   const hours = parseInt(parts[0], 10) || 0
   const minutes = parseInt(parts[1], 10) || 0
   return hours * 60 + minutes
+}
+
+const getLocalTodayStr = (): string => {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, "0")
+  const d = String(now.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+export const isScheduleVigente = (
+  schedule: { fecha_inicio: string; fecha_fin: string | null },
+  todayStr: string = getLocalTodayStr()
+): boolean => {
+  if (schedule.fecha_fin === null) return true
+  const finStr = schedule.fecha_fin.slice(0, 10)
+  return finStr >= todayStr
 }
 
 export function AdminSchedulesModal({
@@ -95,46 +115,61 @@ export function AdminSchedulesModal({
   const [fechaInicio, setFechaInicio] = useState<Date>(new Date())
   const [fechaFin, setFechaFin] = useState<Date | undefined>(undefined)
   const [permiteClases, setPermiteClases] = useState(false)
+  const [hasCargo, setHasCargo] = useState(false)
+  const [selectedCargoId, setSelectedCargoId] = useState<number | "">("")
   const [selectedDias, setSelectedDias] = useState<number[]>([]) // Array of days (1-5)
   const [selectedTipoId, setSelectedTipoId] = useState<number | "">("")
   const [catalogList, setCatalogList] = useState<HorarioCatalogoItem[]>([])
   const [tipoList, setTipoList] = useState<TipoAsignacionAdministrativo[]>([])
+  const [cargoList, setCargoList] = useState<TipoCargo[]>([])
   const [loadingCatalog, setLoadingCatalog] = useState(false)
   const [loadingTipos, setLoadingTipos] = useState(false)
+  const [loadingCargos, setLoadingCargos] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [overlapError, setOverlapError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<number | null>(null)
 
   // ── Edit-mode state ──────────────────────────────────────────────────────────
   const [isEditMode, setIsEditMode] = useState(false)
-  const [editDates, setEditDates] = useState<Record<number, string>>({})
-  const [editPermiteClases, setEditPermiteClases] = useState<Record<number, boolean>>({})
+  const [globalEditFechaFin, setGlobalEditFechaFin] = useState<Date | undefined>(undefined)
+  const [globalEditHasCargo, setGlobalEditHasCargo] = useState(false)
+  const [globalEditCargoId, setGlobalEditCargoId] = useState<number | "">("")
+  const [globalEditPermiteClases, setGlobalEditPermiteClases] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  const todayStr = useMemo(() => getLocalTodayStr(), [])
+
+  // ── Active (vigentes) schedules ──────────────────────────────────────────────
+  const activeSchedules = useMemo(() => {
+    return schedules.filter((s) => isScheduleVigente(s, todayStr))
+  }, [schedules, todayStr])
+
   // ── Sorted list (memoised inline) ────────────────────────────────────────────
-  const sortedSchedules = [...schedules].sort((a, b) => {
-    // Primero, agrupar por vigentes (activos) arriba
-    const aActive = a.fecha_fin === null
-    const bActive = b.fecha_fin === null
+  const sortedSchedules = useMemo(() => {
+    return [...schedules].sort((a, b) => {
+      // Primero, agrupar por vigentes (activos) arriba
+      const aActive = isScheduleVigente(a, todayStr)
+      const bActive = isScheduleVigente(b, todayStr)
 
-    if (aActive && !bActive) return -1
-    if (!aActive && bActive) return 1
+      if (aActive && !bActive) return -1
+      if (!aActive && bActive) return 1
 
-    // Si ambos tienen el mismo estado de vigencia, ordenar por día de la semana (Lunes = 1, Domingo = 7)
-    if (a.dia !== b.dia) {
-      return a.dia - b.dia
-    }
+      // Si ambos tienen el mismo estado de vigencia, ordenar por día de la semana (Lunes = 1, Domingo = 7)
+      if (a.dia !== b.dia) {
+        return a.dia - b.dia
+      }
 
-    // Si coinciden en vigencia y día, ordenar por hora de entrada
-    const aStart = timeToMinutes(a.horario_catalogo.hora_entrada)
-    const bStart = timeToMinutes(b.horario_catalogo.hora_entrada)
-    if (aStart !== bStart) {
-      return aStart - bStart
-    }
+      // Si coinciden en vigencia y día, ordenar por hora de entrada
+      const aStart = timeToMinutes(a.horario_catalogo.hora_entrada)
+      const bStart = timeToMinutes(b.horario_catalogo.hora_entrada)
+      if (aStart !== bStart) {
+        return aStart - bStart
+      }
 
-    // Como último criterio, ordenar por fecha de inicio descendente
-    return b.fecha_inicio.localeCompare(a.fecha_inicio)
-  })
+      // Como último criterio, ordenar por fecha de inicio descendente
+      return b.fecha_inicio.localeCompare(a.fecha_inicio)
+    })
+  }, [schedules, todayStr])
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   // Get dynamic workload based on selected hours catalog match
@@ -170,6 +205,8 @@ export function AdminSchedulesModal({
     setFechaInicio(new Date())
     setFechaFin(undefined)
     setPermiteClases(false)
+    setHasCargo(false)
+    setSelectedCargoId("")
     setSelectedDias([])
     setSelectedTipoId("")
     setOverlapError(null)
@@ -234,14 +271,29 @@ export function AdminSchedulesModal({
 
   // ── Edit-mode helpers ────────────────────────────────────────────────────────
   const enterEditMode = () => {
-    const datesMap: Record<number, string> = {}
-    const permiteMap: Record<number, boolean> = {}
-    sortedSchedules.forEach((s) => {
-      datesMap[s.id] = s.fecha_fin ?? ""
-      permiteMap[s.id] = s.permite_clases
-    })
-    setEditDates(datesMap)
-    setEditPermiteClases(permiteMap)
+    // 1. Cargo de autoridad: si los activos tienen cargo, preseleccionarlo
+    const currentActiveWithCargo = activeSchedules.find((s) => s.tipo_cargo_id)
+    if (currentActiveWithCargo && currentActiveWithCargo.tipo_cargo_id) {
+      setGlobalEditHasCargo(true)
+      setGlobalEditCargoId(currentActiveWithCargo.tipo_cargo_id)
+    } else {
+      setGlobalEditHasCargo(false)
+      setGlobalEditCargoId("")
+    }
+
+    // 2. Fecha de fin: si los activos tienen una fecha fin vigente establecida, parsearla
+    const activeWithFin = activeSchedules.find((s) => s.fecha_fin !== null)
+    if (activeWithFin && activeWithFin.fecha_fin) {
+      const [y, m, d] = activeWithFin.fecha_fin.slice(0, 10).split("-").map(Number)
+      setGlobalEditFechaFin(new Date(y, m - 1, d))
+    } else {
+      setGlobalEditFechaFin(undefined)
+    }
+
+    // 3. Permite clases: preseleccionar del primer horario activo
+    const initialPermite = activeSchedules.length > 0 ? activeSchedules[0].permite_clases : false
+    setGlobalEditPermiteClases(initialPermite)
+
     setIsEditMode(true)
     if (isFormOpen) {
       setIsFormOpen(false)
@@ -250,8 +302,10 @@ export function AdminSchedulesModal({
   }
 
   const cancelEditMode = () => {
-    setEditDates({})
-    setEditPermiteClases({})
+    setGlobalEditFechaFin(undefined)
+    setGlobalEditHasCargo(false)
+    setGlobalEditCargoId("")
+    setGlobalEditPermiteClases(false)
     setIsEditMode(false)
   }
 
@@ -265,8 +319,26 @@ export function AdminSchedulesModal({
     }
   }, [isOpen])
 
-  // Load catalogs when form opens
+  // Load catalogs when form opens or edit mode enters
   useEffect(() => {
+    if (isFormOpen || isEditMode) {
+      if (cargoList.length === 0) {
+        const loadCargos = async () => {
+          setLoadingCargos(true)
+          try {
+            const res = await fetchTipoCargos(1, 100)
+            if (res && res.data) {
+              setCargoList(res.data.filter((c) => c.activo !== false))
+            }
+          } catch (err) {
+            console.error("Error al cargar tipos de cargos:", err)
+          } finally {
+            setLoadingCargos(false)
+          }
+        }
+        loadCargos()
+      }
+    }
     if (isFormOpen) {
       if (catalogList.length === 0) {
         const loadCatalog = async () => {
@@ -305,7 +377,7 @@ export function AdminSchedulesModal({
         loadTipos()
       }
     }
-  }, [isFormOpen, catalogList.length, tipoList.length])
+  }, [isFormOpen, isEditMode, catalogList.length, tipoList.length, cargoList.length])
 
   // Real-time overlap validation
   useEffect(() => {
@@ -353,6 +425,7 @@ export function AdminSchedulesModal({
       !selectedCatalogId ||
       selectedDias.length === 0 ||
       !selectedTipoId ||
+      (hasCargo && !selectedCargoId) ||
       overlapError
     ) {
       toast.error("Complete todos los campos requeridos")
@@ -373,6 +446,7 @@ export function AdminSchedulesModal({
             permite_clases: permiteClases,
             dia: d,
             tipo_asignacion_horario_administrativo_id: Number(selectedTipoId),
+            tipo_cargo_id: hasCargo && selectedCargoId ? Number(selectedCargoId) : null,
           }
           const res = await crearAsignacionHorario(payload)
           if (res.success) {
@@ -422,14 +496,47 @@ export function AdminSchedulesModal({
   }
 
   const handleSaveEdits = async () => {
-    // Check which entries actually changed (either dates or permite_clases)
-    const changed = sortedSchedules.filter((s) => {
-      const dateChanged = (editDates[s.id] ?? "") !== (s.fecha_fin ?? "")
-      const permiteChanged = (editPermiteClases[s.id] ?? s.permite_clases) !== s.permite_clases
-      return dateChanged || permiteChanged
+    const targetFechaFin = globalEditFechaFin ? format(globalEditFechaFin, "yyyy-MM-dd") : null
+    const targetCargoId = globalEditHasCargo && globalEditCargoId ? Number(globalEditCargoId) : null
+    const targetPermiteClases = globalEditPermiteClases
+
+    // Determine which active schedules need updates
+    const changedSchedules: {
+      schedule: AdminScheduleRaw
+      payload: PatchAsignacionHorarioRequest
+    }[] = []
+
+    activeSchedules.forEach((schedule) => {
+      const payload: PatchAsignacionHorarioRequest = {}
+      let hasChange = false
+
+      // 1. Fecha Fin (compara solo si cambió)
+      const currentFechaFin = schedule.fecha_fin ? schedule.fecha_fin.slice(0, 10) : null
+      if (targetFechaFin !== currentFechaFin) {
+        payload.fecha_fin = targetFechaFin
+        hasChange = true
+      }
+
+      // 2. Tipo Cargo (compara solo si cambió)
+      const currentCargoId = schedule.tipo_cargo_id ?? null
+      if (targetCargoId !== currentCargoId) {
+        payload.tipo_cargo_id = targetCargoId
+        hasChange = true
+      }
+
+      // 3. Permite Clases (compara solo si cambió)
+      if (targetPermiteClases !== schedule.permite_clases) {
+        payload.permite_clases = targetPermiteClases
+        hasChange = true
+      }
+
+      if (hasChange) {
+        changedSchedules.push({ schedule, payload })
+      }
     })
 
-    if (changed.length === 0) {
+    if (changedSchedules.length === 0) {
+      toast.info("No se detectaron cambios para guardar.")
       cancelEditMode()
       return
     }
@@ -438,18 +545,7 @@ export function AdminSchedulesModal({
     let allOk = true
     try {
       await Promise.all(
-        changed.map(async (schedule) => {
-          const payload: PatchAsignacionHorarioRequest = {}
-          const newDate = editDates[schedule.id] ?? ""
-          const originalDate = schedule.fecha_fin ?? ""
-          if (newDate !== originalDate) {
-            payload.fecha_fin = newDate || null
-          }
-          const newPermite = editPermiteClases[schedule.id] ?? schedule.permite_clases
-          if (newPermite !== schedule.permite_clases) {
-            payload.permite_clases = newPermite
-          }
-
+        changedSchedules.map(async ({ schedule, payload }) => {
           const res = await patchAsignacionHorario(schedule.id, payload)
           if (!res.success) {
             allOk = false
@@ -458,7 +554,9 @@ export function AdminSchedulesModal({
         })
       )
       if (allOk) {
-        toast.success("Horarios actualizados correctamente")
+        toast.success(
+          `Se actualizaron correctamente ${changedSchedules.length} horario(s) administrativo(s).`
+        )
       }
       cancelEditMode()
       onAssigned?.()
@@ -476,7 +574,8 @@ export function AdminSchedulesModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Horario Academico Administrativo"
-      size="xl"
+      size="2xl"
+      className="max-w-[95vw] xl:max-w-7xl"
       footer={
         <div className="flex justify-end gap-2">
           {isEditMode ? (
@@ -502,11 +601,11 @@ export function AdminSchedulesModal({
               <Button
                 variant="primary"
                 onClick={enterEditMode}
-                disabled={sortedSchedules.length === 0}
+                disabled={activeSchedules.length === 0}
                 className="rounded-2xl gap-1.5 text-white"
               >
                 <Pencil className="size-3.5" />
-                Editar Fechas
+                Editar Horarios Vigentes
               </Button>
               <Button variant="outline" onClick={onClose} className="rounded-2xl">
                 Cerrar
@@ -528,6 +627,130 @@ export function AdminSchedulesModal({
             </div>
           )}
         </div>
+
+        {/* ── Global Edit Mode Controls Banner ── */}
+        {isEditMode && (
+          <div className="p-4 rounded-3xl border border-primary/30 bg-primary/5 space-y-4 animate-in fade-in-50 duration-200">
+            <div className="flex items-center gap-2">
+              <Pencil className="size-4 text-primary shrink-0" />
+              <h3 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                Configuración General de Asignaciones Vigentes
+              </h3>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Los cambios en fecha de finalización, cargo de autoridad y permiso para dictar clases
+              se aplicarán de forma global a todos los horarios administrativos vigentes (
+              {activeSchedules.length}).
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-border/50">
+              {/* 1. Fecha de Finalización Global */}
+              <div className="space-y-1.5 flex flex-col">
+                <span className="text-xs font-semibold text-foreground/80 font-roboto">
+                  Concluir vigencia (Fecha de Fin)
+                </span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal h-11 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+                      {globalEditFechaFin
+                        ? format(globalEditFechaFin, "dd-MM-yyyy")
+                        : "Mantener sin límite (Vigente)"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={globalEditFechaFin}
+                      onSelect={(date) => setGlobalEditFechaFin(date)}
+                      locale={es}
+                      initialFocus
+                    />
+                    <div className="border-t border-border p-2">
+                      <Button
+                        variant="cancel"
+                        size="sm"
+                        disabled={!globalEditFechaFin}
+                        className="w-full text-xs text-muted-foreground disabled:opacity-30"
+                        onClick={() => setGlobalEditFechaFin(undefined)}
+                      >
+                        Sin límite (Mantener vigente)
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              {/* 2. Dicta Clases Global */}
+              <div className="space-y-1.5 flex flex-col justify-center">
+                <span className="text-xs font-semibold text-foreground/80 font-roboto">
+                  Permiso de Clases
+                </span>
+                <div className="flex items-center gap-2 h-11 px-3 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] select-none">
+                  <Checkbox
+                    id="global-edit-permite-clases"
+                    checked={globalEditPermiteClases}
+                    onCheckedChange={(checked) => setGlobalEditPermiteClases(!!checked)}
+                  />
+                  <Label
+                    htmlFor="global-edit-permite-clases"
+                    className="text-xs text-foreground/85 cursor-pointer font-roboto"
+                  >
+                    Permitir dictar clases en estos horarios
+                  </Label>
+                </div>
+              </div>
+
+              {/* 3. Cargo de Autoridad Global */}
+              <div className="space-y-1.5 flex flex-col justify-center">
+                <div className="flex items-center gap-2 select-none pb-0.5">
+                  <Checkbox
+                    id="global-edit-cargo-checkbox"
+                    checked={globalEditHasCargo}
+                    onCheckedChange={(checked) => {
+                      const isChecked = !!checked
+                      setGlobalEditHasCargo(isChecked)
+                      if (!isChecked) {
+                        setGlobalEditCargoId("")
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor="global-edit-cargo-checkbox"
+                    className="text-xs font-semibold text-foreground/80 cursor-pointer font-roboto flex items-center gap-1"
+                  >
+                    Asignar cargo de autoridad que no tickea en biometricos
+                  </Label>
+                </div>
+
+                {globalEditHasCargo && (
+                  <div className="pt-0.5">
+                    {loadingCargos ? (
+                      <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
+                    ) : (
+                      <SearchableSelect
+                        id="select-global-cargo"
+                        placeholder="Seleccione tipo de cargo..."
+                        searchPlaceholder="Buscar cargo de autoridad..."
+                        options={cargoList.map((c) => ({
+                          value: c.id.toString(),
+                          label: `${c.descripcion} (${c.codigo})`,
+                        }))}
+                        value={globalEditCargoId ? globalEditCargoId.toString() : ""}
+                        onValueChange={(val) => setGlobalEditCargoId(val ? Number(val) : "")}
+                        allOption={false}
+                        className="w-full"
+                      />
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Collapsible form toggle button ── */}
         {!isEditMode && (
@@ -648,26 +871,24 @@ export function AdminSchedulesModal({
                 {/* 3. Catálogo de Horas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {loadingCatalog ? (
-                    <div className="text-xs text-muted-foreground sm:col-span-2 py-2">
-                      Cargando catálogo de horarios...
-                    </div>
+                    <div className="text-xs text-muted-foreground py-3">Cargando catálogo...</div>
                   ) : (
                     <>
                       <div className="space-y-1.5 flex flex-col">
                         <label
-                          htmlFor="select-inicio-admin"
+                          htmlFor="select-hora-inicio"
                           className="text-xs font-semibold text-foreground/80 font-roboto"
                         >
-                          Hora de Inicio <span className="text-red-500">*</span>
+                          Hora de Entrada <span className="text-red-500">*</span>
                         </label>
                         <Select value={selectedStart} onValueChange={handleStartChange}>
                           <SelectTrigger
-                            id="select-inicio-admin"
-                            className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                            id="select-hora-inicio"
+                            className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
                           >
-                            <SelectValue placeholder="Seleccione hora inicio..." />
+                            <SelectValue placeholder="Seleccione hora de entrada..." />
                           </SelectTrigger>
-                          <SelectContent position="popper" align="start">
+                          <SelectContent>
                             {availableStartTimes.map((t) => (
                               <SelectItem key={t} value={t}>
                                 {t}
@@ -679,19 +900,19 @@ export function AdminSchedulesModal({
 
                       <div className="space-y-1.5 flex flex-col">
                         <label
-                          htmlFor="select-fin-admin"
+                          htmlFor="select-hora-fin"
                           className="text-xs font-semibold text-foreground/80 font-roboto"
                         >
-                          Hora de Fin <span className="text-red-500">*</span>
+                          Hora de Salida <span className="text-red-500">*</span>
                         </label>
                         <Select value={selectedEnd} onValueChange={handleEndChange}>
                           <SelectTrigger
-                            id="select-fin-admin"
-                            className="h-12 w-full rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                            id="select-hora-fin"
+                            className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
                           >
-                            <SelectValue placeholder="Seleccione hora fin..." />
+                            <SelectValue placeholder="Seleccione hora de salida..." />
                           </SelectTrigger>
-                          <SelectContent position="popper" align="start">
+                          <SelectContent>
                             {availableEndTimes.map((t) => (
                               <SelectItem key={t} value={t}>
                                 {t}
@@ -704,28 +925,23 @@ export function AdminSchedulesModal({
                   )}
                 </div>
 
-                {/* dynamic load info collapsible transition */}
-                <div
-                  className={cn(
-                    "grid transition-all duration-350 ease-out overflow-hidden",
-                    selectedCatalogItem
-                      ? "grid-rows-[1fr] opacity-100 mt-2"
-                      : "grid-rows-[0fr] opacity-0"
-                  )}
-                >
-                  <div className="min-h-0">
-                    {selectedCatalogItem && (
-                      <div className="flex items-center gap-2 p-3 bg-blue-500/5 rounded-2xl border border-blue-500/10 text-xs text-blue-700 dark:text-blue-400">
-                        <span className="font-bold font-roboto">
-                          Carga Horaria Diaria del bloque:
-                        </span>
-                        <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-none font-bold text-xs">
-                          {selectedCatalogItem.carga_horaria_diaria} hrs / día
-                        </Badge>
-                      </div>
-                    )}
+                {/* Dynamic Workload and Description */}
+                {selectedCatalogItem && (
+                  <div className="p-3 bg-white dark:bg-[#1a1a1a] rounded-xl border border-border flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-semibold text-foreground">Descripción: </span>
+                      <span className="text-muted-foreground">
+                        {selectedCatalogItem.descripcion}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="font-semibold text-foreground">Carga Horaria Diaria: </span>
+                      <Badge variant="brand" className="ml-1 text-[11px] px-2 py-0.5">
+                        {selectedCatalogItem.carga_horaria_diaria} hrs / día
+                      </Badge>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* 4. Fechas (Vigencia) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -798,6 +1014,57 @@ export function AdminSchedulesModal({
                   </Label>
                 </div>
 
+                {/* Cargo de autoridad checkbox */}
+                <div className="space-y-3 pt-1">
+                  <div className="flex items-center gap-2 py-1 select-none">
+                    <Checkbox
+                      id="has-cargo-checkbox"
+                      checked={hasCargo}
+                      onCheckedChange={(checked) => {
+                        const isChecked = !!checked
+                        setHasCargo(isChecked)
+                        if (!isChecked) {
+                          setSelectedCargoId("")
+                        }
+                      }}
+                    />
+                    <Label
+                      htmlFor="has-cargo-checkbox"
+                      className="text-xs font-semibold text-foreground/80 cursor-pointer font-roboto flex items-center gap-1"
+                    >
+                      Asignar cargo de autoridad que no tickea en biometricos
+                    </Label>
+                  </div>
+
+                  {hasCargo && (
+                    <div className="space-y-1.5 flex flex-col pl-6">
+                      <label
+                        htmlFor="select-tipo-cargo"
+                        className="text-xs font-semibold text-foreground/80 font-roboto"
+                      >
+                        Tipo de Cargo de Autoridad <span className="text-red-500">*</span>
+                      </label>
+                      {loadingCargos ? (
+                        <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
+                      ) : (
+                        <SearchableSelect
+                          id="select-tipo-cargo"
+                          placeholder="Seleccione tipo de cargo..."
+                          searchPlaceholder="Buscar cargo de autoridad..."
+                          options={cargoList.map((c) => ({
+                            value: c.id.toString(),
+                            label: `${c.descripcion} (${c.codigo})`,
+                          }))}
+                          value={selectedCargoId ? selectedCargoId.toString() : ""}
+                          onValueChange={(val) => setSelectedCargoId(val ? Number(val) : "")}
+                          allOption={false}
+                          className="w-full"
+                        />
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {/* Error */}
                 {overlapError && (
                   <div className="p-3 rounded-2xl bg-red-500/10 border border-red-200/50 text-xs text-red-700 dark:text-red-400 flex items-start gap-2">
@@ -826,6 +1093,7 @@ export function AdminSchedulesModal({
                       !selectedCatalogId ||
                       selectedDias.length === 0 ||
                       !selectedTipoId ||
+                      (hasCargo && !selectedCargoId) ||
                       !!overlapError
                     }
                     className="rounded-2xl text-white px-6"
@@ -839,7 +1107,7 @@ export function AdminSchedulesModal({
         </div>
 
         {/* ── Table ── */}
-        <div className="rounded-3xl border border-border">
+        <div className="w-full max-w-full rounded-3xl border border-border overflow-hidden">
           {sortedSchedules.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border p-8 text-center bg-muted/10">
               <AlertCircle className="size-10 text-muted-foreground/60 mb-2.5" />
@@ -851,177 +1119,136 @@ export function AdminSchedulesModal({
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader className="bg-muted/50 border-b border-border/80">
-                <TableRow className="hover:bg-transparent">
-                  <TableHead className="font-semibold text-xs text-foreground/80">
-                    Descripción
-                  </TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">Tipo</TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">Día</TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">
-                    Horario
-                  </TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">Carga</TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">Inicio</TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">
-                    {isEditMode ? "Fecha Fin" : "Fin"}
-                  </TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">
-                    {isEditMode ? "Dicta Clases" : "Clases"}
-                  </TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80">Estado</TableHead>
-                  <TableHead className="font-semibold text-xs text-foreground/80 w-10 text-center" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedSchedules.map((schedule) => {
-                  const isVigente = schedule.fecha_fin === null
-                  const checkedValue = editPermiteClases[schedule.id] ?? schedule.permite_clases
-                  const diaLabel = DIA_LABELS[schedule.dia] || `Día ${schedule.dia}`
-                  const cargaDiaria =
-                    schedule.carga_horaria_diaria ??
-                    schedule.horario_catalogo.carga_horaria_diaria ??
-                    0
-                  const tipoLabel =
-                    schedule.tipo_asignacion_horario_administrativo?.descripcion || "Administrativo"
-                  return (
-                    <TableRow key={schedule.id} className="group">
-                      <TableCell className="font-medium text-sm text-foreground">
-                        {schedule.horario_catalogo.descripcion || "Actividad Administrativa"}
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground">{tipoLabel}</TableCell>
-                      <TableCell className="text-sm text-foreground">{diaLabel}</TableCell>
-                      <TableCell className="text-sm text-foreground">
-                        {formatTime(schedule.horario_catalogo.hora_entrada)} -{" "}
-                        {formatTime(schedule.horario_catalogo.hora_salida)}
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground font-semibold">
-                        {cargaDiaria} hrs
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground">
-                        {formatDate(schedule.fecha_inicio)}
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground">
-                        {isEditMode ? (
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 text-xs rounded-lg min-w-[120px] justify-start font-normal px-2 gap-1.5"
-                              >
-                                <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                                {editDates[schedule.id]
-                                  ? format(parseISO(editDates[schedule.id]), "dd-MM-yyyy")
-                                  : "Sin límite"}
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={
-                                  editDates[schedule.id]
-                                    ? parseISO(editDates[schedule.id])
-                                    : undefined
-                                }
-                                onSelect={(date) =>
-                                  setEditDates((prev) => ({
-                                    ...prev,
-                                    [schedule.id]: date ? format(date, "yyyy-MM-dd") : "",
-                                  }))
-                                }
-                                locale={es}
-                                initialFocus
-                              />
-                              {/* Footer keeps height stable and adapts correctly without clipping */}
-                              <div className="border-t border-border p-2">
-                                <Button
-                                  variant="cancel"
-                                  size="sm"
-                                  disabled={!editDates[schedule.id]}
-                                  className="w-full text-xs text-muted-foreground disabled:opacity-30"
-                                  onClick={() =>
-                                    setEditDates((prev) => ({
-                                      ...prev,
-                                      [schedule.id]: "",
-                                    }))
-                                  }
-                                >
-                                  Sin límite
-                                </Button>
-                              </div>
-                            </PopoverContent>
-                          </Popover>
-                        ) : (
-                          formatDate(schedule.fecha_fin, true)
-                        )}
-                      </TableCell>
-                      <TableCell className="text-sm text-foreground">
-                        {isEditMode ? (
-                          <div className="flex justify-center items-center h-8">
-                            <Checkbox
-                              checked={checkedValue}
-                              onCheckedChange={(checked) =>
-                                setEditPermiteClases((prev) => ({
-                                  ...prev,
-                                  [schedule.id]: !!checked,
-                                }))
+            <div className="w-full max-w-full overflow-x-auto">
+              <Table className="w-full min-w-[960px] text-left whitespace-nowrap">
+                <TableHeader className="bg-muted/50 border-b border-border/80">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-semibold text-xs text-foreground/80">
+                      Descripción
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">Tipo</TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">
+                      Cargo Autoridad
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">Día</TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">
+                      Horario
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">
+                      Carga
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">
+                      Inicio
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80">Fin</TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80 text-center">
+                      Dicta Clases
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80 text-center">
+                      Estado
+                    </TableHead>
+                    <TableHead className="font-semibold text-xs text-foreground/80 w-10 text-center" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sortedSchedules.map((schedule) => {
+                    const isVigente = isScheduleVigente(schedule, todayStr)
+                    const diaLabel = DIA_LABELS[schedule.dia] || `Día ${schedule.dia}`
+                    const cargaDiaria =
+                      schedule.carga_horaria_diaria ??
+                      schedule.horario_catalogo.carga_horaria_diaria ??
+                      0
+                    const tipoLabel =
+                      schedule.tipo_asignacion_horario_administrativo?.descripcion ||
+                      "Administrativo"
+                    const cargoLabel = schedule.tipo_cargo ? schedule.tipo_cargo.descripcion : null
+
+                    return (
+                      <TableRow key={schedule.id} className="group">
+                        <TableCell className="font-medium text-sm text-foreground">
+                          {schedule.horario_catalogo.descripcion || "Actividad Administrativa"}
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground">{tipoLabel}</TableCell>
+                        <TableCell className="text-sm text-foreground">
+                          {cargoLabel ? (
+                            <Badge
+                              variant="brand"
+                              className="text-[10px] uppercase px-2 py-0.5 font-bold"
+                            >
+                              {cargoLabel}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground font-medium">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground">{diaLabel}</TableCell>
+                        <TableCell className="text-sm text-foreground font-mono">
+                          {formatTime(schedule.horario_catalogo.hora_entrada)} -{" "}
+                          {formatTime(schedule.horario_catalogo.hora_salida)}
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground font-semibold">
+                          {cargaDiaria} hrs
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground font-mono">
+                          {formatDate(schedule.fecha_inicio)}
+                        </TableCell>
+                        <TableCell className="text-sm text-foreground font-mono">
+                          {formatDate(schedule.fecha_fin, true)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {schedule.permite_clases ? (
+                            <Badge variant="brand" className="text-[10px] uppercase px-2 py-0.5">
+                              Permitido
+                            </Badge>
+                          ) : (
+                            <Badge variant="neutral" className="text-[10px] uppercase px-2 py-0.5">
+                              Restringido
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {isVigente ? (
+                            <Badge
+                              variant="brand"
+                              className="text-[10px] tracking-wide uppercase px-2 py-0.5"
+                            >
+                              Vigente
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="neutral"
+                              className="text-[10px] tracking-wide uppercase px-2 py-0.5"
+                            >
+                              Concluido
+                            </Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            disabled={isDeleting !== null}
+                            className="h-7 w-7 p-0 hover:bg-red-50 hover:text-destructive dark:hover:bg-red-950/20"
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  "¿Está seguro de eliminar físicamente esta asignación administrativa? Esta acción es irreversible."
+                                )
+                              ) {
+                                void handleDelete(schedule.id)
                               }
-                            />
-                          </div>
-                        ) : schedule.permite_clases ? (
-                          <Badge variant="brand" className="text-[10px] uppercase px-2 py-0.5">
-                            Permitido
-                          </Badge>
-                        ) : (
-                          <Badge variant="neutral" className="text-[10px] uppercase px-2 py-0.5">
-                            Restringido
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {isVigente ? (
-                          <Badge
-                            variant="brand"
-                            className="text-[10px] tracking-wide uppercase px-2 py-0.5"
+                            }}
+                            title="Eliminar asignación físicamente"
                           >
-                            Vigente
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="neutral"
-                            className="text-[10px] tracking-wide uppercase px-2 py-0.5"
-                          >
-                            Concluido
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          disabled={isDeleting !== null}
-                          className="h-7 w-7 p-0 hover:bg-red-50 hover:text-destructive dark:hover:bg-red-950/20"
-                          onClick={() => {
-                            if (
-                              window.confirm(
-                                "¿Está seguro de eliminar físicamente esta asignación administrativa? Esta acción es irreversible."
-                              )
-                            ) {
-                              void handleDelete(schedule.id)
-                            }
-                          }}
-                          title="Eliminar asignación físicamente"
-                        >
-                          <Trash2 className="size-3.5 text-white" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
+                            <Trash2 className="size-3.5 text-white" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </div>

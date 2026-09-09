@@ -1,6 +1,5 @@
 import { create } from "zustand"
 import type { DateRange } from "react-day-picker"
-import { toast } from "sonner"
 
 import type {
   AmbienteSearchContract,

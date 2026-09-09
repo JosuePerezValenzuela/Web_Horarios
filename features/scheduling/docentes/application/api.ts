@@ -15,6 +15,7 @@ import type {
   PatchAsignacionHorarioResponse,
   NormalizedSchedule,
   TipoAsignacionAdministrativo,
+  TipoCargosApiResponse,
 } from "../domain/types"
 
 export interface Facultad {
@@ -188,4 +189,11 @@ export async function fetchTipoAsignacionHorarioAdministrativo(
   pageSize: number
 ): Promise<{ success: boolean; data: TipoAsignacionAdministrativo[] }> {
   return horariosApi.getTipoAsignacionHorarioAdministrativo(page, pageSize)
+}
+
+export async function fetchTipoCargos(
+  page: number = 1,
+  pageSize: number = 50
+): Promise<TipoCargosApiResponse> {
+  return horariosApi.getTipoCargos(page, pageSize)
 }

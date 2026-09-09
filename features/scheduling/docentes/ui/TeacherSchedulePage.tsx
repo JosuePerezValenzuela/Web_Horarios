@@ -1,14 +1,7 @@
 import { useState, useMemo } from "react"
 import { Button, Input, ScrollArea, Badge } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
-import {
-  ArrowLeft,
-  RefreshCw,
-  ClipboardList,
-  LayoutList,
-  AlignJustify,
-  Calendar,
-} from "lucide-react"
+import { ArrowLeft, RefreshCw, ClipboardList, Maximize2, Minimize2, Calendar } from "lucide-react"
 
 import type {
   DocenteScheduleMeta,
@@ -69,7 +62,7 @@ export function TeacherSchedulePage({
   adminSchedules,
   rawAdminSchedules = [],
 }: TeacherSchedulePageProps) {
-  const hasSchedules = schedules.length > 0
+  const hasSchedules = schedules.length > 0 || Boolean(adminSchedules && adminSchedules.length > 0)
   const [isCompactMode, setIsCompactMode] = useState(false)
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false)
 
@@ -148,7 +141,7 @@ export function TeacherSchedulePage({
               Horarios Administrativos
             </Button>
 
-            {/* Vista Compacta Toggle */}
+            {/* Vista Compacta / Detallada Toggle */}
             <Button
               variant={isCompactMode ? "outline" : "secondary"}
               size="sm"
@@ -158,14 +151,23 @@ export function TeacherSchedulePage({
                   ? "gap-1.5 bg-muted border-border text-foreground font-medium hover:bg-muted/70"
                   : "gap-1.5"
               }
-              title={isCompactMode ? "Desactivar vista compacta" : "Activar vista compacta"}
+              title={
+                isCompactMode
+                  ? "Cambiar a vista detallada (escala cronológica completa)"
+                  : "Cambiar a vista compacta (reducir espacios vacíos)"
+              }
             >
               {isCompactMode ? (
-                <AlignJustify className="size-4" />
+                <>
+                  <Maximize2 className="size-4" />
+                  Vista detallada
+                </>
               ) : (
-                <LayoutList className="size-4" />
+                <>
+                  <Minimize2 className="size-4" />
+                  Vista compacta
+                </>
               )}
-              Vista compacta
             </Button>
           </div>
         </div>
@@ -240,7 +242,7 @@ export function TeacherSchedulePage({
           {loading ? (
             <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
-            <div className="flex-1 w-full lg:overflow-y-auto lg:overflow-x-hidden">
+            <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
               <WeeklyScheduleGrid
                 schedules={schedules}
                 rows={rows}

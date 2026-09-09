@@ -488,6 +488,23 @@ export interface TeacherSchedulePageProps {
   rawAdminSchedules?: AdminScheduleRaw[]
 }
 
+export interface TipoCargo {
+  id: number
+  codigo: string
+  descripcion: string
+  activo?: boolean
+}
+
+export interface TipoCargosApiResponse {
+  data: TipoCargo[]
+  meta: {
+    page: number
+    pageSize: number
+    total: number
+    totalPages: number
+  }
+}
+
 export interface AdminScheduleRaw {
   id: number
   dia: number
@@ -505,6 +522,8 @@ export interface AdminScheduleRaw {
     descripcion: string
     activo?: boolean
   }
+  tipo_cargo_id?: number | null
+  tipo_cargo?: TipoCargo | null
   fecha_inicio: string
   fecha_fin: string | null
   permite_clases: boolean
@@ -544,6 +563,7 @@ export interface CrearAsignacionHorarioRequest {
   permite_clases: boolean
   dia: number
   tipo_asignacion_horario_administrativo_id: number
+  tipo_cargo_id?: number | null
 }
 
 export interface CrearAsignacionHorarioResponse {
@@ -555,6 +575,7 @@ export interface CrearAsignacionHorarioResponse {
 export interface PatchAsignacionHorarioRequest {
   fecha_fin?: string | null
   permite_clases?: boolean
+  tipo_cargo_id?: number | null
 }
 
 export interface PatchAsignacionHorarioResponse {
