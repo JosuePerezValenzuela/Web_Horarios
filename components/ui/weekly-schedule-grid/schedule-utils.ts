@@ -217,6 +217,7 @@ export function buildTimelineSegments(
 
   if (boundaries.length < 2) return []
 
+  const hasClasses = bands.length > 0
   const segments: TimelineSegment[] = []
 
   for (let i = 0; i < boundaries.length - 1; i++) {
@@ -235,19 +236,27 @@ export function buildTimelineSegments(
     let height = duration * PX_PER_MINUTE
 
     if (activeBands.length > 0) {
+      // There is an active class in this time slice -> allocate full height for cards/clusters
       density = activeBands.reduce((max, band) => Math.max(max, band.density), PX_PER_MINUTE)
       height = duration * density
     } else if (isCompactMode) {
-      if (activeAdmins.length > 0) {
-        // Administrative schedule but no classes in this specific segment: compact vertically to save space
-        density = 0.18
+      if (hasClasses) {
+        // When classes exist, ANY empty gap between/around classes collapses
+        // to a compact gap (so morning and afternoon classes sit close to each other)
+        const uncompressedHeight = duration * PX_PER_MINUTE
+        const COLLAPSED_GAP_HEIGHT = 24
+        height = Math.min(uncompressedHeight, COLLAPSED_GAP_HEIGHT)
+        density = height / duration
+      } else if (activeAdmins.length > 0) {
+        // No classes anywhere, but administrative schedule is active in this segment
+        density = PX_PER_MINUTE
         height = duration * density
       } else {
-        // Completely empty segment -> collapse to a tiny visual gap of 24px instead of 0px
-        // to prevent overlapping labels and visual continuous block bugs.
+        // No classes and no administrative schedule -> collapse empty space
+        const uncompressedHeight = duration * PX_PER_MINUTE
         const COLLAPSED_GAP_HEIGHT = 24
-        density = COLLAPSED_GAP_HEIGHT / duration
-        height = COLLAPSED_GAP_HEIGHT
+        height = Math.min(uncompressedHeight, COLLAPSED_GAP_HEIGHT)
+        density = height / duration
       }
     } else {
       density = PX_PER_MINUTE

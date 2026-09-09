@@ -10,6 +10,7 @@ interface WeeklyScheduleGridProps {
   onEditSchedule?: (schedule: NormalizedSchedule) => void
   adminSchedules?: AdminSchedule[]
   isCompactMode?: boolean
+  className?: string
 }
 
 function toScheduleItem(schedule: NormalizedSchedule): ScheduleItem {
@@ -36,6 +37,7 @@ export function WeeklyScheduleGrid({
   onEditSchedule,
   adminSchedules,
   isCompactMode = false,
+  className,
 }: WeeklyScheduleGridProps) {
   const items: ScheduleItem[] = schedules.map(toScheduleItem)
 
@@ -47,6 +49,7 @@ export function WeeklyScheduleGrid({
       overlapRotationIntervalMs={overlapRotationIntervalMs}
       adminSchedules={adminSchedules}
       isCompactMode={isCompactMode}
+      className={className}
       onItemClick={
         onEditSchedule
           ? (item) => {

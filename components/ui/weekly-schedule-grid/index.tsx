@@ -206,10 +206,12 @@ export function WeeklyScheduleGrid({
       mins.add(item.startMin)
       mins.add(item.endMin)
     })
-    adminSchedules?.forEach((admin) => {
-      mins.add(admin.startMin)
-      mins.add(admin.endMin)
-    })
+    if (items.length === 0) {
+      adminSchedules?.forEach((admin) => {
+        mins.add(admin.startMin)
+        mins.add(admin.endMin)
+      })
+    }
 
     return Array.from(mins).sort((a, b) => a - b)
   }, [items, adminSchedules])
@@ -286,7 +288,7 @@ export function WeeklyScheduleGrid({
         className
       )}
     >
-      <div className="h-full max-h-full overflow-x-auto overflow-y-hidden">
+      <div className="h-full max-h-full overflow-auto">
         <div className="min-w-[640px] lg:min-w-0">
           {/* Day header row */}
           <div
