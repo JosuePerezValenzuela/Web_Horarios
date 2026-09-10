@@ -86,9 +86,9 @@ export function DocentesFilters() {
   }))
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12 items-end">
-      {/* Search Input - de la librería */}
-      <div className="min-w-0 sm:col-span-2 lg:col-span-6">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-10 items-end">
+      {/* Search Input - de la librería (40% en lg) */}
+      <div className="min-w-0 sm:col-span-2 lg:col-span-4">
         <label
           htmlFor="search-input"
           className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 block"
@@ -105,7 +105,7 @@ export function DocentesFilters() {
         />
       </div>
 
-      {/* Faculty Select con SearchableSelect de estilos-base */}
+      {/* Faculty Select con SearchableSelect de estilos-base (20% en lg) */}
       <div className="min-w-0 sm:col-span-1 lg:col-span-2">
         <SearchableSelect
           id="facultad-select"
@@ -122,7 +122,7 @@ export function DocentesFilters() {
         />
       </div>
 
-      {/* Career Select con SearchableSelect de estilos-base */}
+      {/* Career Select con SearchableSelect de estilos-base (20% en lg) */}
       <div className="min-w-0 sm:col-span-1 lg:col-span-2">
         <SearchableSelect
           id="carrera-select"
@@ -139,7 +139,7 @@ export function DocentesFilters() {
         />
       </div>
 
-      {/* Subject Select con SearchableSelect de estilos-base */}
+      {/* Subject Select con SearchableSelect de estilos-base (20% en lg) */}
       <div className="min-w-0 sm:col-span-2 lg:col-span-2">
         <SearchableSelect
           id="asignatura-select"

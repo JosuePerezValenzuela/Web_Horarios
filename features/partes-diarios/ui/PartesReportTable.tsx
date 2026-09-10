@@ -1,13 +1,5 @@
 import { memo, useState } from "react"
-import { toast, Button, Badge } from "@umss/estilos-base/components"
-import { Input } from "@/components/ui/input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { toast, Button, Badge, Select } from "@umss/estilos-base/components"
 import {
   Table,
   TableBody,
@@ -201,24 +193,17 @@ const PartesTableRow = memo(function PartesTableRow({
       </TableCell>
       <TableCell className="px-2 py-1.5" onClick={handleCellClick}>
         <Select
+          options={tiposTickeo.map((tipo) => ({
+            value: tipo.codigo,
+            label: tipo.nombre,
+          }))}
           value={row.tipo_tickeo}
           onValueChange={(value) => onRowChange(row.key, "tipo_tickeo", value)}
           disabled={isClosed}
-        >
-          <SelectTrigger
-            size="sm"
-            className="h-8 w-36 rounded-lg text-xs disabled:cursor-not-allowed disabled:opacity-75 bg-background"
-          >
-            <SelectValue placeholder="Seleccionar..." />
-          </SelectTrigger>
-          <SelectContent>
-            {tiposTickeo.map((tipo) => (
-              <SelectItem key={tipo.codigo} value={tipo.codigo}>
-                {tipo.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Seleccionar..."
+          height="sm"
+          className="w-36 text-xs"
+        />
       </TableCell>
       <TableCell className="px-2 py-1.5" onClick={handleCellClick}>
         <ObservationInput
@@ -243,7 +228,7 @@ export function PartesReportTable({
   isClosed: boolean
 }) {
   return (
-    <div className="flex-grow overflow-x-auto max-h-[calc(100vh-270px)] rounded-3xl border border-border">
+    <div className="flex-1 min-h-0 overflow-auto max-h-[calc(100vh-190px)] rounded-2xl border border-border bg-card shadow-xs">
       <Table className="min-w-[1000px] w-full">
         <TableHeader className="bg-muted/50 border-b border-border/80 sticky top-0 z-10">
           <TableRow className="hover:bg-transparent">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -11,26 +11,7 @@ import { partesApiClient, PartesApiError } from "@/shared/services/api/partesCli
 import { GenerarParteDialog } from "@/features/partes-diarios/ui/GenerarParteDialog"
 import { PartesReportTable } from "@/features/partes-diarios/ui/PartesReportTable"
 import { PartesReportState } from "@/features/partes-diarios/ui/PartesReportState"
-import { Label } from "@/components/ui/label"
-import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { TimePicker } from "@/components/ui/time-picker"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectItem,
-  SelectContent,
-} from "@/components/ui/select"
 import {
   toast,
   UmssModal,
@@ -38,10 +19,12 @@ import {
   Badge,
   UmssCard,
   UmssCardContent,
+  Select,
+  SearchableSelect,
+  DatePicker,
 } from "@umss/estilos-base/components"
 import { infraService } from "@/shared/services/api/infraClient"
 import {
-  Calendar as CalendarIcon,
   Printer,
   Search,
   ClipboardCheck,
@@ -49,6 +32,7 @@ import {
   AlertCircle,
   Save,
   Lock,
+  MapPin,
 } from "lucide-react"
 
 const ALL_FILTER_VALUE = "__all__"
@@ -284,6 +268,7 @@ export default function PartesDiariosPage() {
 
   const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
   const isClosed = reporteData?.estado === "confirmado"
+  const isOptionalDisabled = !selectedFacultadId || !fecha || loading
 
   useEffect(() => {
     fetchFacultades()
@@ -666,8 +651,54 @@ export default function PartesDiariosPage() {
     }
   }
 
-  const filteredFacultades = facultades.filter((f) =>
-    f.nombre.toLowerCase().includes(facultadSearch.toLowerCase())
+  const facultadOptions = useMemo(
+    () => facultades.map((f) => ({ value: String(f.id), label: f.nombre })),
+    [facultades]
+  )
+
+  const campusOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todos los campus" },
+      ...campusList.map((c) => ({ value: String(c.id), label: c.nombre })),
+    ],
+    [campusList]
+  )
+
+  const facultadesInfraOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todas las fac. geográficas" },
+      ...facultadesInfraList.map((f) => ({ value: String(f.id), label: f.nombre })),
+    ],
+    [facultadesInfraList]
+  )
+
+  const tipoAsignaturaOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todas" },
+      { value: "Teorico", label: "Teórico" },
+      { value: "Taller", label: "Taller" },
+      { value: "Titulacion", label: "Titulación" },
+    ],
+    []
+  )
+
+  const tipoGrupoOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todos" },
+      { value: "T", label: "Teórico" },
+      { value: "P", label: "Práctico" },
+    ],
+    []
+  )
+
+  const tipoDesignacionOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todos" },
+      { value: "N", label: "Normal" },
+      { value: "S", label: "Suplente" },
+      { value: "A", label: "Acéfalo" },
+    ],
+    []
   )
 
   const getCalendarDate = () => {
@@ -682,293 +713,284 @@ export default function PartesDiariosPage() {
         breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Diarios" }]}
         className="pt-0 pb-0 md:pb-0"
       >
-        <div className="flex flex-col h-full min-h-[calc(100vh-8rem)] gap-4 w-full max-w-full overflow-hidden">
+        <div className="flex flex-col h-full min-h-0 flex-1 gap-2.5 w-full max-w-full overflow-hidden">
           {/* Encabezado */}
-          <div className="flex items-center justify-between border-b border-border pb-2">
-            <h1 className="text-xl font-roboto font-black text-[#001B47] dark:text-white flex items-center gap-2">
-              <ClipboardCheck className="w-6 h-6 text-[#003770]" />
+          <div className="flex items-center justify-between border-b border-border pb-1.5 shrink-0">
+            <h1 className="text-lg md:text-xl font-roboto font-black text-[#001B47] dark:text-white flex items-center gap-2">
+              <ClipboardCheck className="w-5 h-5 text-[#003770] dark:text-blue-400" />
               Control de Partes Diarios
             </h1>
           </div>
 
-          {/* Panel de Filtros */}
-          <UmssCard className="border-border/60 shadow-sm py-3 w-full">
-            <UmssCardContent className="p-3">
-              <form
-                onSubmit={handleBuscar}
-                className="flex flex-wrap items-end justify-between gap-4 w-full"
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 flex-1 min-w-[300px]">
-                  {/* Selector de Facultad */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
-                      Facultad <span className="text-red-500">*</span>
+          {/* Panel de Filtros Compacto y Responsivo */}
+          <UmssCard className="border-border/60 shadow-xs py-1.5 w-full shrink-0">
+            <UmssCardContent className="p-2.5">
+              <form onSubmit={handleBuscar} className="flex flex-col gap-2 w-full">
+                {/* 1. Grupo de Filtros Principales y Académicos */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 gap-2 w-full">
+                  {/* 1. Selector de Facultad (Obligatorio) */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none flex items-center gap-0.5">
+                      Facultad <span className="text-destructive font-bold">*</span>
                     </label>
-                    <Select
+                    <SearchableSelect
+                      placeholder="Seleccione una facultad"
+                      searchPlaceholder="Buscar facultad..."
+                      options={facultadOptions}
                       value={selectedFacultadId}
                       onValueChange={setSelectedFacultadId}
                       disabled={loadingFacultades}
-                    >
-                      <SelectTrigger
-                        size="sm"
-                        className="w-full bg-background rounded-xl border border-border h-9 text-xs mb-0"
-                      >
-                        <SelectValue placeholder="Seleccione una facultad" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SearchableSelectContent onFilterChange={setFacultadSearch}>
-                          {filteredFacultades.map((f) => (
-                            <SelectItem key={f.id} value={String(f.id)}>
-                              {f.nombre}
-                            </SelectItem>
-                          ))}
-                        </SearchableSelectContent>
-                      </SelectContent>
-                    </Select>
+                      allOption={false}
+                      height="sm"
+                      className="w-full"
+                    />
                   </div>
 
-                  {/* Fecha */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-0.5">
-                      Fecha <span className="text-red-500">*</span>
+                  {/* 2. Fecha (Obligatorio) */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none flex items-center gap-0.5">
+                      Fecha <span className="text-destructive font-bold">*</span>
                     </label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className="h-9 w-full justify-start text-left font-normal text-xs border-border hover:bg-gray-50/50 dark:hover:bg-slate-800/50 rounded-xl px-3"
-                        >
-                          <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
-                          {fecha ? (
-                            format(getCalendarDate()!, "dd 'de' MMMM, yyyy", { locale: es })
-                          ) : (
-                            <span className="text-muted-foreground">Elegir fecha</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={getCalendarDate()}
-                          onSelect={(date) => {
-                            if (date) {
-                              const formatted = date.toISOString().split("T")[0]
-                              setFecha(formatted)
-                            }
-                          }}
-                          locale={es}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
+                    <DatePicker
+                      placeholder="Seleccione fecha"
+                      value={getCalendarDate()}
+                      onValueChange={(date) => {
+                        if (date) {
+                          setFecha(format(date, "yyyy-MM-dd"))
+                        }
+                      }}
+                      dateFormat="dd-MM-yyyy"
+                      disabled={loading}
+                      className="w-full [&_button]:!min-h-9 [&_button]:!h-9 [&_button]:!py-1 [&_button]:!px-3 [&_button]:!text-xs"
+                    />
                   </div>
 
-                  {/* Filtros académicos opcionales */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Grupo tipo{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={grupoTipo || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)
-                      }
+                  {/* 3. Hora Inicio */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
-                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                        <SelectItem value="T">Teórico</SelectItem>
-                        <SelectItem value="P">Práctico</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-1.5 m-0 p-0">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Tipo de designación{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={tipoDesignacion || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
-                      }
-                    >
-                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                        <SelectItem value="N">Normal</SelectItem>
-                        <SelectItem value="S">Suplente</SelectItem>
-                        <SelectItem value="A">Acéfalo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Tipo de Asignatura */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Tipo de asignatura{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={asignaturaTipo || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setAsignaturaTipo(value === ALL_FILTER_VALUE ? "" : value)
-                      }
-                    >
-                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
-                        <SelectValue placeholder="Todas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_FILTER_VALUE}>Todas</SelectItem>
-                        <SelectItem value="Teorico">Teórico</SelectItem>
-                        <SelectItem value="Taller">Taller</SelectItem>
-                        <SelectItem value="Titulacion">Titulación</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Hora Inicio */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                      Hora Inicio{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                      Hora Inicio
                     </label>
                     <TimePicker
                       value={horaInicio}
                       onChange={setHoraInicio}
                       placeholder="00:00"
-                      className="rounded-xl h-9"
+                      disabled={isOptionalDisabled}
+                      className="rounded-lg h-9"
                     />
                   </div>
 
-                  {/* Hora Fin */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1">
-                      Hora Fin{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
+                  {/* 4. Hora Fin */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      Hora Fin
                     </label>
                     <TimePicker
                       value={horaFin}
                       onChange={setHoraFin}
                       placeholder="00:00"
-                      className="rounded-xl h-9"
+                      disabled={isOptionalDisabled}
+                      className="rounded-lg h-9"
                     />
                   </div>
 
-                  {/* Campus ID (Geográfico) */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Campus geográfico{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={selectedCampusId || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
-                      }
+                  {/* 5. Tipo de Asignatura */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
-                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
-                        <SelectValue placeholder="Todos los campus" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_FILTER_VALUE}>Todos los campus</SelectItem>
-                        {campusList.map((c) => (
-                          <SelectItem key={c.id} value={String(c.id)}>
-                            {c.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      Tipo Asignatura
+                    </label>
+                    <Select
+                      placeholder="Todas"
+                      options={tipoAsignaturaOptions}
+                      value={asignaturaTipo || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setAsignaturaTipo(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                      disabled={isOptionalDisabled}
+                      height="sm"
+                      className="w-full"
+                    />
                   </div>
 
-                  {/* Facultad ID (Geográfico) */}
-                  <div className="space-y-1.5 m-0 p-0">
-                    <Label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
-                      Facultad geográfica{" "}
-                      <span className="text-gray-400 font-normal lowercase">(opcional)</span>
-                    </Label>
-                    <Select
-                      value={selectedFacultadInfraId || ALL_FILTER_VALUE}
-                      onValueChange={(value) =>
-                        setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
-                      }
+                  {/* 6. Tipo de Grupo */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
-                      <SelectTrigger size="sm" className="h-9 rounded-xl text-xs">
-                        <SelectValue placeholder="Todas las fac. geográficas" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_FILTER_VALUE}>Todas las fac. geográficas</SelectItem>
-                        {facultadesInfraList.map((f) => (
-                          <SelectItem key={f.id} value={String(f.id)}>
-                            {f.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      Tipo Grupo
+                    </label>
+                    <Select
+                      placeholder="Todos"
+                      options={tipoGrupoOptions}
+                      value={grupoTipo || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                      disabled={isOptionalDisabled}
+                      height="sm"
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* 7. Tipo de Designación */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      Tipo Designación
+                    </label>
+                    <Select
+                      placeholder="Todos"
+                      options={tipoDesignacionOptions}
+                      value={tipoDesignacion || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                      disabled={isOptionalDisabled}
+                      height="sm"
+                      className="w-full"
+                    />
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 w-full justify-end m-0 pt-3 border-t border-border/40">
-                  {reporteData && (
-                    <Badge
-                      variant={reporteData.estado === "confirmado" ? "neutral" : "warning"}
-                      className="text-[10px] px-2.5 py-1 rounded-lg"
-                    >
-                      {reporteData.estado.toUpperCase()}
-                    </Badge>
-                  )}
+                {/* 2. Fila Inferior: Filtros Geográficos (Izquierda) + Botones de Acción (Derecha) */}
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-end justify-between gap-2.5 pt-2 border-t border-border/50 w-full">
+                  {/* Lado Izquierdo: Filtros Geográficos */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="size-3.5 text-[#003770] dark:text-blue-400 shrink-0" />
+                      <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                        Filtros Geográficos (Ubicación física / Infraestructura)
+                      </span>
+                    </div>
 
-                  <Button
-                    type="submit"
-                    disabled={loading}
-                    className="rounded-xl px-4 h-9 text-xs font-semibold gap-1.5 text-white"
-                  >
-                    <Search className="w-3.5 h-3.5" />
-                    Buscar
-                  </Button>
+                    <div className="flex flex-wrap items-end gap-2.5">
+                      {/* Campus Geográfico */}
+                      <div className="space-y-1.5 min-w-[140px] sm:w-48">
+                        <label
+                          className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                            isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        >
+                          Campus Geográfico
+                        </label>
+                        <Select
+                          placeholder="Todos los campus"
+                          options={campusOptions}
+                          value={selectedCampusId || ALL_FILTER_VALUE}
+                          onValueChange={(value) =>
+                            setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
+                          }
+                          disabled={isOptionalDisabled}
+                          height="sm"
+                          className="w-full"
+                        />
+                      </div>
 
-                  {reporteData && (
-                    <>
-                      <Button
-                        type="button"
-                        onClick={handleSaveClick}
-                        disabled={loading || isClosed}
-                        className="bg-green-600 hover:bg-green-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm disabled:opacity-50"
+                      {/* Facultad Geográfica */}
+                      <div className="space-y-1.5 min-w-[150px] sm:w-52">
+                        <label
+                          className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                            isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                          }`}
+                        >
+                          Facultad Geográfica
+                        </label>
+                        <Select
+                          placeholder="Todas las fac. geográficas"
+                          options={facultadesInfraOptions}
+                          value={selectedFacultadInfraId || ALL_FILTER_VALUE}
+                          onValueChange={(value) =>
+                            setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
+                          }
+                          disabled={isOptionalDisabled}
+                          height="sm"
+                          className="w-full"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lado Derecho: Estado del Parte y Botones de Acción */}
+                  <div className="flex flex-wrap items-center justify-end gap-2 lg:ml-auto pt-1 lg:pt-0">
+                    {reporteData && (
+                      <Badge
+                        variant={reporteData.estado === "confirmado" ? "neutral" : "warning"}
+                        className="text-[10px] px-2.5 h-9 flex items-center font-bold tracking-wider rounded-lg uppercase"
                       >
-                        <Save className="w-3.5 h-3.5" />
-                        Guardar Asistencia
-                      </Button>
-                      <Button
-                        type="button"
-                        onClick={() => setShowCloseDialog(true)}
-                        disabled={loading || isClosed}
-                        className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-xl h-9 text-xs px-4 font-semibold shadow-sm disabled:opacity-50"
-                      >
-                        <Lock className="w-3.5 h-3.5" />
-                        Cerrar Parte
-                      </Button>
-                    </>
-                  )}
-
-                  <Button
-                    type="button"
-                    onClick={() => setShowPrintDialog(true)}
-                    disabled={!reporteData || generatingPdf}
-                    className="bg-[#003770] hover:bg-[#00254d] text-white gap-1.5 rounded-xl h-9 text-xs px-4 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {generatingPdf ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Printer className="w-3.5 h-3.5" />
+                        {reporteData.estado}
+                      </Badge>
                     )}
-                    {generatingPdf ? "Generando..." : "Imprimir / PDF"}
-                  </Button>
+
+                    {/* 1. Botón Buscar (Principal) */}
+                    <Button
+                      type="submit"
+                      disabled={loading || !selectedFacultadId || !fecha}
+                      className="rounded-lg px-4 h-9 text-xs font-semibold gap-1.5 text-white bg-[#002855] hover:bg-[#001b3a] shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Search className="size-3.5" />
+                      )}
+                      Buscar
+                    </Button>
+
+                    {/* 2. Botones de Gestión del Parte cuando está cargado */}
+                    {reporteData && (
+                      <>
+                        <Button
+                          type="button"
+                          onClick={handleSaveClick}
+                          disabled={loading || isClosed}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                          <Save className="size-3.5" />
+                          Guardar Asistencia
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => setShowCloseDialog(true)}
+                          disabled={loading || isClosed}
+                          className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                          <Lock className="size-3.5" />
+                          Cerrar Parte
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => setShowPrintDialog(true)}
+                          disabled={!reporteData || generatingPdf}
+                          variant="outline"
+                          className="gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold border-border hover:bg-muted/70 disabled:opacity-50 cursor-pointer"
+                        >
+                          {generatingPdf ? (
+                            <Loader2 className="size-3.5 animate-spin" />
+                          ) : (
+                            <Printer className="size-3.5" />
+                          )}
+                          {generatingPdf ? "Generando..." : "Imprimir / PDF"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </form>
             </UmssCardContent>
@@ -977,14 +999,14 @@ export default function PartesDiariosPage() {
           {/* Estados de carga e información */}
           {!reporteData && <PartesReportState loading={loading} hasSearched={hasSearched} />}
 
-          {/* Grilla / Tabla principal */}
+          {/* Grilla / Tabla principal ocupando el espacio vertical disponible */}
           {!loading && reporteData && groupedRows.length > 0 && (
-            <div className="w-full max-w-full overflow-hidden">
+            <div className="w-full max-w-full flex-1 min-h-0 overflow-hidden flex flex-col">
               <PartesReportTable
                 rows={groupedRows}
                 tiposTickeo={tiposTickeo}
                 onRowChange={handleRowChange}
-                isClosed={Boolean(isClosed)}
+                isClosed={isClosed}
               />
             </div>
           )}
@@ -1005,12 +1027,12 @@ export default function PartesDiariosPage() {
           title="Configurar Impresión / Exportación PDF"
           size="lg"
           footer={
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 w-full">
               <Button
                 variant="outline"
                 onClick={() => setShowPrintDialog(false)}
                 disabled={generatingPdf}
-                className="rounded-2xl"
+                className="rounded-xl"
               >
                 Cancelar
               </Button>
@@ -1020,7 +1042,7 @@ export default function PartesDiariosPage() {
                   void handlePrint()
                 }}
                 disabled={generatingPdf}
-                className="rounded-2xl text-white"
+                className="rounded-xl text-white bg-[#002855] hover:bg-[#001b3a]"
               >
                 Generar PDF
               </Button>
@@ -1034,281 +1056,257 @@ export default function PartesDiariosPage() {
               consulta.
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 1. Grupo Tipo */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground/80">Grupo tipo</Label>
+              <div className="min-w-0">
                 <Select
+                  label="Grupo Tipo"
+                  placeholder="Todos"
+                  options={tipoGrupoOptions}
                   value={grupoTipo || ALL_FILTER_VALUE}
                   onValueChange={(value) => setGrupoTipo(value === ALL_FILTER_VALUE ? "" : value)}
-                >
-                  <SelectTrigger className="h-10 rounded-lg">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                    <SelectItem value="T">Teórico</SelectItem>
-                    <SelectItem value="P">Práctico</SelectItem>
-                  </SelectContent>
-                </Select>
+                  height="sm"
+                  className="w-full"
+                />
               </div>
 
               {/* 2. Tipo Designación */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground/80">
-                  Tipo de designación
-                </Label>
+              <div className="min-w-0">
                 <Select
+                  label="Tipo Designación"
+                  placeholder="Todos"
+                  options={tipoDesignacionOptions}
                   value={tipoDesignacion || ALL_FILTER_VALUE}
                   onValueChange={(value) =>
                     setTipoDesignacion(value === ALL_FILTER_VALUE ? "" : value)
                   }
-                >
-                  <SelectTrigger className="h-10 rounded-lg">
-                    <SelectValue placeholder="Todos" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Todos</SelectItem>
-                    <SelectItem value="N">Normal</SelectItem>
-                    <SelectItem value="S">Suplente</SelectItem>
-                    <SelectItem value="A">Acéfalo</SelectItem>
-                  </SelectContent>
-                </Select>
+                  height="sm"
+                  className="w-full"
+                />
               </div>
 
               {/* 3. Hora Inicio */}
-              <div className="space-y-1.5 flex flex-col">
-                <label className="text-xs font-semibold text-foreground/80">Hora Inicio</label>
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block">
+                  Hora Inicio
+                </label>
                 <TimePicker
                   value={horaInicio}
                   onChange={setHoraInicio}
                   placeholder="00:00"
-                  className="rounded-lg h-10"
+                  className="rounded-lg h-9"
                 />
               </div>
 
               {/* 4. Hora Fin */}
-              <div className="space-y-1.5 flex flex-col">
-                <label className="text-xs font-semibold text-foreground/80">Hora Fin</label>
+              <div className="space-y-1.5 min-w-0">
+                <label className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block">
+                  Hora Fin
+                </label>
                 <TimePicker
                   value={horaFin}
                   onChange={setHoraFin}
                   placeholder="00:00"
-                  className="rounded-lg h-10"
+                  className="rounded-lg h-9"
                 />
               </div>
 
               {/* 5. Campus Geográfico */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground/80">
-                  Campus geográfico
-                </Label>
+              <div className="min-w-0">
                 <Select
+                  label="Campus Geográfico"
+                  placeholder="Todos los campus"
+                  options={campusOptions}
                   value={selectedCampusId || ALL_FILTER_VALUE}
                   onValueChange={(value) =>
                     setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
                   }
-                >
-                  <SelectTrigger className="h-10 rounded-lg">
-                    <SelectValue placeholder="Todos los campus" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Todos los campus</SelectItem>
-                    {campusList.map((c) => (
-                      <SelectItem key={c.id} value={String(c.id)}>
-                        {c.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  height="sm"
+                  className="w-full"
+                />
               </div>
 
               {/* 6. Facultad Geográfica */}
-              <div className="space-y-1.5 flex flex-col">
-                <Label className="text-xs font-semibold text-foreground/80">
-                  Facultad geográfica
-                </Label>
+              <div className="min-w-0">
                 <Select
+                  label="Facultad Geográfica"
+                  placeholder="Todas las fac. geográficas"
+                  options={facultadesInfraOptions}
                   value={selectedFacultadInfraId || ALL_FILTER_VALUE}
                   onValueChange={(value) =>
                     setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
                   }
-                >
-                  <SelectTrigger className="h-10 rounded-lg">
-                    <SelectValue placeholder="Todas las fac. geográficas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_FILTER_VALUE}>Todas las fac. geográficas</SelectItem>
-                    {facultadesInfraList.map((f) => (
-                      <SelectItem key={f.id} value={String(f.id)}>
-                        {f.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  height="sm"
+                  className="w-full"
+                />
               </div>
 
               {/* 7. Columnas de asistencia */}
-              <div className="space-y-1.5 flex flex-col sm:col-span-2 border-t border-border/40 pt-3">
-                <Label className="text-xs font-semibold text-foreground/80">
-                  Columnas de asistencia a imprimir
-                </Label>
-                <Select value={printColumns} onValueChange={setPrintColumns}>
-                  <SelectTrigger className="h-10 rounded-lg">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Entrada">Entrada</SelectItem>
-                    <SelectItem value="Ambos">Ambos</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="sm:col-span-2 border-t border-border/40 pt-3">
+                <Select
+                  label="Columnas de asistencia a imprimir"
+                  options={[
+                    { value: "Ambos", label: "Ambos" },
+                    { value: "Entrada", label: "Entrada" },
+                  ]}
+                  value={printColumns}
+                  onValueChange={setPrintColumns}
+                  height="sm"
+                  className="w-full"
+                />
               </div>
             </div>
           </div>
         </UmssModal>
 
         {/* Modal de Guardado Lote Asistencia */}
-        <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-          <DialogContent className="sm:max-w-[550px] bg-background border border-border">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Save className="w-5 h-5 text-green-600" />
-                Guardar Cambios de Asistencia
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground pt-2">
-                Se registrarán las firmas y observaciones modificadas en el sistema de partes. A
-                continuación se listan las novedades detectadas respecto a la carga por defecto.
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="my-4">
-              {/* Advertencia si hay registros editados que ya tenían persistencia */}
-              {getItemsToSubmit().some((row) => row.alreadySaved) && (
-                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-4">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-500" />
-                  <span>
-                    Atención: Está intentando editar los datos de{" "}
-                    <strong>{getItemsToSubmit().filter((row) => row.alreadySaved).length}</strong>{" "}
-                    registro
-                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
-                    ya{" "}
-                    {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1
-                      ? "fueron guardados"
-                      : "fue guardado"}{" "}
-                    anteriormente.
-                  </span>
-                </div>
-              )}
-
-              {getItemsToSubmit().length === 0 ? (
-                <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
-                  No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
-                  guardarán como &quot;Presente&quot; sin novedades.
-                </div>
-              ) : (
-                <div className="border border-border rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
-                      <tr>
-                        <th className="px-3 py-2 text-center w-12">N°</th>
-                        <th className="px-3 py-2">Docente</th>
-                        <th className="px-3 py-2 w-32">Tipo Tickeo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {getItemsToSubmit().map((mRow) => {
-                        const tickeoNombre =
-                          tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
-                          mRow.tipo_tickeo ||
-                          "S/R"
-
-                        return (
-                          <tr key={mRow.key} className="hover:bg-muted/40">
-                            <td className="px-3 py-2 text-center font-bold font-mono text-slate-500">
-                              {mRow.indices.join(", ")}
-                            </td>
-                            <td className="px-3 py-2 font-semibold text-foreground">
-                              <div>{mRow.persona_nombres}</div>
-                              {mRow.alreadySaved && (
-                                <div className="text-[10px] text-muted-foreground font-normal">
-                                  Anterior: {mRow.originalIngreso} - {mRow.originalSalida} (
-                                  {mRow.originalTipoTickeo})
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-2 font-medium capitalize text-foreground">
-                              {tickeoNombre}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+        <UmssModal
+          isOpen={showSaveDialog}
+          onClose={() => setShowSaveDialog(false)}
+          title={
+            <div className="flex items-center gap-2 text-base md:text-lg font-bold text-foreground">
+              <Save className="size-5 text-emerald-600" />
+              Guardar Cambios de Asistencia
             </div>
-
-            <DialogFooter className="flex gap-2 sm:justify-end">
-              <Button variant="outline" onClick={() => setShowSaveDialog(false)} disabled={saving}>
+          }
+          description="Se registrarán las firmas y observaciones modificadas en el sistema de partes. A continuación se listan las novedades detectadas respecto a la carga por defecto."
+          size="lg"
+          footer={
+            <div className="flex gap-2 justify-end w-full">
+              <Button
+                variant="outline"
+                onClick={() => setShowSaveDialog(false)}
+                disabled={saving}
+                className="rounded-xl"
+              >
                 Cancelar
               </Button>
               <Button
                 onClick={handleSaveConfirm}
                 disabled={saving}
-                className="bg-green-600 hover:bg-green-700 text-white font-semibold"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl"
               >
                 {saving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 size-4 animate-spin" />
                     Guardando...
                   </>
                 ) : (
                   "Confirmar Guardar"
                 )}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          }
+        >
+          <div className="my-2">
+            {/* Advertencia si hay registros editados que ya tenían persistencia */}
+            {getItemsToSubmit().some((row) => row.alreadySaved) && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-xl p-3 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2 mb-4">
+                <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-500" />
+                <span>
+                  Atención: Está intentando editar los datos de{" "}
+                  <strong>{getItemsToSubmit().filter((row) => row.alreadySaved).length}</strong>{" "}
+                  registro
+                  {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1 ? "s" : ""} que
+                  ya{" "}
+                  {getItemsToSubmit().filter((row) => row.alreadySaved).length > 1
+                    ? "fueron guardados"
+                    : "fue guardado"}{" "}
+                  anteriormente.
+                </span>
+              </div>
+            )}
+
+            {getItemsToSubmit().length === 0 ? (
+              <div className="text-center py-6 text-slate-500 text-xs border border-dashed rounded-xl">
+                No se realizaron cambios sobre las horas u opciones por defecto. Las firmas se
+                guardarán como &quot;Presente&quot; sin novedades.
+              </div>
+            ) : (
+              <div className="border border-border rounded-xl overflow-hidden max-h-[220px] overflow-y-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted text-[10px] uppercase font-bold text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2 text-center w-12">N°</th>
+                      <th className="px-3 py-2">Docente</th>
+                      <th className="px-3 py-2 w-32">Tipo Tickeo</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {getItemsToSubmit().map((mRow) => {
+                      const tickeoNombre =
+                        tiposTickeo.find((t) => t.codigo === mRow.tipo_tickeo)?.nombre ||
+                        mRow.tipo_tickeo ||
+                        "S/R"
+
+                      return (
+                        <tr key={mRow.key} className="hover:bg-muted/40">
+                          <td className="px-3 py-2 text-center font-bold font-mono text-slate-500">
+                            {mRow.indices.join(", ")}
+                          </td>
+                          <td className="px-3 py-2 font-semibold text-foreground">
+                            <div>{mRow.persona_nombres}</div>
+                            {mRow.alreadySaved && (
+                              <div className="text-[10px] text-muted-foreground font-normal">
+                                Anterior: {mRow.originalIngreso} - {mRow.originalSalida} (
+                                {mRow.originalTipoTickeo})
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 font-medium capitalize text-foreground">
+                            {tickeoNombre}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </UmssModal>
 
         {/* Modal de Confirmar Cerrar Parte */}
-        <Dialog open={showCloseDialog} onOpenChange={setShowCloseDialog}>
-          <DialogContent className="sm:max-w-[425px] bg-background border border-border">
-            <DialogHeader>
-              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Lock className="w-5 h-5 text-amber-600" />
-                Confirmar Cierre de Parte Diario
-              </DialogTitle>
-              <DialogDescription className="text-sm text-muted-foreground pt-2">
-                ¿Está seguro de que desea confirmar y cerrar este parte diario? Una vez cerrado,{" "}
-                <strong>ningún registro de asistencia podrá ser modificado</strong> y el estado
-                pasará a ser definitivo.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter className="flex gap-2 sm:justify-end mt-4">
+        <UmssModal
+          isOpen={showCloseDialog}
+          onClose={() => setShowCloseDialog(false)}
+          title={
+            <div className="flex items-center gap-2 text-base md:text-lg font-bold text-foreground">
+              <Lock className="size-5 text-amber-600" />
+              Confirmar Cierre de Parte Diario
+            </div>
+          }
+          description="¿Está seguro de que desea confirmar y cerrar este parte diario? Una vez cerrado, ningún registro de asistencia podrá ser modificado y el estado pasará a ser definitivo."
+          size="md"
+          footer={
+            <div className="flex gap-2 justify-end w-full">
               <Button
                 variant="outline"
                 onClick={() => setShowCloseDialog(false)}
                 disabled={closingParte}
+                className="rounded-xl"
               >
                 Cancelar
               </Button>
               <Button
                 onClick={handleCloseConfirm}
                 disabled={closingParte}
-                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl"
               >
                 {closingParte ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 size-4 animate-spin" />
                     Cerrando...
                   </>
                 ) : (
                   "Confirmar Cierre"
                 )}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </div>
+          }
+        >
+          <div />
+        </UmssModal>
       </AppLayout>
     </ProtectedRoute>
   )
