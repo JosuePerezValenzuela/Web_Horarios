@@ -98,6 +98,7 @@ export interface Campus {
 export interface FacultadInfra {
   id: number | string
   nombre: string
+  codigo?: string
 }
 
 export interface Bloque {
@@ -111,6 +112,8 @@ export interface Ambiente {
   id: number | string
   nombre: string
   bloqueId?: number | string
+  codigo?: string
+  tipoAmbiente?: string
 }
 
 export const infraService = {
@@ -139,7 +142,7 @@ export const infraService = {
     return infraApiClient.get<{ success: boolean; data: Bloque[] }>(`/bloques?${params.toString()}`)
   },
 
-  getAmbientes: async (bloqueId?: string) => {
+  getAmbientes: async (bloqueId?: string, facultadId?: string, campusId?: string) => {
     const params = new URLSearchParams({
       page: "1",
       limit: "1000",
@@ -149,6 +152,8 @@ export const infraService = {
       clases: "true",
     })
     if (bloqueId) params.append("bloqueId", bloqueId)
+    if (facultadId) params.append("facultadId", facultadId)
+    if (campusId) params.append("campusId", campusId)
     return infraApiClient.get<{ success: boolean; data: Ambiente[] }>(
       `/ambientes?${params.toString()}`
     )
