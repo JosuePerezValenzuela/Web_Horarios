@@ -152,11 +152,6 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
   - `shared/services/api/partesClient.ts` → partes y asistencias API (`NEXT_PUBLIC_PARTES_URL`) para partes diarios, partes mensuales y reglas de asistencia.
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
-### 5. Unified UMSS Design System (CRITICAL)
-
-- Toda implementación de vistas, pantallas o componentes visuales debe seguir estrictamente las reglas tipográficas, de paleta de colores, atmósfera y utilidades definidas en la guía de estilos [design-system-umss.md](/design-system-umss.md).
-- Priorizar el uso de las clases de utilidad provistas en dicho archivo (como `umss-btn-primary`, `umss-title-h1`, `umss-input`, etc.) para asegurar una experiencia institucional coherente y uniforme.
-
 ## Common Mistakes to Avoid
 
 1. **Using non-theme colors** - Creates inconsistency and breaks dark mode
