@@ -16,6 +16,7 @@ import {
 import { Layout, ScrollArea } from "@umss/estilos-base/components"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
 import { useUIStore } from "@/shared/stores/uiStore"
+import { cn } from "@/lib/utils"
 import { CustomCopilotSidebar } from "./CustomCopilotSidebar"
 
 const defaultSidebarItems = [
@@ -68,9 +69,10 @@ interface AppLayoutProps {
     href?: string
   }>
   className?: string
+  disablePageScroll?: boolean
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, className, disablePageScroll = false }: AppLayoutProps) {
   const pathname = usePathname()
   const { isAuthenticated, isLoading, user, logout } = useAppAuth()
   const { copilotSidebarOpen, toggleCopilotSidebar } = useUIStore()
@@ -100,10 +102,20 @@ export function AppLayout({ children }: AppLayoutProps) {
       mainClassName="h-[calc(100vh-4rem)] overflow-hidden flex flex-col relative"
     >
       <div className="relative flex-1 h-full w-full flex overflow-hidden">
-        {/* Scroll area from library wraps page content below the navbar/sidebar */}
-        <ScrollArea className="flex-1 h-full w-full" data-slot="layout-scroll-area">
-          <div className="p-4 md:p-6 lg:p-8">{children}</div>
-        </ScrollArea>
+        {/* If page handles its own layout/scroll (e.g. tables with internal scroll), avoid ScrollArea */}
+        {disablePageScroll ? (
+          <div className="flex-1 h-full w-full min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col">
+            <div
+              className={cn("flex-1 min-h-0 min-h-full lg:h-full w-full flex flex-col", className)}
+            >
+              {children}
+            </div>
+          </div>
+        ) : (
+          <ScrollArea className="flex-1 h-full w-full" data-slot="layout-scroll-area">
+            <div className={cn("p-4 md:p-6 lg:p-8", className)}>{children}</div>
+          </ScrollArea>
+        )}
 
         {/* Custom Sidebar Panel that is absolute on mobile, relative (pushing) on desktop */}
         {copilotSidebarOpen && (

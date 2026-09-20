@@ -23,7 +23,13 @@ import {
   SearchableSelect,
   DatePicker,
 } from "@umss/estilos-base/components"
-import { infraService } from "@/shared/services/api/infraClient"
+import {
+  infraService,
+  Campus,
+  FacultadInfra,
+  Bloque,
+  Ambiente,
+} from "@/shared/services/api/infraClient"
 import {
   Printer,
   Search,
@@ -71,7 +77,7 @@ interface ReporteDetalle {
   observacion?: string | null
   tipo_tickeo?: string | null
   virtual?: boolean
-  asignatura_tipo?: "Te" | "Ti" | "Ta" | string
+  asignatura_tipo?: string
   detalle_partes_diarios_id?: number
   id?: number
   persona_codigo?: string
@@ -83,8 +89,11 @@ interface ParteDiarioReporte {
   parte_id?: number
   parte_diario_id?: number
   fecha: string
-  facultad_codigo: string
+  facultad_id?: number | string
+  facultad_codigo?: string
+  facultad_nombre?: string | null
   estado: string
+  total_detalles?: number
   campusNombre?: string | null
   facultadNombre?: string | null
   detalles: ReporteDetalle[]
@@ -101,10 +110,7 @@ function parseTimeToMinutes(timeStr: string): number {
 }
 
 function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
-  // Aseguramos excluir cualquier detalle marcado como virtual
-  const nonVirtualDetalles = detalles.filter((d) => d.virtual !== true)
-
-  const itemsWithIndex = nonVirtualDetalles.map((d, idx) => ({
+  const itemsWithIndex = detalles.map((d, idx) => ({
     ...d,
     originalIndex: idx + 1,
   }))
@@ -169,15 +175,27 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
       const hora_fin = formatTime(maxEnd)
 
       const first = group[0]
-      const alreadySaved = first.referencia_origen !== null
-
-      // Usamos el tickeo ingresado o el cálculo devuelto. Si no hay, pre-cargamos con el horario ideal de la clase.
-      const defaultIngreso =
+      // Un registro se considera previamente guardado si tiene datos persistidos de asistencia
+      // (hora_ingreso_tickeo, hora_salida_tickeo, observacion, o referencia_origen)
+      const hasPersistedData = Boolean(
         first.hora_ingreso_tickeo ||
-        first.referencia_origen?.horario?.hora_entrada ||
-        first.hora_inicio
-      const defaultSalida =
-        first.hora_salida_tickeo || first.referencia_origen?.horario?.hora_salida || first.hora_fin
+        first.hora_salida_tickeo ||
+        first.observacion ||
+        (first.tipo_tickeo && first.tipo_tickeo !== "presente") ||
+        (first.referencia_origen !== null && first.referencia_origen !== undefined)
+      )
+      const alreadySaved = hasPersistedData
+
+      // Si ya está guardado en el backend, usamos exactamente lo que tiene persistido.
+      // Si es nuevo (pendiente), precargamos con el horario programado de la clase.
+      const defaultIngreso = alreadySaved
+        ? first.hora_ingreso_tickeo || first.referencia_origen?.horario?.hora_entrada || ""
+        : first.hora_ingreso_tickeo || first.hora_inicio
+
+      const defaultSalida = alreadySaved
+        ? first.hora_salida_tickeo || first.referencia_origen?.horario?.hora_salida || ""
+        : first.hora_salida_tickeo || first.hora_fin
+
       const defaultTipoTickeo = first.tipo_tickeo || "presente"
       const defaultObservacion = first.observacion || ""
       const defaultRetraso = first.minutos_retraso
@@ -200,7 +218,8 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
         detalles: group.map((item) => ({
           asignatura_nombre: item.asignatura_nombre,
           grupo_nombre: item.grupo_nombre,
-          aula_codigo: item.aula_codigo,
+          aula_codigo: item.aula_codigo || (item.virtual ? "VIRTUAL" : "S/R"),
+          virtual: Boolean(item.virtual),
         })),
         hora_ingreso_tickeo: first.hora_ingreso_tickeo ?? null,
         hora_salida_tickeo: first.hora_salida_tickeo ?? null,
@@ -239,11 +258,15 @@ export default function PartesDiariosPage() {
 
   // Filtros de infraestructura
   const [selectedCampusId, setSelectedCampusId] = useState<string>("")
-  const [selectedFacultadInfraId, setSelectedFacultadInfraId] = useState<string>("")
-  const [campusList, setCampusList] = useState<{ id: string | number; nombre: string }[]>([])
-  const [facultadesInfraList, setFacultadesInfraList] = useState<
-    { id: string | number; nombre: string }[]
-  >([])
+  const [selectedBloqueId, setSelectedBloqueId] = useState<string>("")
+  const [selectedAulaId, setSelectedAulaId] = useState<string>("")
+  const [campusList, setCampusList] = useState<Campus[]>([])
+  const [bloquesList, setBloquesList] = useState<Bloque[]>([])
+  const [ambientesList, setAmbientesList] = useState<Ambiente[]>([])
+  const [facultadesInfraList, setFacultadesInfraList] = useState<FacultadInfra[]>([])
+  const [loadingBloques, setLoadingBloques] = useState<boolean>(false)
+  const [loadingAmbientes, setLoadingAmbientes] = useState<boolean>(false)
+  const [virtualFilter, setVirtualFilter] = useState<string>("")
 
   // Estados de carga y datos
   const [loading, setLoading] = useState<boolean>(false)
@@ -270,11 +293,23 @@ export default function PartesDiariosPage() {
   const isClosed = reporteData?.estado === "confirmado"
   const isOptionalDisabled = !selectedFacultadId || !fecha || loading
 
+  // Mapear la facultad seleccionada a la facultad correspondiente en el microservicio de infraestructura
+  const infraFacultadId = useMemo(() => {
+    if (!selectedFacultad) return undefined
+    const match = facultadesInfraList.find(
+      (fi) =>
+        (fi.codigo && fi.codigo.toUpperCase() === selectedFacultad.codigo.toUpperCase()) ||
+        fi.nombre.toLowerCase().includes(selectedFacultad.nombre.toLowerCase()) ||
+        selectedFacultad.nombre.toLowerCase().includes(fi.nombre.toLowerCase())
+    )
+    return match ? String(match.id) : undefined
+  }, [selectedFacultad, facultadesInfraList])
+
   useEffect(() => {
     fetchFacultades()
   }, [fetchFacultades])
 
-  // Cargar catálogos de infraestructura
+  // Cargar catálogos de infraestructura iniciales (campus y facultades de infraestructura para mapeo)
   useEffect(() => {
     const loadInfra = async () => {
       try {
@@ -288,8 +323,6 @@ export default function PartesDiariosPage() {
             setCampusList(cRes)
           } else if (cRes.data && Array.isArray(cRes.data)) {
             setCampusList(cRes.data)
-          } else if (cRes.success && Array.isArray(cRes.data)) {
-            setCampusList(cRes.data)
           }
         }
 
@@ -297,8 +330,6 @@ export default function PartesDiariosPage() {
           if (Array.isArray(fRes)) {
             setFacultadesInfraList(fRes)
           } else if (fRes.data && Array.isArray(fRes.data)) {
-            setFacultadesInfraList(fRes.data)
-          } else if (fRes.success && Array.isArray(fRes.data)) {
             setFacultadesInfraList(fRes.data)
           }
         }
@@ -308,6 +339,84 @@ export default function PartesDiariosPage() {
     }
     void loadInfra()
   }, [])
+
+  // Cargar bloques dependientes del Campus seleccionado y la facultad de infraestructura resuelta
+  useEffect(() => {
+    if (!selectedCampusId) {
+      setBloquesList([])
+      setSelectedBloqueId("")
+      setAmbientesList([])
+      setSelectedAulaId("")
+      return
+    }
+
+    let active = true
+    setLoadingBloques(true)
+    setSelectedBloqueId("")
+    setAmbientesList([])
+    setSelectedAulaId("")
+
+    infraService
+      .getBloques(infraFacultadId, selectedCampusId)
+      .then((res) => {
+        if (!active) return
+        let data: Bloque[] = []
+        if (Array.isArray(res)) {
+          data = res
+        } else if (res?.data && Array.isArray(res.data)) {
+          data = res.data
+        }
+        setBloquesList(data)
+      })
+      .catch((err) => {
+        console.error("Error al cargar bloques:", err)
+        if (active) setBloquesList([])
+      })
+      .finally(() => {
+        if (active) setLoadingBloques(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedCampusId, infraFacultadId])
+
+  // Cargar ambientes dependientes del Bloque seleccionado
+  useEffect(() => {
+    if (!selectedBloqueId) {
+      setAmbientesList([])
+      setSelectedAulaId("")
+      return
+    }
+
+    let active = true
+    setLoadingAmbientes(true)
+    setSelectedAulaId("")
+
+    infraService
+      .getAmbientes(selectedBloqueId, infraFacultadId, selectedCampusId)
+      .then((res) => {
+        if (!active) return
+        let data: Ambiente[] = []
+        if (Array.isArray(res)) {
+          data = res
+        } else if (res?.data && Array.isArray(res.data)) {
+          data = res.data
+        }
+        setAmbientesList(data)
+      })
+      .catch((err) => {
+        console.error("Error al cargar ambientes:", err)
+        if (active) setAmbientesList([])
+      })
+      .finally(() => {
+        if (active) setLoadingAmbientes(false)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [selectedBloqueId, infraFacultadId, selectedCampusId])
 
   // Cargar catálogo de tipos de tickeo
   useEffect(() => {
@@ -347,13 +456,6 @@ export default function PartesDiariosPage() {
       toast.error("Para filtrar por hora, debe ingresar tanto la hora de inicio como la de fin")
       return
     }
-    if (
-      (selectedCampusId && !selectedFacultadInfraId) ||
-      (!selectedCampusId && selectedFacultadInfraId)
-    ) {
-      toast.error("Los filtros de Campus y Facultad geográfica deben seleccionarse juntos")
-      return
-    }
 
     const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
     if (!facultad) return
@@ -363,15 +465,10 @@ export default function PartesDiariosPage() {
     setReporteData(null)
     setGroupedRows([])
 
-    // Formatear fecha de YYYY-MM-DD a DD-MM-YYYY
-    const [year, month, day] = fecha.split("-")
-    const fechaFormateada = `${day}-${month}-${year}`
-
-    const toastId = toast.loading("Cargando parte diario...")
     try {
       const params = new URLSearchParams()
-      params.append("fecha", fechaFormateada)
-      params.append("facultad_codigo", facultad.codigo)
+      params.append("fecha", fecha)
+      params.append("facultadCodigo", facultad.codigo)
 
       if (horaInicio && horaFin) {
         params.append("hora_inicio", horaInicio)
@@ -386,9 +483,17 @@ export default function PartesDiariosPage() {
       if (asignaturaTipo) {
         params.append("asignatura_tipo", asignaturaTipo)
       }
-      if (selectedCampusId && selectedFacultadInfraId) {
-        params.append("campus_id", selectedCampusId)
-        params.append("facultad_id", selectedFacultadInfraId)
+      if (virtualFilter) {
+        params.append("virtual", virtualFilter)
+      }
+      if (selectedCampusId) {
+        params.append("campus_id_geografico", selectedCampusId)
+      }
+      if (selectedBloqueId) {
+        params.append("bloque_id_geografico", selectedBloqueId)
+      }
+      if (selectedAulaId) {
+        params.append("aula_id", selectedAulaId)
       }
 
       const endpoint = `/partes-diarios/reporte?${params.toString()}`
@@ -398,11 +503,8 @@ export default function PartesDiariosPage() {
       // Agrupar filas
       const grouped = groupSchedules(response.detalles)
       setGroupedRows(grouped)
-
-      toast.success("Parte diario cargado correctamente", { id: toastId })
     } catch (error) {
       console.error("Error al cargar reporte:", error)
-      toast.dismiss(toastId)
       const apiErr = error as PartesApiError
       if (apiErr.status === 404) {
         setShowGenerateModal(true)
@@ -434,7 +536,10 @@ export default function PartesDiariosPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reporte: reporteData,
+          reporte: {
+            ...reporteData,
+            facultad_codigo: reporteData.facultad_codigo || facultad.codigo,
+          },
           facultadNombre: facultad.nombre,
           userName: user?.name || "Administrador",
           printColumns,
@@ -536,26 +641,9 @@ export default function PartesDiariosPage() {
     }
 
     setSaving(true)
-    const toastId = toast.loading("Guardando registro de asistencia...")
 
     const itemsPayload: Record<string, unknown>[] = []
     const itemsToSubmit = getItemsToSubmit()
-
-    const referencia_origen = {
-      horario: {
-        hora_entrada: "",
-        hora_salida: "",
-      },
-      usuario: {
-        id: user?.sub || "unknown",
-        nombre: user?.name || "Administrador",
-        email: user?.email || "",
-      },
-      auditoria: {
-        fecha_registro: new Date().toISOString(),
-        origen: "Plataforma Web de Partes Diarias",
-      },
-    }
 
     itemsToSubmit.forEach((row) => {
       row.ids.forEach((detalleId) => {
@@ -566,19 +654,12 @@ export default function PartesDiariosPage() {
           observacion: row.observacion || null,
           tipo_tickeo: row.tipo_tickeo || null,
           fuente_registro: "firma_manual",
-          referencia_origen: {
-            ...referencia_origen,
-            horario: {
-              hora_entrada: row.ingreso || "",
-              hora_salida: row.salida || "",
-            },
-          },
         })
       })
     })
 
     try {
-      const res = await partesApiClient.request<{
+      await partesApiClient.request<{
         attempted: number
         succeeded: number
         failed: number
@@ -588,30 +669,20 @@ export default function PartesDiariosPage() {
         body: {
           items: itemsPayload,
         },
+        loadingMessage: "Guardando registro de asistencia...",
+        successMessage: (data) => {
+          const res = data as { attempted: number; succeeded: number; failed: number }
+          if (res?.failed > 0) {
+            return `Proceso completado con novedades: Se registraron exitosamente ${res.succeeded} de ${res.attempted} cambios, pero fallaron ${res.failed} registros.`
+          }
+          return `Se registraron exitosamente ${res?.succeeded ?? 0} de ${res?.attempted ?? 0} cambios de asistencia.`
+        },
       })
 
-      if (res.failed > 0) {
-        toast.error(
-          `Proceso completado con novedades: Se registraron exitosamente ${res.succeeded} de ${res.attempted} cambios, pero fallaron ${res.failed} registros.`,
-          { id: toastId }
-        )
-      } else {
-        toast.success(
-          `Se registraron exitosamente ${res.succeeded} de ${res.attempted} cambios de asistencia.`,
-          { id: toastId }
-        )
-      }
       setShowSaveDialog(false)
       await fetchReporteData()
     } catch (error) {
       console.error("Error al guardar asistencia:", error)
-      const apiErr = error as PartesApiError
-      toast.error(
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : "Error al guardar el registro de asistencia",
-        { id: toastId }
-      )
     } finally {
       setSaving(false)
     }
@@ -627,25 +698,18 @@ export default function PartesDiariosPage() {
     }
 
     setClosingParte(true)
-    const toastId = toast.loading("Cerrando el parte diario...")
 
     try {
       await partesApiClient.request(`/partes-diarios/${parteId}/confirmar`, {
         method: "PATCH",
+        loadingMessage: "Cerrando el parte diario...",
+        successMessage: "Parte diario cerrado y verificado correctamente",
       })
 
-      toast.success("Parte diario cerrado y verificado correctamente", { id: toastId })
       setShowCloseDialog(false)
       await fetchReporteData()
     } catch (error) {
       console.error("Error al cerrar el parte diario:", error)
-      const apiErr = error as PartesApiError
-      toast.error(
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : "Error al cerrar el parte diario",
-        { id: toastId }
-      )
     } finally {
       setClosingParte(false)
     }
@@ -664,20 +728,29 @@ export default function PartesDiariosPage() {
     [campusList]
   )
 
-  const facultadesInfraOptions = useMemo(
+  const bloquesOptions = useMemo(
     () => [
-      { value: ALL_FILTER_VALUE, label: "Todas las fac. geográficas" },
-      ...facultadesInfraList.map((f) => ({ value: String(f.id), label: f.nombre })),
+      { value: ALL_FILTER_VALUE, label: "Todos los bloques" },
+      ...bloquesList.map((b) => ({ value: String(b.id), label: b.nombre })),
     ],
-    [facultadesInfraList]
+    [bloquesList]
+  )
+
+  const ambientesOptions = useMemo(
+    () =>
+      ambientesList.map((a) => ({
+        value: String(a.id),
+        label: a.codigo ? `${a.codigo} - ${a.nombre}` : a.nombre,
+      })),
+    [ambientesList]
   )
 
   const tipoAsignaturaOptions = useMemo(
     () => [
       { value: ALL_FILTER_VALUE, label: "Todas" },
-      { value: "Teorico", label: "Teórico" },
-      { value: "Taller", label: "Taller" },
-      { value: "Titulacion", label: "Titulación" },
+      { value: "REGULAR", label: "Regular" },
+      { value: "TALLER TITULACION", label: "Taller Titulación" },
+      { value: "TALLER PRACTICO", label: "Taller Práctico" },
     ],
     []
   )
@@ -701,6 +774,15 @@ export default function PartesDiariosPage() {
     []
   )
 
+  const modalidadOptions = useMemo(
+    () => [
+      { value: ALL_FILTER_VALUE, label: "Todas" },
+      { value: "false", label: "Presencial" },
+      { value: "true", label: "Virtual" },
+    ],
+    []
+  )
+
   const getCalendarDate = () => {
     if (!fecha) return undefined
     const parts = fecha.split("-")
@@ -711,9 +793,10 @@ export default function PartesDiariosPage() {
     <ProtectedRoute>
       <AppLayout
         breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Partes Diarios" }]}
-        className="pt-0 pb-0 md:pb-0"
+        disablePageScroll
+        className="h-full flex flex-col p-3 md:p-4 overflow-y-auto lg:overflow-hidden"
       >
-        <div className="flex flex-col h-full min-h-0 flex-1 gap-2.5 w-full max-w-full overflow-hidden">
+        <div className="flex flex-col h-full min-h-0 flex-1 gap-2.5 w-full max-w-full overflow-y-auto lg:overflow-hidden">
           {/* Encabezado */}
           <div className="flex items-center justify-between border-b border-border pb-1.5 shrink-0">
             <h1 className="text-lg md:text-xl font-roboto font-black text-[#001B47] dark:text-white flex items-center gap-2">
@@ -727,7 +810,7 @@ export default function PartesDiariosPage() {
             <UmssCardContent className="p-2.5">
               <form onSubmit={handleBuscar} className="flex flex-col gap-2 w-full">
                 {/* 1. Grupo de Filtros Principales y Académicos */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 gap-2 w-full">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-8 gap-2 w-full">
                   {/* 1. Selector de Facultad (Obligatorio) */}
                   <div className="space-y-1.5 min-w-0">
                     <label className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none flex items-center gap-0.5">
@@ -738,7 +821,11 @@ export default function PartesDiariosPage() {
                       searchPlaceholder="Buscar facultad..."
                       options={facultadOptions}
                       value={selectedFacultadId}
-                      onValueChange={setSelectedFacultadId}
+                      onValueChange={(val) => {
+                        setSelectedFacultadId(val)
+                        setSelectedBloqueId("")
+                        setSelectedAulaId("")
+                      }}
                       disabled={loadingFacultades}
                       allOption={false}
                       height="sm"
@@ -866,6 +953,28 @@ export default function PartesDiariosPage() {
                       className="w-full"
                     />
                   </div>
+
+                  {/* 8. Modalidad */}
+                  <div className="space-y-1.5 min-w-0">
+                    <label
+                      className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                        isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      Modalidad
+                    </label>
+                    <Select
+                      placeholder="Todas"
+                      options={modalidadOptions}
+                      value={virtualFilter || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setVirtualFilter(value === ALL_FILTER_VALUE ? "" : value)
+                      }
+                      disabled={isOptionalDisabled}
+                      height="sm"
+                      className="w-full"
+                    />
+                  </div>
                 </div>
 
                 {/* 2. Fila Inferior: Filtros Geográficos (Izquierda) + Botones de Acción (Derecha) */}
@@ -893,32 +1002,62 @@ export default function PartesDiariosPage() {
                           placeholder="Todos los campus"
                           options={campusOptions}
                           value={selectedCampusId || ALL_FILTER_VALUE}
-                          onValueChange={(value) =>
+                          onValueChange={(value) => {
                             setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
-                          }
+                            setSelectedBloqueId("")
+                            setSelectedAulaId("")
+                          }}
                           disabled={isOptionalDisabled}
                           height="sm"
                           className="w-full"
                         />
                       </div>
 
-                      {/* Facultad Geográfica */}
+                      {/* Bloque Geográfico */}
+                      <div className="space-y-1.5 min-w-[140px] sm:w-48">
+                        <label
+                          className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
+                            isOptionalDisabled || !selectedCampusId || loadingBloques
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
+                          }`}
+                        >
+                          Bloque Geográfico
+                        </label>
+                        <Select
+                          placeholder={loadingBloques ? "Cargando bloques..." : "Todos los bloques"}
+                          options={bloquesOptions}
+                          value={selectedBloqueId || ALL_FILTER_VALUE}
+                          onValueChange={(value) => {
+                            setSelectedBloqueId(value === ALL_FILTER_VALUE ? "" : value)
+                            setSelectedAulaId("")
+                          }}
+                          disabled={isOptionalDisabled || !selectedCampusId || loadingBloques}
+                          height="sm"
+                          className="w-full"
+                        />
+                      </div>
+
+                      {/* Aula / Ambiente */}
                       <div className="space-y-1.5 min-w-[150px] sm:w-52">
                         <label
                           className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
-                            isOptionalDisabled ? "opacity-50 cursor-not-allowed" : ""
+                            isOptionalDisabled || !selectedBloqueId || loadingAmbientes
+                              ? "opacity-50 cursor-not-allowed"
+                              : ""
                           }`}
                         >
-                          Facultad Geográfica
+                          Aula / Ambiente
                         </label>
-                        <Select
-                          placeholder="Todas las fac. geográficas"
-                          options={facultadesInfraOptions}
-                          value={selectedFacultadInfraId || ALL_FILTER_VALUE}
-                          onValueChange={(value) =>
-                            setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
-                          }
-                          disabled={isOptionalDisabled}
+                        <SearchableSelect
+                          placeholder={loadingAmbientes ? "Cargando aulas..." : "Todas las aulas"}
+                          searchPlaceholder="Buscar aula o ambiente..."
+                          options={ambientesOptions}
+                          value={selectedAulaId}
+                          onValueChange={setSelectedAulaId}
+                          disabled={isOptionalDisabled || !selectedBloqueId || loadingAmbientes}
+                          allOption={true}
+                          allLabel="Todas las aulas"
                           height="sm"
                           className="w-full"
                         />
@@ -929,50 +1068,13 @@ export default function PartesDiariosPage() {
                   {/* Lado Derecho: Estado del Parte y Botones de Acción */}
                   <div className="flex flex-wrap items-center justify-end gap-2 lg:ml-auto pt-1 lg:pt-0">
                     {reporteData && (
-                      <Badge
-                        variant={reporteData.estado === "confirmado" ? "neutral" : "warning"}
-                        className="text-[10px] px-2.5 h-9 flex items-center font-bold tracking-wider rounded-lg uppercase"
-                      >
-                        {reporteData.estado}
-                      </Badge>
-                    )}
-
-                    {/* 1. Botón Buscar (Principal) */}
-                    <Button
-                      type="submit"
-                      disabled={loading || !selectedFacultadId || !fecha}
-                      className="rounded-lg px-4 h-9 text-xs font-semibold gap-1.5 text-white bg-[#002855] hover:bg-[#001b3a] shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      {loading ? (
-                        <Loader2 className="size-3.5 animate-spin" />
-                      ) : (
-                        <Search className="size-3.5" />
-                      )}
-                      Buscar
-                    </Button>
-
-                    {/* 2. Botones de Gestión del Parte cuando está cargado */}
-                    {reporteData && (
                       <>
-                        <Button
-                          type="button"
-                          onClick={handleSaveClick}
-                          disabled={loading || isClosed}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                        <Badge
+                          variant={reporteData.estado === "confirmado" ? "neutral" : "warning"}
+                          className="text-[10px] px-2.5 h-9 flex items-center font-bold tracking-wider uppercase rounded-md"
                         >
-                          <Save className="size-3.5" />
-                          Guardar Asistencia
-                        </Button>
-
-                        <Button
-                          type="button"
-                          onClick={() => setShowCloseDialog(true)}
-                          disabled={loading || isClosed}
-                          className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
-                        >
-                          <Lock className="size-3.5" />
-                          Cerrar Parte
-                        </Button>
+                          {reporteData.estado}
+                        </Badge>
 
                         <Button
                           type="button"
@@ -988,25 +1090,62 @@ export default function PartesDiariosPage() {
                           )}
                           {generatingPdf ? "Generando..." : "Imprimir / PDF"}
                         </Button>
+
+                        <Button
+                          type="button"
+                          onClick={() => setShowCloseDialog(true)}
+                          disabled={loading || isClosed}
+                          className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                          <Lock className="size-3.5" />
+                          Cerrar Parte
+                        </Button>
+
+                        <Button
+                          type="button"
+                          onClick={handleSaveClick}
+                          disabled={loading || isClosed}
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 rounded-lg h-9 text-xs px-3.5 font-semibold shadow-xs disabled:opacity-50 cursor-pointer"
+                        >
+                          <Save className="size-3.5" />
+                          Guardar Asistencia
+                        </Button>
                       </>
                     )}
+
+                    {/* Botón Buscar: Siempre al extremo derecho */}
+                    <Button
+                      type="submit"
+                      disabled={loading || !selectedFacultadId || !fecha}
+                      className="rounded-lg px-4 h-9 text-xs font-semibold gap-1.5 text-white bg-[#002855] hover:bg-[#001b3a] shadow-xs cursor-pointer disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Search className="size-3.5" />
+                      )}
+                      Buscar
+                    </Button>
                   </div>
                 </div>
               </form>
             </UmssCardContent>
           </UmssCard>
 
-          {/* Estados de carga e información */}
-          {!reporteData && <PartesReportState loading={loading} hasSearched={hasSearched} />}
+          {/* Estados iniciales: sin búsqueda o sin resultados */}
+          {!loading && !reporteData && (
+            <PartesReportState loading={loading} hasSearched={hasSearched} />
+          )}
 
-          {/* Grilla / Tabla principal ocupando el espacio vertical disponible */}
-          {!loading && reporteData && groupedRows.length > 0 && (
-            <div className="w-full max-w-full flex-1 min-h-0 overflow-hidden flex flex-col">
+          {/* Grilla / Tabla principal: con variante dinámica de carga o datos reales */}
+          {(loading || (reporteData && groupedRows.length > 0)) && (
+            <div className="w-full max-w-full flex-1 min-h-[350px] lg:min-h-0 overflow-hidden flex flex-col">
               <PartesReportTable
                 rows={groupedRows}
                 tiposTickeo={tiposTickeo}
                 onRowChange={handleRowChange}
                 isClosed={isClosed}
+                loading={loading}
               />
             </div>
           )}
@@ -1118,24 +1257,28 @@ export default function PartesDiariosPage() {
                   placeholder="Todos los campus"
                   options={campusOptions}
                   value={selectedCampusId || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
+                  onValueChange={(value) => {
                     setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
-                  }
+                    setSelectedBloqueId("")
+                    setSelectedAulaId("")
+                  }}
                   height="sm"
                   className="w-full"
                 />
               </div>
 
-              {/* 6. Facultad Geográfica */}
+              {/* 6. Bloque Geográfico */}
               <div className="min-w-0">
                 <Select
-                  label="Facultad Geográfica"
-                  placeholder="Todas las fac. geográficas"
-                  options={facultadesInfraOptions}
-                  value={selectedFacultadInfraId || ALL_FILTER_VALUE}
-                  onValueChange={(value) =>
-                    setSelectedFacultadInfraId(value === ALL_FILTER_VALUE ? "" : value)
-                  }
+                  label="Bloque Geográfico"
+                  placeholder={loadingBloques ? "Cargando bloques..." : "Todos los bloques"}
+                  options={bloquesOptions}
+                  value={selectedBloqueId || ALL_FILTER_VALUE}
+                  onValueChange={(value) => {
+                    setSelectedBloqueId(value === ALL_FILTER_VALUE ? "" : value)
+                    setSelectedAulaId("")
+                  }}
+                  disabled={!selectedCampusId || loadingBloques}
                   height="sm"
                   className="w-full"
                 />

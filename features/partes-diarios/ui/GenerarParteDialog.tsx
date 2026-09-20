@@ -71,23 +71,22 @@ export function GenerarParteDialog({
     }
 
     setGenerating(true)
-    const toastId = toast.loading("Generando parte diario...")
     try {
-      await partesApiClient.post("/partes-diarios", {
-        facultadCodigo,
-        fecha,
-      })
-      toast.success("Parte diario generado correctamente", { id: toastId })
+      await partesApiClient.post(
+        "/partes-diarios",
+        {
+          facultadCodigo,
+          fecha,
+        },
+        {
+          loadingMessage: "Generando parte diario...",
+          successMessage: "Parte diario generado correctamente",
+        }
+      )
       onOpenChange(false)
       await onGenerated()
     } catch (requestError) {
-      const apiError = requestError as PartesApiError
-      toast.error(
-        apiError.body && typeof apiError.body === "object" && "message" in apiError.body
-          ? String(apiError.body.message)
-          : "Error al generar el parte diario",
-        { id: toastId }
-      )
+      console.error("Error al generar el parte diario:", requestError)
     } finally {
       setGenerating(false)
     }
