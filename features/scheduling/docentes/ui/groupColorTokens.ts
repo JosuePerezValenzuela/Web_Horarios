@@ -27,22 +27,43 @@ function pickHue(index: number): number {
   return (baseHue + cycleOffset) % 360
 }
 
-export function resolveGroupColorToken(index: number): GroupColorToken {
+export function resolveGroupColorToken(index: number, toneIndex = 0): GroupColorToken {
   const hue = pickHue(index)
   const step = COLOR_STEPS[Math.abs(index) % COLOR_STEPS.length]
+  const isSecondary = toneIndex > 0
+  const toneStep = Math.min(toneIndex, 3)
+
+  // Primary: Soft, bright pastel (94-96% light mode, 15% dark mode)
+  // Secondary: Noticeably deeper / distinct tone in light mode (82% / 73%), brighter in dark mode (26% / 34%)
+  const cardSat = isSecondary ? Math.max(step.card[0] - toneStep * 15, 38) : step.card[0]
+  const cardLightness = isSecondary ? step.card[1] - toneStep * 11 : step.card[1]
+  const cardDarken = isSecondary ? Math.max(80 - toneStep * 20, 36) : 80
+
+  const blockSat = isSecondary ? Math.max(step.block[0] - toneStep * 15, 35) : step.block[0]
+  const blockLightness = isSecondary ? step.block[1] - toneStep * 11 : step.block[1]
+  const blockDarken = isSecondary ? Math.max(75 - toneStep * 20, 34) : 75
+
+  const borderStyle = isSecondary ? "dashed" : "solid"
+  const borderWidth = isSecondary ? "2px" : "1.5px"
 
   return {
     cardStyle: {
-      backgroundColor: `hsl(${hue} ${step.card[0]}% calc(${step.card[1]}% - (var(--theme-dark-modifier, 0) * 80%)))`,
-      borderColor: `hsl(${hue} 42% calc(66% - (var(--theme-dark-modifier, 0) * 45%)))`,
+      backgroundColor: `hsl(${hue} ${cardSat}% calc(${cardLightness}% - (var(--theme-dark-modifier, 0) * ${cardDarken}%)))`,
+      borderColor: `hsl(${hue} ${isSecondary ? 60 : 42}% calc(${isSecondary ? 46 : 66}% - (var(--theme-dark-modifier, 0) * ${isSecondary ? 20 : 45}%)))`,
+      borderStyle,
+      borderWidth,
     },
     blockStyle: {
-      backgroundColor: `hsl(${hue} ${step.block[0]}% calc(${step.block[1]}% - (var(--theme-dark-modifier, 0) * 75%)))`,
-      borderColor: `hsl(${hue} 44% calc(58% - (var(--theme-dark-modifier, 0) * 35%)))`,
+      backgroundColor: `hsl(${hue} ${blockSat}% calc(${blockLightness}% - (var(--theme-dark-modifier, 0) * ${blockDarken}%)))`,
+      borderColor: `hsl(${hue} ${isSecondary ? 60 : 44}% calc(${isSecondary ? 46 : 58}% - (var(--theme-dark-modifier, 0) * ${isSecondary ? 18 : 35}%)))`,
+      borderStyle,
+      borderWidth,
     },
     badgeStyle: {
-      backgroundColor: `hsl(${hue} ${step.badge[0]}% calc(${step.badge[1]}% - (var(--theme-dark-modifier, 0) * 65%)))`,
-      borderColor: `hsl(${hue} 48% calc(52% - (var(--theme-dark-modifier, 0) * 20%)))`,
+      backgroundColor: `hsl(${hue} ${isSecondary ? step.badge[0] - 15 : step.badge[0]}% calc(${isSecondary ? step.badge[1] - 10 : step.badge[1]}% - (var(--theme-dark-modifier, 0) * ${isSecondary ? 48 : 65}%)))`,
+      borderColor: `hsl(${hue} ${isSecondary ? 60 : 48}% calc(${isSecondary ? 46 : 52}% - (var(--theme-dark-modifier, 0) * 20%)))`,
+      borderStyle,
+      borderWidth,
       color: "var(--color-foreground)",
     },
   }

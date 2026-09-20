@@ -110,6 +110,8 @@ export interface DocenteHorarioApiSchedule {
   } | null
   docente?: string | null
   materia_codigo?: string | null
+  primario?: boolean | null
+  primario_id?: number | string | null
 }
 
 export interface DocenteHorarioApiGroup {
@@ -126,6 +128,8 @@ export interface DocenteHorarioApiGroup {
   minutos_carga_horaria_especifico?: number | string | null
   cantidad_horarios?: number | string | null
   estado?: string | null
+  primario?: boolean | null
+  primario_id?: number | string | null
 }
 
 export interface DocenteHorariosApiPayload {
@@ -187,6 +191,10 @@ export interface NormalizedSchedule {
   docente?: string
   materiaCodigo?: string
   ambienteCodigo?: string
+  primario?: boolean
+  primario_id?: number | null
+  isSecondary?: boolean
+  toneIndex?: number
 }
 
 export interface GroupSummary {
@@ -198,6 +206,12 @@ export interface GroupSummary {
   countHorarios: number
   estado: string
   colorIndex: number
+  toneIndex?: number
+  primario?: boolean
+  primario_id?: number | null
+  isSecondary?: boolean
+  hasSecondaries?: boolean
+  secondaryCount?: number
   carga_horaria?: number | null
   carga_horaria_grupo?: number | null
   minutos_carga_horaria_especifico?: number | null

@@ -26,7 +26,7 @@ export function GroupSummaryCard({
   onEditClick,
   onDeleteClick,
 }: GroupSummaryCardProps) {
-  const token = resolveGroupColorToken(group.colorIndex)
+  const token = resolveGroupColorToken(group.colorIndex, group.toneIndex)
   const carreras = group.carrerasLabel
     .split(",")
     .map((value) => value.trim())
@@ -60,8 +60,18 @@ export function GroupSummaryCard({
       style={token.cardStyle}
     >
       <CardHeader className="px-3 pt-2 pb-1">
-        <CardTitle className="line-clamp-2 text-[13px] leading-tight font-bold flex flex-wrap items-center gap-1">
+        <CardTitle className="line-clamp-2 text-[13px] leading-tight font-bold flex flex-wrap items-center gap-1.5">
           <span>{group.materia}</span>
+          {group.hasSecondaries && (
+            <span className="inline-flex items-center rounded-md bg-blue-50 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+              Principal
+            </span>
+          )}
+          {group.isSecondary && (
+            <span className="inline-flex items-center rounded-md bg-muted text-muted-foreground dark:bg-muted/60 dark:text-slate-300 border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+              Secundario
+            </span>
+          )}
           {isWorkloadMismatched && (
             <span className="inline-flex items-center rounded-full bg-amber-100 dark:bg-amber-950/40 px-2 py-0.5 text-[9px] font-bold text-amber-800 dark:text-amber-300 border border-amber-300/40 animate-bounce-slow">
               ⚠️ Carga Incompleta

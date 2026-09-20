@@ -25,6 +25,7 @@ function toScheduleItem(schedule: NormalizedSchedule): ScheduleItem {
     badge: `G: ${schedule.grupo}`,
     description: schedule.docente || undefined,
     colorIndex: schedule.colorIndex,
+    toneIndex: schedule.toneIndex,
     meta: { schedule },
   }
 }

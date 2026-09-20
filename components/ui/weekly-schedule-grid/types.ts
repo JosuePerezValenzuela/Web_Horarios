@@ -26,6 +26,7 @@ export interface ScheduleItem {
   description?: string // e.g. teacher's name
   // Theming
   colorIndex: number // integer, used by resolveColorToken
+  toneIndex?: number // integer, used for primary (0) vs secondary (1, 2, ...) tones
   // Optional callbacks data
   meta?: Record<string, unknown> // any extra data for callbacks
 }

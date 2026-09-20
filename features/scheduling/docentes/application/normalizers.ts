@@ -105,6 +105,8 @@ function extractSchedules(payload: DocenteHorariosApiResponse): DocenteHorarioAp
             group.materia,
           carreras: schedule.carreras ?? group.carreras,
           materia_codigo: schedule.materia_codigo ?? group.materia_codigo,
+          primario: schedule.primario ?? group.primario,
+          primario_id: schedule.primario_id ?? group.primario_id,
         }) as DocenteHorarioApiSchedule
     )
   })
@@ -335,6 +337,11 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
     docente: docente || undefined,
     materiaCodigo: materiaCodigo || undefined,
     ambienteCodigo: cleanAula || undefined,
+    primario:
+      schedule.primario !== undefined && schedule.primario !== null
+        ? Boolean(schedule.primario)
+        : undefined,
+    primario_id: toNumber(schedule.primario_id),
   }
 }
 
@@ -360,6 +367,8 @@ function createGroupSummaryFromSchedules(schedules: NormalizedSchedule[]): Group
       countHorarios: 1,
       estado: "Con Horarios",
       colorIndex: schedule.colorIndex,
+      primario: schedule.primario ?? true,
+      primario_id: schedule.primario_id ?? null,
     })
   })
 
@@ -382,6 +391,11 @@ function mergeGroupsWithApi(
     const horarios = toArray(group.horarios)
     const countHorarios = horarios.length
     const existing = map.get(groupKey)
+    const primario =
+      group.primario !== undefined && group.primario !== null
+        ? Boolean(group.primario)
+        : (existing?.primario ?? true)
+    const primario_id = toNumber(group.primario_id) ?? existing?.primario_id ?? null
 
     map.set(groupKey, {
       groupKey,
@@ -399,6 +413,8 @@ function mergeGroupsWithApi(
       carga_horaria: toNumber(group.carga_horaria),
       carga_horaria_grupo: toNumber(group.carga_horaria_grupo),
       minutos_carga_horaria_especifico: toNumber(group.minutos_carga_horaria_especifico),
+      primario,
+      primario_id,
     })
   })
 
@@ -409,35 +425,119 @@ function assignStableColorIndices(
   groups: GroupSummary[],
   schedules: NormalizedSchedule[]
 ): { groups: GroupSummary[]; schedules: NormalizedSchedule[] } {
-  // Sort groups alphabetically by materia and grupo to make order and color index assignments completely deterministic
-  const sortedGroups = [...groups].sort((a, b) => {
+  // 1. Index groups by persona_grupo_id
+  const groupByPersonaGrupoId = new Map<number, GroupSummary>()
+  groups.forEach((g) => {
+    if (g.persona_grupo_id) {
+      groupByPersonaGrupoId.set(g.persona_grupo_id, g)
+    }
+  })
+
+  // 2. Identify secondaries and group them under their primary's persona_grupo_id
+  const secondariesByPrimaryId = new Map<number, GroupSummary[]>()
+  const secondaryGroupKeys = new Set<string>()
+
+  groups.forEach((g) => {
+    const isSec =
+      g.primario === false && g.primario_id != null && groupByPersonaGrupoId.has(g.primario_id)
+    if (isSec && g.primario_id != null) {
+      secondaryGroupKeys.add(g.groupKey)
+      const list = secondariesByPrimaryId.get(g.primario_id) || []
+      list.push(g)
+      secondariesByPrimaryId.set(g.primario_id, list)
+    }
+  })
+
+  // 3. Root groups (Primary groups and standalone groups)
+  const rootGroups = groups.filter((g) => !secondaryGroupKeys.has(g.groupKey))
+
+  // Sort root groups: groups with secondaries come first (descending by secondary count), then tie-break alphabetically
+  const sortedRoots = [...rootGroups].sort((a, b) => {
+    const aCount = (secondariesByPrimaryId.get(a.persona_grupo_id) || []).length
+    const bCount = (secondariesByPrimaryId.get(b.persona_grupo_id) || []).length
+
+    // 1. Groups with secondaries come first; more secondaries come first
+    if (aCount !== bCount) {
+      return bCount - aCount
+    }
+
+    // 2. Tie-breaker (or both standalone): alphabetical by materia, then grupo
     const matCompare = a.materia.localeCompare(b.materia, "es", { sensitivity: "base" })
     if (matCompare !== 0) return matCompare
     return a.grupo.localeCompare(b.grupo, "es", { numeric: true })
   })
 
-  const groupOrder = Array.from(new Set(sortedGroups.map((group) => group.groupKey)))
-  const colorByGroupKey = new Map<string, number>()
+  // 4. Assemble final ordered list where each primary is immediately followed by its secondaries
+  const finalGroups: GroupSummary[] = []
+  let familyIndex = 0
 
-  groupOrder.forEach((groupKey, index) => {
-    colorByGroupKey.set(groupKey, index)
+  sortedRoots.forEach((root) => {
+    const secondaries = secondariesByPrimaryId.get(root.persona_grupo_id) || []
+    secondaries.sort((a, b) => a.grupo.localeCompare(b.grupo, "es", { numeric: true }))
+
+    const hasSecondaries = secondaries.length > 0
+    const colorIndex = familyIndex++
+
+    finalGroups.push({
+      ...root,
+      colorIndex,
+      toneIndex: 0,
+      isSecondary: false,
+      hasSecondaries,
+      secondaryCount: secondaries.length,
+    })
+
+    secondaries.forEach((sec, idx) => {
+      finalGroups.push({
+        ...sec,
+        colorIndex, // Same family hue!
+        toneIndex: idx + 1, // 1, 2, ...
+        isSecondary: true,
+        hasSecondaries: false,
+      })
+    })
   })
 
-  schedules.forEach((schedule) => {
-    if (!colorByGroupKey.has(schedule.groupKey)) {
-      colorByGroupKey.set(schedule.groupKey, colorByGroupKey.size)
+  // 5. Build lookup map for schedules
+  const colorMapByGroupKey = new Map<
+    string,
+    { colorIndex: number; toneIndex: number; isSecondary: boolean }
+  >()
+  const colorMapByPersonaGrupoId = new Map<
+    number,
+    { colorIndex: number; toneIndex: number; isSecondary: boolean }
+  >()
+
+  finalGroups.forEach((g) => {
+    const info = {
+      colorIndex: g.colorIndex,
+      toneIndex: g.toneIndex ?? 0,
+      isSecondary: Boolean(g.isSecondary),
+    }
+    colorMapByGroupKey.set(g.groupKey, info)
+    if (g.persona_grupo_id) {
+      colorMapByPersonaGrupoId.set(g.persona_grupo_id, info)
+    }
+  })
+
+  // 6. Assign matching colorIndex and toneIndex to each schedule
+  const updatedSchedules = schedules.map((schedule) => {
+    const colorInfo = colorMapByGroupKey.get(schedule.groupKey) ??
+      (schedule.persona_grupo_id
+        ? colorMapByPersonaGrupoId.get(schedule.persona_grupo_id)
+        : undefined) ?? { colorIndex: 0, toneIndex: 0, isSecondary: false }
+
+    return {
+      ...schedule,
+      colorIndex: colorInfo.colorIndex,
+      toneIndex: colorInfo.toneIndex,
+      isSecondary: colorInfo.isSecondary,
     }
   })
 
   return {
-    groups: sortedGroups.map((group) => ({
-      ...group,
-      colorIndex: colorByGroupKey.get(group.groupKey) ?? 0,
-    })),
-    schedules: schedules.map((schedule) => ({
-      ...schedule,
-      colorIndex: colorByGroupKey.get(schedule.groupKey) ?? 0,
-    })),
+    groups: finalGroups,
+    schedules: updatedSchedules,
   }
 }
 

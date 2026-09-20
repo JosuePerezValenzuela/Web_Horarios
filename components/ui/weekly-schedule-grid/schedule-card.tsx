@@ -38,8 +38,8 @@ export function ScheduleCard({
   onClick,
   onHoverTimeRangeChange,
 }: ScheduleCardProps) {
-  const token = resolveColorToken(item.colorIndex)
-  const accentColor = resolveAccentColor(item.colorIndex)
+  const token = resolveColorToken(item.colorIndex, item.toneIndex)
+  const accentColor = resolveAccentColor(item.colorIndex, item.toneIndex)
   const isClickable = onClick !== undefined && mode !== "peek"
 
   // Hover Popover & Card Highlight state

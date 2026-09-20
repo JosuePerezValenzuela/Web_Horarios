@@ -2,6 +2,7 @@ import { useState, useMemo } from "react"
 import { Button, Input, ScrollArea, Badge } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, RefreshCw, ClipboardList, Maximize2, Minimize2, Calendar } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 import type {
   DocenteScheduleMeta,
@@ -219,14 +220,22 @@ export function TeacherSchedulePage({
                   ))
                 ) : groups.length > 0 ? (
                   groups.map((group) => (
-                    <GroupSummaryCard
+                    <div
                       key={group.groupKey}
-                      group={group}
-                      schedules={schedules}
-                      onAddClick={onAddClick ? handleAddClick : undefined}
-                      onEditClick={onEditClick ? handleEditClick : undefined}
-                      onDeleteClick={onDeleteClick ? handleDeleteClick : undefined}
-                    />
+                      className={cn(
+                        "transition-all duration-200",
+                        group.isSecondary &&
+                          "ml-4 pl-3.5 border-l-2 border-dashed border-primary/40 dark:border-primary/50 relative before:absolute before:left-0 before:top-6 before:w-3 before:h-0.5 before:bg-primary/40 dark:before:bg-primary/50"
+                      )}
+                    >
+                      <GroupSummaryCard
+                        group={group}
+                        schedules={schedules}
+                        onAddClick={onAddClick ? handleAddClick : undefined}
+                        onEditClick={onEditClick ? handleEditClick : undefined}
+                        onDeleteClick={onDeleteClick ? handleDeleteClick : undefined}
+                      />
+                    </div>
                   ))
                 ) : (
                   <p className="rounded-2xl border border-border bg-muted/50 p-3 text-sm text-muted-foreground">
