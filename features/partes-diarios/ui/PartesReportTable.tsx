@@ -206,7 +206,14 @@ const PartesTableRow = memo(function PartesTableRow({
       </TableCell>
       <TableCell className="text-center px-1.5 py-1.5 w-28">
         <div className="flex flex-col gap-1 items-center justify-center">
-          {!row.hora_ingreso_tickeo && !row.hora_salida_tickeo ? (
+          {row.falta ? (
+            <Badge
+              variant="error"
+              className="font-mono text-[9px] px-1 py-0 font-bold uppercase tracking-wider rounded-md"
+            >
+              FALTA
+            </Badge>
+          ) : !row.hora_ingreso_tickeo && !row.hora_salida_tickeo ? (
             <span className="text-muted-foreground font-mono text-xs">—</span>
           ) : (
             <>
@@ -226,24 +233,14 @@ const PartesTableRow = memo(function PartesTableRow({
                   {row.anticipado} min ant.
                 </Badge>
               )}
-              {row.falta && (
+              {(!row.retraso || row.retraso <= 0) && (!row.anticipado || row.anticipado <= 0) && (
                 <Badge
-                  variant="error"
-                  className="font-mono text-[9px] px-1 py-0 font-bold uppercase tracking-wider rounded-md"
+                  variant="brand"
+                  className="font-mono text-[9px] px-1 py-0 font-bold uppercase rounded-md"
                 >
-                  FALTA
+                  Presente
                 </Badge>
               )}
-              {(!row.retraso || row.retraso <= 0) &&
-                (!row.anticipado || row.anticipado <= 0) &&
-                !row.falta && (
-                  <Badge
-                    variant="brand"
-                    className="font-mono text-[9px] px-1 py-0 font-bold uppercase rounded-md"
-                  >
-                    Presente
-                  </Badge>
-                )}
             </>
           )}
         </div>

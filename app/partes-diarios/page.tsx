@@ -647,14 +647,20 @@ export default function PartesDiariosPage() {
 
     itemsToSubmit.forEach((row) => {
       row.ids.forEach((detalleId) => {
-        itemsPayload.push({
+        const item: Record<string, unknown> = {
           detalle_id: detalleId,
           hora_ingreso_tickeo: row.ingreso || null,
           hora_salida_tickeo: row.salida || null,
-          observacion: row.observacion || null,
           tipo_tickeo: row.tipo_tickeo || null,
           fuente_registro: "firma_manual",
-        })
+        }
+
+        const trimmedObs = row.observacion?.trim()
+        if (trimmedObs) {
+          item.observacion = trimmedObs
+        }
+
+        itemsPayload.push(item)
       })
     })
 
