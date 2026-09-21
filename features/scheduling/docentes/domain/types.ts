@@ -554,13 +554,18 @@ export interface AdminScheduleRaw {
 }
 
 export interface AdminScheduleApiResponse {
-  success: boolean
   data: {
-    persona?: {
-      codigo?: string
-      nombres?: string
+    persona: {
+      codigo: string
+      nombres: string
     }
     horarios: AdminScheduleRaw[]
+    meta?: {
+      page: number
+      take: number
+      total: number
+      totalPages: number
+    }
   }
 }
 

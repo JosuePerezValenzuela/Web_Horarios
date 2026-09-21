@@ -697,7 +697,7 @@ export function normalizeDocenteHorarios(
 }
 
 export function normalizeAdminSchedules(payload: AdminScheduleApiResponse): AdminSchedule[] {
-  if (!payload?.success || !payload?.data?.horarios) return []
+  if (!payload?.data?.horarios) return []
 
   return payload.data.horarios
     .map((h): AdminSchedule | null => {

@@ -170,10 +170,8 @@ export function AdminSchedulesModal({
     setIsLoadingSchedules(true)
     try {
       const res = await fetchDocenteAdminHorarios(docente.codigo)
-      const list =
-        res?.data?.horarios ?? (res as any)?.horarios ?? (Array.isArray(res?.data) ? res.data : [])
-      if (Array.isArray(list)) {
-        setLocalSchedules(list)
+      if (res.data?.horarios) {
+        setLocalSchedules(res.data.horarios)
       }
     } catch (err) {
       console.error("Error al recargar horarios administrativos:", err)
