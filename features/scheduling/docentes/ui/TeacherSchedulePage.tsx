@@ -192,8 +192,8 @@ export function TeacherSchedulePage({
 
       <div className="grid min-h-0 flex-1 w-full max-w-full min-w-0 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
         <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 max-h-80 lg:max-h-full lg:h-full overflow-hidden">
-          <div className="space-y-1.5">
-            <Label htmlFor="periodo-horario" className="text-sm font-medium">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <Label htmlFor="periodo-horario" className="text-sm font-medium whitespace-nowrap">
               Período (minutos)
             </Label>
             <Input
@@ -203,7 +203,7 @@ export function TeacherSchedulePage({
               value={period}
               onChange={(event) => onPeriodChange(Number(event.target.value))}
               aria-label="Periodo de segmentacion en minutos"
-              className="h-9 no-spinner"
+              className="h-9 w-24 shrink-0 font-medium no-spinner"
             />
           </div>
 
