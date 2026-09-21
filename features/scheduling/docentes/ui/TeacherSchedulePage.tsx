@@ -102,47 +102,79 @@ export function TeacherSchedulePage({
 
   return (
     <div className="flex min-h-full w-full max-w-full min-w-0 flex-col gap-4 lg:gap-5">
-      <header className="rounded-3xl border border-border bg-card p-3 md:p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
-            <Button variant="outline" size="sm" onClick={onBack} className="shrink-0">
-              <ArrowLeft className="mr-2 size-4" />
-              Volver
+      <header className="rounded-3xl border border-border bg-card p-3.5 sm:p-4 shadow-xs">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Left Block: Navigation + Title + Teacher Identity */}
+          <div className="flex items-start gap-3 min-w-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="shrink-0 h-9 rounded-xl gap-1.5 mt-0.5"
+            >
+              <ArrowLeft className="size-4" />
+              <span>Volver</span>
             </Button>
 
-            <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
-              <h1 className="shrink-0 text-sm font-semibold text-foreground md:text-base">
-                Vista semanal del docente
-              </h1>
-              <p
-                className="min-w-0 truncate text-xs text-muted-foreground"
-                title={`${docente?.nombres ?? "Cargando..."} · CI: ${docente?.documento ?? "--"} · Código: ${docente?.codigo ?? "--"}`}
-              >
-                {docente?.nombres ?? "Cargando..."} · CI: {docente?.documento ?? "--"} · Código:{" "}
-                {docente?.codigo ?? "--"}
-              </p>
-              {totalCargaAdministrativa > 0 && (
-                <Badge
-                  variant="brand"
-                  className="w-fit shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold"
+            <div className="min-w-0 flex-1 space-y-1">
+              {/* Row 1: Title + Administrative Workload Badge */}
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-sm sm:text-base font-bold text-foreground tracking-tight">
+                  Vista semanal del docente
+                </h1>
+                {totalCargaAdministrativa > 0 && (
+                  <Badge
+                    variant="brand"
+                    className="w-fit shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold"
+                  >
+                    Carga Admin: {totalCargaAdministrativa} hrs
+                  </Badge>
+                )}
+              </div>
+
+              {/* Row 2: Teacher Metadata Chips */}
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                <span
+                  className="font-semibold text-foreground text-xs sm:text-sm truncate max-w-[280px] sm:max-w-none"
+                  title={docente?.nombres ?? "Cargando..."}
                 >
-                  Carga Horaria Administrativa: {totalCargaAdministrativa} hrs
+                  {docente?.nombres ?? "Cargando..."}
+                </span>
+                <span className="hidden text-border sm:inline">|</span>
+                <Badge
+                  variant="outline"
+                  className="rounded-md border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
+                >
+                  CI:{" "}
+                  <span className="font-semibold text-foreground ml-1">
+                    {docente?.documento ?? "--"}
+                  </span>
                 </Badge>
-              )}
+                <Badge
+                  variant="outline"
+                  className="rounded-md border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-foreground/80"
+                >
+                  Código:{" "}
+                  <span className="font-semibold text-foreground ml-1">
+                    {docente?.codigo ?? "--"}
+                  </span>
+                </Badge>
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:gap-3">
+          {/* Right Block: Action Buttons */}
+          <div className="flex flex-wrap items-center gap-2 shrink-0 border-t border-border/40 pt-2.5 sm:gap-2.5 lg:border-t-0 lg:pt-0">
             {/* Horarios Administrativos Button */}
             <Button
               variant="outline"
               size="sm"
               disabled={loading || !docente?.codigo || docente.codigo === "Sin dato"}
               onClick={() => setIsAdminModalOpen(true)}
-              className="gap-1.5"
+              className="h-9 gap-1.5 rounded-xl text-xs font-medium"
             >
-              <ClipboardList className="size-4" />
-              Horarios Administrativos
+              <ClipboardList className="size-4 text-primary" />
+              <span>Horarios Administrativos</span>
             </Button>
 
             {/* Vista Compacta / Detallada Toggle */}
@@ -150,11 +182,10 @@ export function TeacherSchedulePage({
               variant={isCompactMode ? "outline" : "secondary"}
               size="sm"
               onClick={() => setIsCompactMode((v) => !v)}
-              className={
-                isCompactMode
-                  ? "gap-1.5 border-border bg-muted font-medium text-foreground hover:bg-muted/70"
-                  : "gap-1.5"
-              }
+              className={cn(
+                "h-9 gap-1.5 rounded-xl text-xs font-medium",
+                isCompactMode && "border-border bg-muted text-foreground hover:bg-muted/70"
+              )}
               title={
                 isCompactMode
                   ? "Cambiar a vista detallada (escala cronológica completa)"
@@ -164,12 +195,12 @@ export function TeacherSchedulePage({
               {isCompactMode ? (
                 <>
                   <Maximize2 className="size-4" />
-                  Vista detallada
+                  <span>Vista detallada</span>
                 </>
               ) : (
                 <>
                   <Minimize2 className="size-4" />
-                  Vista compacta
+                  <span>Vista compacta</span>
                 </>
               )}
             </Button>
@@ -206,7 +237,7 @@ export function TeacherSchedulePage({
               value={period}
               onChange={(event) => onPeriodChange(Number(event.target.value))}
               aria-label="Periodo de segmentacion en minutos"
-              className="h-8 w-18 text-center text-xs font-semibold no-spinner bg-background rounded-xl border border-border"
+              className="h-8 w-18 text-right pr-2.5 text-xs font-semibold no-spinner bg-background rounded-xl border border-border"
             />
           </div>
 
