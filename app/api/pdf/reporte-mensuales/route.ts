@@ -8,7 +8,7 @@ import type {
   AlertaRetrasoItem,
   AlertaFaltaItem,
   AlertaInasistenciaConsecutivaItem,
-  AlertaRetrasoOcurrencia,
+  AlertaOcurrenciaDetalle,
 } from "@/features/partes-mensuales/application/partesMensualesApi"
 
 export async function POST(request: NextRequest) {
@@ -35,9 +35,9 @@ export async function POST(request: NextRequest) {
       alcance = "facultad",
       objetivo,
       personas = [],
-      alertas = { retrasos: [], faltas: [], inasistencias_consecutivas: [] },
+      alertas = { mas_3_retrasos: [], "3_faltas_mas": [], inasistencias_consecutivas: [] },
     } = reporte
-    const facultadCodigo = objetivo || (reporte as any).facultad_codigo || ""
+    const facultadCodigo = objetivo || ""
 
     let logoBase64 = ""
     try {
@@ -61,32 +61,25 @@ export async function POST(request: NextRequest) {
     // ==========================================
     const personasRowsHtml = personas
       .map((p: ReporteMensualPersona, idx: number) => {
-        // Carga Horaria Mensual: suma de carga_horaria_mensual de sus asignaciones o fallback calculado
-        const totalCargaMensual =
-          p.asignaciones?.reduce((acc, a) => acc + (Number(a.carga_horaria_mensual) || 0), 0) ||
-          (p.raw?.occurrence_load ? p.raw.occurrence_load * 4 : 0)
-
-        const raw = p.raw || { absence_load: 0, delay_minutes: 0, early_minutes: 0 }
-        const license = p.license || { absence_load: 0, delay_minutes: 0, early_minutes: 0 }
-        const consolidated = p.consolidated || { occurrence_load: 0 }
-
         return `
         <tr class="hover:bg-gray-50/50">
-          <td style="text-align: center; font-family: monospace; color: #6b7280; width: 35px; vertical-align: middle;">${idx + 1}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 85px; vertical-align: middle;">${p.persona_codigo}</td>
+          <td style="text-align: center; font-family: monospace; color: #6b7280; width: 30px; vertical-align: middle;">${idx + 1}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 75px; vertical-align: middle;">${p.persona_codigo}</td>
           <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px;">${p.persona_nombres}</td>
           <!-- 1. Carga Horaria -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 75px; background-color: #f8fafc;">${totalCargaMensual} hrs</td>
-          <!-- 2. Faltas (raw) -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px; color: #dc2626; font-weight: 500;">${raw.absence_load ?? 0}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px; color: #b45309;">${raw.delay_minutes ?? 0}m</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px; color: #047857;">${raw.early_minutes ?? 0}m</td>
-          <!-- 3. Justificaciones (license) -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px; color: #2563eb;">${license.absence_load ?? 0}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px; color: #4b5563;">${license.delay_minutes ?? 0}m</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px; color: #4b5563;">${license.early_minutes ?? 0}m</td>
-          <!-- 4. Consolidado / T (consolidated) -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 80px; background-color: #f0fdf4; color: #15803d;">${consolidated.occurrence_load ?? 0}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 75px; background-color: #f8fafc;">${p.carga_horaria ?? 0} hrs</td>
+          <!-- 2. Faltas -->
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #dc2626; font-weight: 500;">${p.faltas?.carga_faltas ?? 0}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #b45309;">${p.faltas?.retrasos_min ?? 0}m</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #047857;">${p.faltas?.anticipados_min ?? 0}m</td>
+          <!-- 3. Justificaciones -->
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${p.justificaciones?.carga_justificada ?? 0}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${p.justificaciones?.retrasos_min_justificados ?? 0}m</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${p.justificaciones?.anticipado_min_justificados ?? 0}m</td>
+          <!-- 4. Consolidado -->
+          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.carga_consolidada ?? 0}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.minutos_retraso_consolidado ?? 0}m</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.minutos_anticipado_consolidado ?? 0}m</td>
         </tr>
       `
       })
@@ -95,19 +88,23 @@ export async function POST(request: NextRequest) {
     // Helper to get evidence list from an alert item
     const getEvidencias = (
       item: AlertaRetrasoItem | AlertaFaltaItem | AlertaInasistenciaConsecutivaItem
-    ): AlertaRetrasoOcurrencia[] => {
-      if (Array.isArray(item.evidencias) && item.evidencias.length > 0) return item.evidencias
+    ): AlertaOcurrenciaDetalle[] => {
       if (Array.isArray(item.evidence) && item.evidence.length > 0) return item.evidence
+      if (Array.isArray(item.evidencias) && item.evidencias.length > 0) return item.evidencias
       if ("secuencias" in item && Array.isArray(item.secuencias) && item.secuencias.length > 0) {
-        return item.secuencias.flatMap((s) => s.evidencias || [])
+        return item.secuencias.flatMap((s) => s.evidence || s.evidencias || [])
       }
       return []
     }
 
+    const listaRetrasos = alertas?.mas_3_retrasos || []
+    const listaFaltas = alertas?.["3_faltas_mas"] || []
+    const listaInasistencias = alertas?.inasistencias_consecutivas || []
+
     // ==========================================
     // 2. ALERTAS: RETRASOS (1 fila por docente con sub-filas agrupadas)
     // ==========================================
-    const retrasosRowsHtml = (alertas.retrasos || [])
+    const retrasosRowsHtml = listaRetrasos
       .map((item: AlertaRetrasoItem) => {
         const evs = getEvidencias(item)
         if (evs.length === 0) {
@@ -129,7 +126,7 @@ export async function POST(request: NextRequest) {
           <td rowspan="${rowspan}" style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle; background-color: #fafafa;">${item.persona_codigo}</td>
           <td rowspan="${rowspan}" class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px; background-color: #fafafa;">${item.persona_nombres}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${first.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre} (${first.asignatura_codigo}) - G: ${first.grupo_nombre}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "Clase"} (${first.asignatura_codigo || ""}) - G: ${first.grupo_nombre || ""}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${first.hora_inicio} - ${first.hora_fin}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${first.hora_ingreso_tickeo || "S/R"}</td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 75px;">${first.minutos_retraso ?? 0} min</td>
@@ -142,7 +139,7 @@ export async function POST(request: NextRequest) {
             (ev) => `
         <tr>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${ev.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre} (${ev.asignatura_codigo}) - G: ${ev.grupo_nombre}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "Clase"} (${ev.asignatura_codigo || ""}) - G: ${ev.grupo_nombre || ""}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${ev.hora_ingreso_tickeo || "S/R"}</td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 75px;">${ev.minutos_retraso ?? 0} min</td>
@@ -159,7 +156,7 @@ export async function POST(request: NextRequest) {
     // ==========================================
     // 3. ALERTAS: FALTAS (1 fila por docente con sub-filas agrupadas)
     // ==========================================
-    const faltasRowsHtml = (alertas.faltas || [])
+    const faltasRowsHtml = listaFaltas
       .map((item: AlertaFaltaItem) => {
         const evs = getEvidencias(item)
         if (evs.length === 0) {
@@ -181,7 +178,7 @@ export async function POST(request: NextRequest) {
           <td rowspan="${rowspan}" style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle; background-color: #fafafa;">${item.persona_codigo}</td>
           <td rowspan="${rowspan}" class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px; background-color: #fafafa;">${item.persona_nombres}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${first.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre} (${first.asignatura_codigo}) - G: ${first.grupo_nombre}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "Clase"} (${first.asignatura_codigo || ""}) - G: ${first.grupo_nombre || ""}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${first.hora_inicio} - ${first.hora_fin}</td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 85px;">FALTA</td>
           <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${first.aula_codigo || "S/R"}</td>
@@ -193,7 +190,7 @@ export async function POST(request: NextRequest) {
             (ev) => `
         <tr>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${ev.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre} (${ev.asignatura_codigo}) - G: ${ev.grupo_nombre}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "Clase"} (${ev.asignatura_codigo || ""}) - G: ${ev.grupo_nombre || ""}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 85px;">FALTA</td>
           <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${ev.aula_codigo || "S/R"}</td>
@@ -209,19 +206,25 @@ export async function POST(request: NextRequest) {
     // ==========================================
     // 4. ALERTAS: INASISTENCIAS CONSECUTIVAS (1 fila por docente con sub-filas agrupadas)
     // ==========================================
-    const inasistenciasRowsHtml = (alertas.inasistencias_consecutivas || [])
+    const inasistenciasRowsHtml = listaInasistencias
       .map((item: AlertaInasistenciaConsecutivaItem) => {
         const secuencias =
           item.secuencias ||
           (item.evidencias || item.evidence
             ? [
                 {
-                  fecha_inicio: item.fecha_inicio || item.evidencias?.[0]?.fecha || fecha_desde,
+                  fecha_inicio:
+                    item.fecha_inicio ||
+                    item.evidencias?.[0]?.fecha ||
+                    item.evidence?.[0]?.fecha ||
+                    fecha_desde,
                   fecha_fin:
                     item.fecha_fin ||
                     item.evidencias?.[(item.evidencias?.length ?? 1) - 1]?.fecha ||
+                    item.evidence?.[(item.evidence?.length ?? 1) - 1]?.fecha ||
                     fecha_hasta,
-                  cantidad_ocurrencias: item.count || (item.evidencias?.length ?? 0),
+                  cantidad_ocurrencias:
+                    item.count || item.evidencias?.length || item.evidence?.length || 0,
                   evidencias: item.evidencias || item.evidence || [],
                 },
               ]
@@ -241,11 +244,11 @@ export async function POST(request: NextRequest) {
         const remainingSec = secuencias.slice(1)
         const rowspan = secuencias.length
 
-        const formatEvsList = (evs: AlertaRetrasoOcurrencia[]) =>
+        const formatEvsList = (evs: AlertaOcurrenciaDetalle[]) =>
           evs
             .map(
               (e) =>
-                `<div>• <b>${e.fecha}</b>: ${e.asignatura_nombre || e.asignatura_codigo} (${e.hora_inicio || ""}-${e.hora_fin || ""}) G: ${e.grupo_nombre || ""}</div>`
+                `<div>• <b>${e.fecha}</b>: ${e.asignatura_nombre || e.asignatura_codigo || "Clase"} (${e.hora_inicio || ""}-${e.hora_fin || ""}) G: ${e.grupo_nombre || ""}</div>`
             )
             .join("")
 
@@ -403,38 +406,40 @@ export async function POST(request: NextRequest) {
                     <table class="signatures-table" style="margin-bottom: 20px;">
                       <thead>
                         <tr>
-                          <th rowspan="2" style="width: 35px; text-align: center;">N°</th>
-                          <th rowspan="2" style="width: 85px; text-align: center;">Código</th>
+                          <th rowspan="2" style="width: 30px; text-align: center;">N°</th>
+                          <th rowspan="2" style="width: 75px; text-align: center;">Código</th>
                           <th rowspan="2">Docente / Funcionario</th>
-                          <th class="sec-header" style="background-color: #e2e8f0; color: #1e293b;">1. Carga Horaria</th>
-                          <th colspan="3" class="sec-header" style="background-color: #fee2e2; color: #991b1b;">2. Faltas (Raw)</th>
-                          <th colspan="3" class="sec-header" style="background-color: #dbeafe; color: #1e40af;">3. Justificaciones (License)</th>
-                          <th class="sec-header" style="background-color: #dcfce7; color: #166534;">4. Consolidado (T)</th>
+                          <th class="sec-header" style="background-color: #e2e8f0; color: #1e293b; width: 75px;">1. Carga Horaria</th>
+                          <th colspan="3" class="sec-header" style="background-color: #fee2e2; color: #991b1b;">2. Faltas</th>
+                          <th colspan="3" class="sec-header" style="background-color: #dbeafe; color: #1e40af;">3. Justificaciones</th>
+                          <th colspan="3" class="sec-header" style="background-color: #dcfce7; color: #166534;">4. Consolidado</th>
                         </tr>
                         <tr>
                           <!-- 1. Carga Horaria -->
-                          <th style="width: 75px; text-align: center;">Carga Mens.</th>
+                          <th style="width: 75px; text-align: center;">Carga Base</th>
                           <!-- 2. Faltas -->
-                          <th style="width: 70px; text-align: center;">Carga Falt.</th>
-                          <th style="width: 75px; text-align: center;">Retraso (m)</th>
-                          <th style="width: 75px; text-align: center;">Anticip. (m)</th>
+                          <th style="width: 65px; text-align: center;">Carga Falt.</th>
+                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
+                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
                           <!-- 3. Justificaciones -->
-                          <th style="width: 70px; text-align: center;">Carga Just.</th>
-                          <th style="width: 75px; text-align: center;">Retraso (m)</th>
-                          <th style="width: 75px; text-align: center;">Anticip. (m)</th>
+                          <th style="width: 65px; text-align: center;">Carga Just.</th>
+                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
+                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
                           <!-- 4. Consolidado -->
-                          <th style="width: 80px; text-align: center;">Ocurr. Load</th>
+                          <th style="width: 65px; text-align: center;">Carga Cons.</th>
+                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
+                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        ${personasRowsHtml || '<tr><td colspan="11" style="text-align: center; color: #9ca3af; padding: 12px;">Sin registros de personal en este período</td></tr>'}
+                        ${personasRowsHtml || '<tr><td colspan="13" style="text-align: center; color: #9ca3af; padding: 12px;">Sin registros de personal en este período</td></tr>'}
                       </tbody>
                     </table>
 
                     <!-- SECCIÓN 2: ALERTA DE RETRASOS (INICIA EN HOJA NUEVA) -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #b45309;">
-                      2. Reporte de Alertas — Retrasos Recurrentes
+                      2. Reporte de Alertas — Retrasos Recurrentes (&gt; 3 retrasos)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 20px;">
                       <thead>
@@ -457,7 +462,7 @@ export async function POST(request: NextRequest) {
                     <!-- SECCIÓN 3: ALERTA DE FALTAS (INICIA EN HOJA NUEVA) -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #dc2626;">
-                      3. Reporte de Alertas — Faltas Acumuladas
+                      3. Reporte de Alertas — Faltas Acumuladas (3 faltas o más)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 20px;">
                       <thead>
@@ -479,7 +484,7 @@ export async function POST(request: NextRequest) {
                     <!-- SECCIÓN 4: INASISTENCIAS CONSECUTIVAS (INICIA EN HOJA NUEVA) -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #7f1d1d;">
-                      4. Reporte de Alertas — Inasistencias Consecutivas
+                      4. Reporte de Alertas — Inasistencias Consecutivas (Secuencia de 6 o más días)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 10px;">
                       <thead>
