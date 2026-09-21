@@ -104,9 +104,12 @@ export function AppLayout({ children, className, disablePageScroll = false }: Ap
       <div className="relative flex-1 h-full w-full flex overflow-hidden">
         {/* If page handles its own layout/scroll (e.g. tables with internal scroll), avoid ScrollArea */}
         {disablePageScroll ? (
-          <div className="flex-1 h-full w-full min-h-0 overflow-y-auto flex flex-col">
+          <div className="flex-1 h-full w-full min-h-0 min-w-0 overflow-y-auto overflow-x-hidden flex flex-col">
             <div
-              className={cn("flex-1 min-h-0 min-h-full lg:h-full w-full flex flex-col", className)}
+              className={cn(
+                "flex-1 min-h-0 min-w-0 min-h-full lg:h-full w-full max-w-full flex flex-col",
+                className
+              )}
             >
               {children}
             </div>

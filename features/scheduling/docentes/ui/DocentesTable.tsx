@@ -36,7 +36,7 @@ export function DocentesTable() {
   }
 
   return (
-    <div className="w-full overflow-x-auto overflow-y-auto max-h-[calc(100vh-345px)] border border-border rounded-2xl shadow-sm bg-card">
+    <div className="w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto max-h-[calc(100vh-345px)] border border-border rounded-2xl shadow-sm bg-card">
       <Table className="table-fixed min-w-[650px] w-full relative">
         <TableHeader className="bg-muted/40 sticky top-0 z-10 shadow-[0_1px_0_0_rgba(0,0,0,0.1)] dark:shadow-[0_1px_0_0_rgba(255,255,255,0.05)] bg-card">
           <TableRow className="hover:bg-transparent border-b border-border">

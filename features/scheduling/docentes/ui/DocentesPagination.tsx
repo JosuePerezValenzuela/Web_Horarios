@@ -110,14 +110,14 @@ export function DocentesPagination() {
   const handleLast = () => setPage(totalPages)
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 py-2">
+    <div className="flex flex-wrap items-center justify-between gap-3 sm:gap-4 py-2 w-full min-w-0 max-w-full">
       {/* Left: Records indicator */}
       <span className="text-xs font-semibold text-muted-foreground shrink-0 uppercase tracking-wide">
         Mostrando {startRecord}-{endRecord} de {totalRecords} docentes
       </span>
 
       {/* Right: All navigation controls */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 max-w-full">
         {/* PageSize input */}
         <div className="flex shrink-0 items-center gap-1.5 mr-2">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">

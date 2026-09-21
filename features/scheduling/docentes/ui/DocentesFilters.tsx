@@ -86,7 +86,7 @@ export function DocentesFilters() {
   }))
 
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-10 items-end">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-10 items-end w-full min-w-0 max-w-full">
       {/* Search Input - de la librería (40% en lg) */}
       <div className="min-w-0 sm:col-span-2 lg:col-span-4">
         <label

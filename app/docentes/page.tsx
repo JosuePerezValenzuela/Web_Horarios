@@ -21,8 +21,10 @@ export default function DocentesPage() {
           { name: "Docentes", href: "/docentes" },
           { name: "Gestión de carga horaria" },
         ]}
+        disablePageScroll
+        className="p-3 sm:p-4 md:p-6 lg:p-8"
       >
-        <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full">
+        <div className="flex flex-col gap-4 max-w-6xl mx-auto w-full min-w-0 max-w-full">
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border pb-3">
             <div className="flex flex-col gap-0.5">
@@ -36,7 +38,7 @@ export default function DocentesPage() {
           </div>
 
           {/* Filters Section (Fondo de tarjeta unificado) */}
-          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm w-full min-w-0 max-w-full">
             <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
               Filtros de Búsqueda
             </h3>
@@ -47,7 +49,7 @@ export default function DocentesPage() {
           <DocentesTable />
 
           {/* Pagination */}
-          <div className="border-t border-border pt-3">
+          <div className="border-t border-border pt-3 w-full min-w-0 max-w-full">
             <DocentesPagination />
           </div>
         </div>
