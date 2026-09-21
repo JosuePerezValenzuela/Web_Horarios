@@ -13,7 +13,7 @@ function Table({
     <div
       data-slot="table-container"
       className={cn(
-        "relative w-full overflow-hidden rounded-xl border border-border/50 shadow-sm",
+        "relative w-full overflow-x-auto rounded-xl border border-border/50 shadow-sm",
         containerClassName
       )}
     >

@@ -1154,14 +1154,17 @@ export function AdminSchedulesModal({
             </div>
           ) : (
             <div className="w-full max-w-full overflow-x-auto">
-              <Table className="w-full min-w-[960px] text-left whitespace-nowrap">
+              <Table
+                containerClassName="border-0 rounded-none shadow-none"
+                className="w-full min-w-[960px] text-left whitespace-nowrap"
+              >
                 <TableHeader className="bg-muted/50 border-b border-border/80">
                   <TableRow className="hover:bg-transparent">
                     <TableHead className="font-semibold text-xs text-foreground/80">
                       Descripción
                     </TableHead>
                     <TableHead className="font-semibold text-xs text-foreground/80">Tipo</TableHead>
-                    <TableHead className="font-semibold text-xs text-foreground/80">
+                    <TableHead className="font-semibold text-xs text-foreground/80 text-center">
                       Cargo Autoridad
                     </TableHead>
                     <TableHead className="font-semibold text-xs text-foreground/80">Día</TableHead>
@@ -1203,16 +1206,18 @@ export function AdminSchedulesModal({
                           {schedule.horario_catalogo.descripcion || "Actividad Administrativa"}
                         </TableCell>
                         <TableCell className="text-sm text-foreground">{tipoLabel}</TableCell>
-                        <TableCell className="text-sm text-foreground">
+                        <TableCell className="text-sm text-foreground text-center">
                           {cargoLabel ? (
-                            <Badge
-                              variant="brand"
-                              className="text-[10px] uppercase px-2 py-0.5 font-bold"
-                            >
-                              {cargoLabel}
-                            </Badge>
+                            <div className="flex justify-center">
+                              <Badge
+                                variant="brand"
+                                className="text-[10px] uppercase px-2 py-0.5 font-bold"
+                              >
+                                {cargoLabel}
+                              </Badge>
+                            </div>
                           ) : (
-                            <span className="text-xs text-muted-foreground font-medium">—</span>
+                            <span className="text-xs text-muted-foreground font-medium">-</span>
                           )}
                         </TableCell>
                         <TableCell className="text-sm text-foreground">{diaLabel}</TableCell>
