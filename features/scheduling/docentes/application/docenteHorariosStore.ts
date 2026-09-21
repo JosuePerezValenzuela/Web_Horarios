@@ -45,7 +45,7 @@ interface DocenteHorariosState {
   loading: boolean
   error: string | null
   docenteCache: Record<string, DocenteScheduleCacheEntry>
-  fetchByDocenteId: (id: string) => Promise<void>
+  fetchByDocenteId: (id: string, force?: boolean) => Promise<void>
   setPeriod: (period: number) => void
   clear: () => void
 }
@@ -74,8 +74,8 @@ const INITIAL_STATE = {
 export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get) => ({
   ...INITIAL_STATE,
 
-  fetchByDocenteId: async (id: string) => {
-    const cached = get().docenteCache[id]
+  fetchByDocenteId: async (id: string, force = false) => {
+    const cached = !force ? get().docenteCache[id] : null
     if (cached) {
       set({
         ...cached,

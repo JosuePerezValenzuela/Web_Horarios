@@ -5,7 +5,15 @@ import { useState, useEffect, useMemo } from "react"
 import { toast } from "@umss/estilos-base/components"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, AlertCircle, Pencil, Trash2, ChevronDown, ClipboardList } from "lucide-react"
+import {
+  CalendarIcon,
+  AlertCircle,
+  Pencil,
+  Trash2,
+  ChevronDown,
+  ClipboardList,
+  Loader2,
+} from "lucide-react"
 import { UmssModal, Button, Checkbox, Badge } from "@umss/estilos-base/components"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import {
@@ -155,26 +163,32 @@ export function AdminSchedulesModal({
   }, [cargoList, cargoSearch])
 
   const [localSchedules, setLocalSchedules] = useState<AdminScheduleRaw[]>(schedules)
-
-  useEffect(() => {
-    setLocalSchedules(schedules)
-  }, [schedules])
+  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false)
 
   const reloadAdminSchedules = async () => {
     if (!docente?.codigo || docente.codigo === "Sin dato") return
+    setIsLoadingSchedules(true)
     try {
       const res = await fetchDocenteAdminHorarios(docente.codigo)
-      if (res?.data?.horarios) {
-        setLocalSchedules(res.data.horarios)
+      const list =
+        res?.data?.horarios ?? (res as any)?.horarios ?? (Array.isArray(res?.data) ? res.data : [])
+      if (Array.isArray(list)) {
+        setLocalSchedules(list)
       }
     } catch (err) {
       console.error("Error al recargar horarios administrativos:", err)
+    } finally {
+      setIsLoadingSchedules(false)
     }
   }
 
   useEffect(() => {
-    if (isOpen && docente?.codigo && docente.codigo !== "Sin dato") {
-      void reloadAdminSchedules()
+    if (isOpen) {
+      if (docente?.codigo && docente.codigo !== "Sin dato") {
+        void reloadAdminSchedules()
+      } else if (schedules && schedules.length > 0) {
+        setLocalSchedules(schedules)
+      }
     }
   }, [isOpen, docente?.codigo])
 
@@ -1119,9 +1133,19 @@ export function AdminSchedulesModal({
         </div>
 
         {/* ── Table ── */}
-        <div className="w-full max-w-full rounded-3xl border border-border overflow-hidden">
-          {sortedSchedules.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border p-8 text-center bg-muted/10">
+        <div className="w-full max-w-full rounded-3xl border border-border overflow-hidden bg-card">
+          {isLoadingSchedules ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center bg-muted/5">
+              <Loader2 className="size-8 animate-spin text-primary mb-3" />
+              <p className="text-sm font-medium text-foreground">
+                Cargando horarios administrativos...
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Consultando las asignaciones del docente
+              </p>
+            </div>
+          ) : sortedSchedules.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-border p-8 text-center bg-muted/10 m-3">
               <AlertCircle className="size-10 text-muted-foreground/60 mb-2.5" />
               <p className="text-sm font-medium text-foreground">
                 Sin horarios administrativos asignados

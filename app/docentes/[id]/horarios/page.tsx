@@ -210,7 +210,7 @@ export default function DocenteHorariosRoutePage() {
             onEditClick={handleEditClick}
             onDeleteClick={handleDeleteClick}
             onEditSchedule={handleEditSchedule}
-            onAssigned={() => fetchByDocenteId(docenteId)}
+            onAssigned={() => fetchByDocenteId(docenteId, true)}
             adminSchedules={adminSchedules}
             rawAdminSchedules={rawAdminSchedules}
           />
