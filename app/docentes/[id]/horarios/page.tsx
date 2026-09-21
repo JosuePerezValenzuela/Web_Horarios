@@ -191,6 +191,8 @@ export default function DocenteHorariosRoutePage() {
     <ProtectedRoute>
       <AppLayout
         breadcrumbs={[{ name: "Docentes", href: "/docentes" }, { name: "Horario docente" }]}
+        disablePageScroll
+        className="p-3 sm:p-4 md:p-6 lg:p-8"
       >
         <div className="flex flex-col gap-4 lg:gap-5 w-full max-w-full min-w-0">
           <TeacherSchedulePage
