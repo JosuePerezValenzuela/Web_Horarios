@@ -24,6 +24,7 @@ const DEFAULT_DAYS = [
   { value: 4, label: "Jueves" },
   { value: 5, label: "Viernes" },
   { value: 6, label: "Sábado" },
+  { value: 7, label: "Domingo" },
 ]
 
 const DEFAULT_ROTATION_INTERVAL_MS = 5000
@@ -284,12 +285,12 @@ export function WeeklyScheduleGrid({
   return (
     <div
       className={cn(
-        "h-full max-h-full overflow-hidden rounded-3xl border border-border bg-card",
+        "h-full max-h-full w-full max-w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card",
         className
       )}
     >
-      <div className="h-full max-h-full overflow-auto">
-        <div className="min-w-[640px] lg:min-w-0">
+      <div className="h-full max-h-full w-full overflow-auto">
+        <div className="min-w-[700px]">
           {/* Day header row */}
           <div
             className="sticky top-0 z-40 grid border-b-[2px] border-border bg-muted/90 backdrop-blur-[4px]"

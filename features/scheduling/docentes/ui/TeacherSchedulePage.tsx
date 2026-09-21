@@ -102,26 +102,29 @@ export function TeacherSchedulePage({
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
-      <header className="rounded-3xl border border-border bg-card p-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-row items-center gap-3 min-w-0 flex-wrap">
+      <header className="rounded-3xl border border-border bg-card p-3 md:p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
             <Button variant="outline" size="sm" onClick={onBack} className="shrink-0">
               <ArrowLeft className="mr-2 size-4" />
               Volver
             </Button>
 
-            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5 flex-wrap">
+            <div className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-2.5">
               <h1 className="shrink-0 text-sm font-semibold text-foreground md:text-base">
                 Vista semanal del docente
               </h1>
-              <p className="min-w-0 text-xs text-muted-foreground truncate">
+              <p
+                className="min-w-0 truncate text-xs text-muted-foreground"
+                title={`${docente?.nombres ?? "Cargando..."} · CI: ${docente?.documento ?? "--"} · Código: ${docente?.codigo ?? "--"}`}
+              >
                 {docente?.nombres ?? "Cargando..."} · CI: {docente?.documento ?? "--"} · Código:{" "}
                 {docente?.codigo ?? "--"}
               </p>
               {totalCargaAdministrativa > 0 && (
                 <Badge
                   variant="brand"
-                  className="text-[10px] font-bold py-0.5 px-2 rounded-lg shrink-0 w-fit"
+                  className="w-fit shrink-0 rounded-lg px-2 py-0.5 text-[10px] font-bold"
                 >
                   Carga Horaria Administrativa: {totalCargaAdministrativa} hrs
                 </Badge>
@@ -129,7 +132,7 @@ export function TeacherSchedulePage({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+          <div className="flex flex-wrap items-center gap-2 shrink-0 sm:gap-3">
             {/* Horarios Administrativos Button */}
             <Button
               variant="outline"
@@ -149,7 +152,7 @@ export function TeacherSchedulePage({
               onClick={() => setIsCompactMode((v) => !v)}
               className={
                 isCompactMode
-                  ? "gap-1.5 bg-muted border-border text-foreground font-medium hover:bg-muted/70"
+                  ? "gap-1.5 border-border bg-muted font-medium text-foreground hover:bg-muted/70"
                   : "gap-1.5"
               }
               title={
@@ -188,7 +191,7 @@ export function TeacherSchedulePage({
       ) : null}
 
       <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
-        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 lg:h-full lg:max-h-full overflow-hidden">
+        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 max-h-80 lg:max-h-full lg:h-full overflow-hidden">
           <div className="space-y-1.5">
             <Label htmlFor="periodo-horario" className="text-sm font-medium">
               Período (minutos)
@@ -247,11 +250,11 @@ export function TeacherSchedulePage({
           </div>
         </aside>
 
-        <main className="flex min-w-0 flex-1 flex-col lg:overflow-hidden lg:h-full lg:max-h-full">
+        <main className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden lg:h-full lg:max-h-full">
           {loading ? (
             <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
-            <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col">
+            <div className="flex flex-1 min-h-[520px] sm:min-h-[580px] lg:min-h-0 w-full max-w-full min-w-0 overflow-hidden flex-col">
               <WeeklyScheduleGrid
                 schedules={schedules}
                 rows={rows}
