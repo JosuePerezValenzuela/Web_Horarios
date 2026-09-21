@@ -300,7 +300,7 @@ export function WeeklyScheduleGrid({
   return (
     <div
       className={cn(
-        "h-full max-h-full w-full max-w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card [--grid-col-min:0px] sm:[--grid-col-min:85px] md:[--grid-col-min:90px]",
+        "h-full max-h-full w-full max-w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card",
         className
       )}
     >
@@ -310,7 +310,7 @@ export function WeeklyScheduleGrid({
           <div
             className="sticky top-0 z-40 grid border-b-[2px] border-border bg-muted/90 backdrop-blur-[4px]"
             style={{
-              gridTemplateColumns: `60px repeat(${colCount}, minmax(var(--grid-col-min, 0px), 1fr))`,
+              gridTemplateColumns: `60px repeat(${colCount}, minmax(120px, 1fr))`,
             }}
           >
             <div className="sticky left-0 z-50 border-r-[2px] border-border bg-muted px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:px-3 md:py-3 flex items-center justify-center">
@@ -319,7 +319,7 @@ export function WeeklyScheduleGrid({
             {visibleDays.map((day) => (
               <div
                 key={day.value}
-                className="border-r-[2px] border-border px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
+                className="min-w-[120px] border-r-[2px] border-border px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3 text-center"
               >
                 {day.label}
               </div>
@@ -379,7 +379,7 @@ export function WeeklyScheduleGrid({
             <div
               className="grid"
               style={{
-                gridTemplateColumns: `60px repeat(${colCount}, minmax(var(--grid-col-min, 0px), 1fr))`,
+                gridTemplateColumns: `60px repeat(${colCount}, minmax(120px, 1fr))`,
               }}
             >
               {/* Dedicated sticky Hours column */}
@@ -525,7 +525,7 @@ export function WeeklyScheduleGrid({
               {visibleDays.map((day) => (
                 <div
                   key={day.value}
-                  className="relative border-r-[3px] border-border last:border-r-0"
+                  className="min-w-[120px] relative border-r-[3px] border-border last:border-r-0"
                   style={{ height: `${totalHeight + offsetTop}px` }}
                 >
                   {/* Dynamic Hovered/Active Schedule Highlight for this column */}

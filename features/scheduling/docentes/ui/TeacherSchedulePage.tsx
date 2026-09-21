@@ -101,7 +101,7 @@ export function TeacherSchedulePage({
   }, [rawAdminSchedules])
 
   return (
-    <div className="flex h-full min-h-0 w-full max-w-full min-w-0 flex-col gap-4 overflow-hidden lg:gap-5">
+    <div className="flex min-h-full w-full max-w-full min-w-0 flex-col gap-4 lg:gap-5">
       <header className="rounded-3xl border border-border bg-card p-3 md:p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
@@ -190,11 +190,14 @@ export function TeacherSchedulePage({
         </section>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 w-full max-w-full min-w-0 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
-        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 max-h-80 lg:max-h-full lg:h-full overflow-hidden">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Label htmlFor="periodo-horario" className="text-sm font-medium whitespace-nowrap">
-              Período (minutos)
+      <div className="grid min-h-0 flex-1 w-full max-w-full min-w-0 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-start">
+        <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 max-h-80 lg:max-h-[calc(100vh-14rem)] lg:h-[calc(100vh-14rem)] lg:sticky lg:top-4 overflow-hidden">
+          <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-border/60">
+            <Label
+              htmlFor="periodo-horario"
+              className="text-xs font-semibold text-foreground whitespace-nowrap"
+            >
+              Período (min):
             </Label>
             <Input
               id="periodo-horario"
@@ -203,11 +206,11 @@ export function TeacherSchedulePage({
               value={period}
               onChange={(event) => onPeriodChange(Number(event.target.value))}
               aria-label="Periodo de segmentacion en minutos"
-              className="h-9 w-24 shrink-0 font-medium no-spinner"
+              className="h-8 w-18 text-center text-xs font-semibold no-spinner bg-background rounded-xl border border-border"
             />
           </div>
 
-          <div className="mt-3 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
+          <div className="mt-2.5 flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Resumen por grupo
             </p>
@@ -250,11 +253,11 @@ export function TeacherSchedulePage({
           </div>
         </aside>
 
-        <main className="flex min-w-0 max-w-full flex-1 flex-col overflow-hidden lg:h-full lg:max-h-full">
+        <main className="flex min-w-0 max-w-full flex-1 flex-col h-[560px] sm:h-[620px] lg:h-[calc(100vh-14rem)] lg:max-h-[calc(100vh-14rem)] overflow-hidden">
           {loading ? (
             <div className="h-105 animate-pulse rounded-3xl border border-border bg-muted" />
           ) : hasSchedules ? (
-            <div className="flex flex-1 min-h-[520px] sm:min-h-[580px] lg:min-h-0 w-full max-w-full min-w-0 overflow-hidden flex-col">
+            <div className="flex flex-1 min-h-0 w-full max-w-full min-w-0 overflow-hidden flex-col">
               <WeeklyScheduleGrid
                 schedules={schedules}
                 rows={rows}
