@@ -41,6 +41,7 @@ import {
   crearAsignacionHorario,
   patchAsignacionHorario,
   eliminarAsignacionHorario,
+  fetchDocenteAdminHorarios,
 } from "../application/api"
 
 const DIA_LABELS: Record<number, string> = {
@@ -153,14 +154,38 @@ export function AdminSchedulesModal({
     )
   }, [cargoList, cargoSearch])
 
+  const [localSchedules, setLocalSchedules] = useState<AdminScheduleRaw[]>(schedules)
+
+  useEffect(() => {
+    setLocalSchedules(schedules)
+  }, [schedules])
+
+  const reloadAdminSchedules = async () => {
+    if (!docente?.codigo || docente.codigo === "Sin dato") return
+    try {
+      const res = await fetchDocenteAdminHorarios(docente.codigo)
+      if (res?.data?.horarios) {
+        setLocalSchedules(res.data.horarios)
+      }
+    } catch (err) {
+      console.error("Error al recargar horarios administrativos:", err)
+    }
+  }
+
+  useEffect(() => {
+    if (isOpen && docente?.codigo && docente.codigo !== "Sin dato") {
+      void reloadAdminSchedules()
+    }
+  }, [isOpen, docente?.codigo])
+
   // ── Active (vigentes) schedules ──────────────────────────────────────────────
   const activeSchedules = useMemo(() => {
-    return schedules.filter((s) => isScheduleVigente(s, todayStr))
-  }, [schedules, todayStr])
+    return localSchedules.filter((s) => isScheduleVigente(s, todayStr))
+  }, [localSchedules, todayStr])
 
   // ── Sorted list (memoised inline) ────────────────────────────────────────────
   const sortedSchedules = useMemo(() => {
-    return [...schedules].sort((a, b) => {
+    return [...localSchedules].sort((a, b) => {
       // Primero, agrupar por vigentes (activos) arriba
       const aActive = isScheduleVigente(a, todayStr)
       const bActive = isScheduleVigente(b, todayStr)
@@ -359,7 +384,7 @@ export function AdminSchedulesModal({
         if (fechaFin && fechaFin < fechaInicio) {
           computed = "La fecha de fin no puede ser anterior a la fecha de inicio."
         } else {
-          for (const item of schedules) {
+          for (const item of localSchedules) {
             const endExisting = item.fecha_fin ?? "9999-12-31"
             const datesOverlap = startNewDate <= endExisting && endNewDate >= item.fecha_inicio
             const matchesDay = selectedDias.includes(item.dia)
@@ -380,7 +405,15 @@ export function AdminSchedulesModal({
       const t = setTimeout(() => setOverlapError(computed), 0)
       return () => clearTimeout(t)
     }
-  }, [selectedCatalogId, fechaInicio, fechaFin, catalogList, schedules, overlapError, selectedDias])
+  }, [
+    selectedCatalogId,
+    fechaInicio,
+    fechaFin,
+    catalogList,
+    localSchedules,
+    overlapError,
+    selectedDias,
+  ])
 
   // ── Handlers ─────────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
@@ -403,32 +436,42 @@ export function AdminSchedulesModal({
       // Sequence batch create for all selected days
       await Promise.all(
         selectedDias.map(async (d) => {
-          const payload: CrearAsignacionHorarioRequest = {
-            persona_codigo: docente.codigo,
-            horario_catalogo_id: Number(selectedCatalogId),
-            fecha_inicio: format(fechaInicio, "yyyy-MM-dd"),
-            fecha_fin: fechaFin ? format(fechaFin, "yyyy-MM-dd") : null,
-            permite_clases: permiteClases,
-            dia: d,
-            tipo_asignacion_horario_administrativo_id: Number(selectedTipoId),
-            tipo_cargo_id: hasCargo && selectedCargoId ? Number(selectedCargoId) : null,
-          }
-          const res = await crearAsignacionHorario(payload)
-          if (res.success) {
-            successCount++
-          } else {
+          try {
+            const payload: CrearAsignacionHorarioRequest = {
+              persona_codigo: docente.codigo,
+              horario_catalogo_id: Number(selectedCatalogId),
+              fecha_inicio: format(fechaInicio, "yyyy-MM-dd"),
+              fecha_fin: fechaFin ? format(fechaFin, "yyyy-MM-dd") : null,
+              permite_clases: permiteClases,
+              dia: d,
+              tipo_asignacion_horario_administrativo_id: Number(selectedTipoId),
+              tipo_cargo_id: hasCargo && selectedCargoId ? Number(selectedCargoId) : null,
+            }
+            const res = await crearAsignacionHorario(payload)
+            if (res && res.success !== false) {
+              successCount++
+            } else {
+              failedDays.push(DIA_LABELS[d] || `Día ${d}`)
+            }
+          } catch (dayErr) {
+            console.error(`Error al asignar horario para el día ${d}:`, dayErr)
             failedDays.push(DIA_LABELS[d] || `Día ${d}`)
           }
         })
       )
 
       if (successCount > 0) {
-        toast.success(`Asignados correctamente ${successCount} horario(s) administrativo(s).`)
+        const msg =
+          successCount === 1
+            ? "Se asignó correctamente el horario para el día seleccionado."
+            : `Se asignaron correctamente los horarios en los ${successCount} días seleccionados.`
+        toast.success(msg)
         if (failedDays.length > 0) {
-          toast.error(`No se pudieron asignar los días: ${failedDays.join(", ")}`)
+          toast.error(`No se pudieron asignar los horarios para: ${failedDays.join(", ")}`)
         }
         resetForm()
         setIsFormOpen(false)
+        await reloadAdminSchedules()
         onAssigned?.()
       }
     } catch (err) {
@@ -443,8 +486,9 @@ export function AdminSchedulesModal({
     setIsDeleting(id)
     try {
       const res = await eliminarAsignacionHorario(id)
-      if (res.success) {
+      if (res && res.success !== false) {
         toast.success("Asignación de horario eliminada correctamente")
+        await reloadAdminSchedules()
         onAssigned?.()
       }
     } catch (err) {
@@ -506,7 +550,7 @@ export function AdminSchedulesModal({
       await Promise.all(
         changedSchedules.map(async ({ schedule, payload }) => {
           const res = await patchAsignacionHorario(schedule.id, payload)
-          if (!res.success) {
+          if (!res || res.success === false) {
             allOk = false
           }
         })
@@ -517,6 +561,7 @@ export function AdminSchedulesModal({
         )
       }
       cancelEditMode()
+      await reloadAdminSchedules()
       onAssigned?.()
     } catch (err) {
       console.error(err)
@@ -689,7 +734,7 @@ export function AdminSchedulesModal({
                       <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
                     ) : (
                       <Select
-                        value={globalEditCargoId ? globalEditCargoId.toString() : undefined}
+                        value={globalEditCargoId ? String(globalEditCargoId) : ""}
                         onValueChange={(val) => setGlobalEditCargoId(val ? Number(val) : "")}
                       >
                         <SelectTrigger id="select-global-cargo" className="w-full">
@@ -763,8 +808,8 @@ export function AdminSchedulesModal({
                     <div className="text-xs text-muted-foreground py-3">Cargando tipos...</div>
                   ) : (
                     <Select
-                      value={selectedTipoId ? selectedTipoId.toString() : undefined}
-                      onValueChange={(val) => setSelectedTipoId(Number(val))}
+                      value={selectedTipoId ? String(selectedTipoId) : ""}
+                      onValueChange={(val) => setSelectedTipoId(val ? Number(val) : "")}
                     >
                       <SelectTrigger
                         id="select-tipo-admin"
@@ -843,10 +888,7 @@ export function AdminSchedulesModal({
                         >
                           Hora de Entrada <span className="text-red-500">*</span>
                         </label>
-                        <Select
-                          value={selectedStart || undefined}
-                          onValueChange={handleStartChange}
-                        >
+                        <Select value={selectedStart || ""} onValueChange={handleStartChange}>
                           <SelectTrigger
                             id="select-hora-inicio"
                             className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
@@ -870,7 +912,7 @@ export function AdminSchedulesModal({
                         >
                           Hora de Salida <span className="text-red-500">*</span>
                         </label>
-                        <Select value={selectedEnd || undefined} onValueChange={handleEndChange}>
+                        <Select value={selectedEnd || ""} onValueChange={handleEndChange}>
                           <SelectTrigger
                             id="select-hora-fin"
                             className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
@@ -1013,7 +1055,7 @@ export function AdminSchedulesModal({
                         <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
                       ) : (
                         <Select
-                          value={selectedCargoId ? selectedCargoId.toString() : undefined}
+                          value={selectedCargoId ? String(selectedCargoId) : ""}
                           onValueChange={(val) => setSelectedCargoId(val ? Number(val) : "")}
                         >
                           <SelectTrigger id="select-tipo-cargo" className="w-full">
