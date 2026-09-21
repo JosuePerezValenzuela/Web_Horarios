@@ -5,6 +5,7 @@ import {
   FacultadInfra,
   Bloque,
   Ambiente,
+  TipoAmbienteInfra,
 } from "@/shared/services/api/infraClient"
 
 interface InfraStoreState {
@@ -12,11 +13,13 @@ interface InfraStoreState {
   facultades: FacultadInfra[]
   bloques: Bloque[]
   ambientes: Ambiente[]
+  tiposAmbiente: TipoAmbienteInfra[]
   loading: boolean
   error: string | null
 
   fetchCampus: () => Promise<void>
   fetchFacultades: () => Promise<void>
+  fetchTiposAmbiente: () => Promise<void>
   fetchBloques: (facultadId?: string, campusId?: string) => Promise<void>
   fetchAmbientes: (bloqueId?: string) => Promise<void>
   clearBloques: () => void
@@ -45,6 +48,7 @@ export const useInfraStore = create<InfraStoreState>()((set, get) => ({
   facultades: [],
   bloques: [],
   ambientes: [],
+  tiposAmbiente: [],
   loading: false,
   error: null,
 
@@ -78,6 +82,26 @@ export const useInfraStore = create<InfraStoreState>()((set, get) => ({
       set({
         error:
           error instanceof Error ? error.message : "Error al cargar facultades de infraestructura",
+        loading: false,
+      })
+    }
+  },
+
+  fetchTiposAmbiente: async () => {
+    // Avoid double fetch if already loaded or in progress
+    if (get().tiposAmbiente.length > 0 || get().loading) return
+
+    set({ loading: true, error: null })
+    try {
+      const response = await infraService.getTiposAmbiente()
+      const data = parseResponseData<TipoAmbienteInfra>(response)
+      set({ tiposAmbiente: data, loading: false })
+    } catch (error) {
+      set({
+        error:
+          error instanceof Error
+            ? error.message
+            : "Error al cargar tipos de ambientes de infraestructura",
         loading: false,
       })
     }

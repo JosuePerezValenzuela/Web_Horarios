@@ -141,41 +141,51 @@ class ApiClient {
 export const apiClient = new ApiClient()
 
 export interface BuscarAmbienteRequest {
-  dia: number
-  hora_inicio: string
-  hora_fin: string
-  fecha_inicio?: string
-  fecha_fin?: string
-  persona_grupo_id?: number
-  capacidad_min?: number
-  mismo_piso?: number
+  persona_grupo_id: number
+  dia: number // 1-7: lunes=1, domingo=7
+  hora_inicio: string // "HH:mm"
+  hora_fin: string // "HH:mm"
+  fecha_inicio: string // "YYYY-MM-DD"
+  fecha_fin: string // "YYYY-MM-DD"
   facultad_ids?: number[]
   bloque_ids?: number[]
   tipo_ambiente_ids?: number[]
-  page: number
+  capacidad_min?: number
+  mismo_piso?: number
+  page?: number
   take?: number
 }
 
 export interface BuscarAmbienteResponse {
-  success: boolean
+  success?: boolean
   message?: string
   data?: {
     ambientes: Array<{
       id: number
       codigo: string
       nombre: string
+      nombre_corto?: string | null
+      piso?: number
+      capacidad?: number
+      capacidad_total?: number
+      capacidad_examen?: number
       tipo?: string
-      capacidad: number
+      tipo_ambiente_id?: number
+      tipo_ambiente_nombre?: string
+      bloque_id?: number
+      bloque_nombre?: string
+      facultad_id?: number
+      facultad_nombre?: string
+      campus_id?: number
+      campus_nombre?: string
       edificio_id?: number
       edificio_nombre?: string
       edificio_bloque?: string
-      facultad_id?: number
-      facultad_nombre?: string
       tiene_solapamiento_propio: boolean
     }>
     total: number
-    page: number
-    take: number
+    page?: number
+    take?: number
   }
 }
 

@@ -116,6 +116,12 @@ export interface Ambiente {
   tipoAmbiente?: string
 }
 
+export interface TipoAmbienteInfra {
+  id: number | string
+  nombre: string
+  codigo?: string
+}
+
 export const infraService = {
   getCampus: async () => {
     return infraApiClient.get<{ success: boolean; data: Campus[] }>(
@@ -124,9 +130,19 @@ export const infraService = {
   },
 
   getFacultades: async () => {
-    return infraApiClient.get<{ success: boolean; data: FacultadInfra[] }>(
-      "/facultades?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true"
-    )
+    return infraApiClient.get<{
+      success: boolean
+      data?: FacultadInfra[]
+      items?: FacultadInfra[]
+    }>("/facultades?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true")
+  },
+
+  getTiposAmbiente: async () => {
+    return infraApiClient.get<{
+      success: boolean
+      data?: TipoAmbienteInfra[]
+      items?: TipoAmbienteInfra[]
+    }>("/tipo_ambientes?page=1&limit=1000&activo=true&orderDir=asc&orderBy=nombre")
   },
 
   getBloques: async (facultadId?: string, campusId?: string) => {
