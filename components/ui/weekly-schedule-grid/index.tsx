@@ -53,6 +53,21 @@ export function WeeklyScheduleGrid({
   // Build render slices (fractional overlap splitting)
   const renderSlices = useMemo(() => buildRenderSlices(items), [items])
 
+  // Filter days: Saturday (6) and Sunday (7) are only displayed if there is at least one schedule (class or admin) on that day.
+  const visibleDays = useMemo(() => {
+    const hasClassOnDay = (dayNum: number) => items.some((item) => item.day === dayNum)
+    const hasAdminOnDay = (dayNum: number) =>
+      (adminSchedules || []).some((admin) => admin.days?.includes(dayNum))
+    const hasScheduleOnDay = (dayNum: number) => hasClassOnDay(dayNum) || hasAdminOnDay(dayNum)
+
+    return days.filter((day) => {
+      if (day.value !== 6 && day.value !== 7) {
+        return true
+      }
+      return hasScheduleOnDay(day.value)
+    })
+  }, [days, items, adminSchedules])
+
   // 1. Calculate absolute time range boundaries (including class and admin schedules)
   const derivedTimeRange = useMemo(() => {
     let startMin = timeRange.startMin
@@ -275,12 +290,16 @@ export function WeeklyScheduleGrid({
   }
 
   // Group slices by day
-  const slicesByDay = days.reduce<Record<number, typeof renderSlices>>((acc, day) => {
+  const slicesByDay = visibleDays.reduce<Record<number, typeof renderSlices>>((acc, day) => {
     acc[day.value] = renderSlices.filter((s) => s.day === day.value)
     return acc
   }, {})
 
-  const colCount = days.length
+  const colCount = visibleDays.length
+
+  const gridMinWidth = useMemo(() => {
+    return `${Math.max(500, 60 + visibleDays.length * 92)}px`
+  }, [visibleDays.length])
 
   return (
     <div
@@ -290,7 +309,7 @@ export function WeeklyScheduleGrid({
       )}
     >
       <div className="h-full max-h-full w-full overflow-auto">
-        <div className="min-w-[700px]">
+        <div style={{ minWidth: gridMinWidth }}>
           {/* Day header row */}
           <div
             className="sticky top-0 z-40 grid border-b-[2px] border-border bg-muted/90 backdrop-blur-[4px]"
@@ -299,7 +318,7 @@ export function WeeklyScheduleGrid({
             <div className="sticky left-0 z-50 border-r-[2px] border-border bg-muted px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:px-3 md:py-3 flex items-center justify-center">
               Hora
             </div>
-            {days.map((day) => (
+            {visibleDays.map((day) => (
               <div
                 key={day.value}
                 className="border-r-[2px] border-border px-2 py-2 text-xs font-semibold last:border-r-0 md:px-3 md:py-3"
@@ -503,7 +522,7 @@ export function WeeklyScheduleGrid({
                 )}
               </div>
 
-              {days.map((day) => (
+              {visibleDays.map((day) => (
                 <div
                   key={day.value}
                   className="relative border-r-[3px] border-border last:border-r-0"
