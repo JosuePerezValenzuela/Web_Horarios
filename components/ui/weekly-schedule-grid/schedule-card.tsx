@@ -6,7 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { formatTime } from "./schedule-utils"
 import { Button } from "@umss/estilos-base/components"
 import type { NormalizedSchedule } from "@/features/scheduling/docentes/domain/types"
-import { Calendar, Clock, MapPin, GraduationCap, Award, Edit } from "lucide-react"
+import { Calendar, Clock, MapPin, GraduationCap, Award, Edit, Laptop } from "lucide-react"
 
 interface ScheduleCardProps {
   item: ScheduleItem
@@ -153,9 +153,12 @@ export function ScheduleCard({
   const showAula =
     rawAula && rawAula !== "Sin ambiente" && rawAula !== "Sin aula" && rawAula !== "No asignado"
 
+  const isVirtual = Boolean(schedule?.virtual)
+
   const combinedBadgeParts: string[] = []
   if (rawGroup) combinedBadgeParts.push(`G: ${rawGroup}`)
   if (showAula) combinedBadgeParts.push(`Aula: ${rawAula}`)
+  if (isVirtual) combinedBadgeParts.push("Virtual")
   const combinedBadgeText = combinedBadgeParts.join(" - ")
 
   if (mode === "peek") {
@@ -235,6 +238,7 @@ export function ScheduleCard({
         className="w-80 p-4 border-2 border-border/80 bg-popover/98 backdrop-blur-md shadow-xl rounded-2xl flex flex-col gap-3.5"
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <div className="flex flex-col gap-1">
           <h3 className="font-roboto text-sm font-bold text-foreground leading-snug line-clamp-2">
@@ -295,6 +299,19 @@ export function ScheduleCard({
             </div>
           )}
 
+          {/* Modalidad */}
+          {schedule?.virtual && (
+            <div className="flex items-start gap-2">
+              <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
+                Modalidad:
+              </span>
+              <span className="flex items-center gap-1.5 font-medium text-primary">
+                <Laptop className="size-3.5 text-primary shrink-0" />
+                <span>Virtual</span>
+              </span>
+            </div>
+          )}
+
           {/* Vigencia */}
           <div className="flex items-start gap-2">
             <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
@@ -333,7 +350,7 @@ export function ScheduleCard({
                 setIsOpen(false)
                 onClick(item)
               }}
-              className="rounded-xl w-full text-white"
+              className="rounded-xl w-full text-white focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:border-transparent focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none"
             >
               <Edit className="size-3.5" />
               <span>Editar Horario</span>

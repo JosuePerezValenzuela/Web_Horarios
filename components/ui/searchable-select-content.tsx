@@ -75,7 +75,7 @@ function SearchableSelectContent({
         data-align-trigger={position === "item-aligned"}
         ref={handleContentRef}
         className={cn(
-          "relative z-50 min-w-[12rem] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "relative z-[150] min-w-[12rem] origin-(--radix-select-content-transform-origin) overflow-hidden rounded-2xl border border-border bg-popover text-popover-foreground shadow-lg duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           position === "popper" &&
             "w-(--radix-select-trigger-width) min-w-(--radix-select-trigger-width) data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:translate-y-1",
           className
@@ -107,7 +107,7 @@ function SearchableSelectContent({
               onChange={handleFilterChange}
               placeholder={searchPlaceholder}
               autoComplete="off"
-              className="h-8 rounded-xl border-border bg-background pr-3 pl-9 text-sm shadow-none focus-visible:ring-2 focus-visible:ring-ring/20"
+              className="h-8 rounded-xl border-border bg-background pr-3 pl-9 text-sm shadow-none focus-visible:border-form-focus focus-visible:ring-2 focus-visible:ring-form-focus/20"
               onKeyDown={(event) => {
                 const isCharacterKey =
                   event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey
@@ -122,7 +122,7 @@ function SearchableSelectContent({
         <SelectScrollUpButton />
         <SelectPrimitive.Viewport
           data-position={position}
-          className="overflow-y-auto overscroll-contain p-1 data-[position=popper]:h-(--radix-select-trigger-height) data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)"
+          className="overflow-y-auto overscroll-contain p-1 data-[position=popper]:w-full data-[position=popper]:min-w-(--radix-select-trigger-width)"
           onWheelCapture={(event) => event.stopPropagation()}
           onTouchMoveCapture={(event) => event.stopPropagation()}
         >

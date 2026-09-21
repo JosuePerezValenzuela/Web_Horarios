@@ -244,7 +244,7 @@ export function CustomCopilotSidebar() {
         onSubmit={handleSubmit}
         className="p-3 border-t border-border bg-gray-50 dark:bg-[#1a1a1a]/40 shrink-0"
       >
-        <div className="flex items-center gap-2 bg-white dark:bg-[#242424] border border-border rounded-xl px-2.5 py-1.5 focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/10">
+        <div className="flex items-center gap-2 bg-white dark:bg-[#242424] border border-border rounded-xl px-2.5 py-1.5 focus-within:border-form-focus focus-within:ring-2 focus-within:ring-form-focus/20">
           <input
             type="text"
             value={input}

@@ -104,9 +104,9 @@ export function MultiSelect({
         <button
           type="button"
           className={cn(
-            "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow,border-color,background-color] outline-none hover:border-ring/40 hover:bg-accent/30 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0",
+            "flex h-9 w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-border bg-background px-3 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow,border-color,background-color] outline-none hover:border-border/80 hover:bg-accent/30 focus-visible:border-form-focus focus-visible:ring-2 focus-visible:ring-form-focus/20 disabled:cursor-not-allowed disabled:opacity-50 data-placeholder:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0",
             !value.length && "text-muted-foreground",
-            open && "border-ring ring-3 ring-ring/20",
+            open && "border-form-focus ring-2 ring-form-focus/20",
             className
           )}
           disabled={disabled}
