@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils"
 import { Filter, RefreshCw, Calendar, AlertCircle, MapPin } from "lucide-react"
 
 // Stores
-import { useHorariosListStore } from "@/features/scheduling/docentes/application/useHorariosListStore"
+import { useHorariosListStore } from "@/features/scheduling/horarios-consulta/application/useHorariosListStore"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
 import { useAsignaturasStore } from "@/shared/stores/catalogos/useAsignaturasStore"

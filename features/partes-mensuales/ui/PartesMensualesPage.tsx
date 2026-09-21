@@ -12,7 +12,7 @@ import {
   type AlertaFaltaItem,
   type AlertaInasistenciaConsecutivaItem,
   type AlertaRetrasoOcurrencia,
-} from "@/features/scheduling/docentes/application/partesMensualesApi"
+} from "../application/partesMensualesApi"
 import { Label } from "@/components/ui/label"
 import type { DateRange } from "react-day-picker"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"

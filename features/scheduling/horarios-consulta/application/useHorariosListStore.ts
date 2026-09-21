@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { apiClient } from "@/shared/services/api/client"
-import { assignLanes } from "./normalizers"
-import type { NormalizedSchedule, Pagination } from "../domain/types"
+import { assignLanes } from "@/features/scheduling/docentes/application/normalizers"
+import type { NormalizedSchedule, Pagination } from "@/features/scheduling/docentes/domain/types"
 
 export interface HorarioClaseItem {
   id: number

@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
-import { useAttendanceConfigStore } from "@/features/scheduling/docentes/application/useAttendanceConfigStore"
-import type { AttendanceConfig } from "@/features/scheduling/docentes/application/attendanceConfigApi"
+import { useAttendanceConfigStore } from "../application/useAttendanceConfigStore"
+import type { AttendanceConfig } from "../application/attendanceConfigApi"
 import { useUIStore } from "@/shared/stores/uiStore"
 import {
   UmssCard,

@@ -9,7 +9,7 @@ import type {
   AlertaFaltaItem,
   AlertaInasistenciaConsecutivaItem,
   AlertaRetrasoOcurrencia,
-} from "@/features/scheduling/docentes/application/partesMensualesApi"
+} from "@/features/partes-mensuales/application/partesMensualesApi"
 
 export async function POST(request: NextRequest) {
   let browser: Browser | null = null

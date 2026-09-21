@@ -172,16 +172,17 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
   - `useCarrerasStore`: Obtiene y cachea carreras/planes por facultad (`/carrera/all`).
   - `useAsignaturasStore`: Obtiene y cachea asignaturas por carrera/facultad (`/asignatura/all`).
   - `useInfraStore`: Obtiene y cachea campus, bloques y ambientes del microservicio de infraestructura.
+  - `useAdminCatalogosStore`: Obtiene y cachea catálogos administrativos (horarios tipo, asignaciones administrativas y tipos de cargo).
 - **Stores de Estado Global de la Aplicación**:
   - `authStore` (`features/auth/application/authStore.ts`): Estado de sesión, usuario autenticado y verificación de token.
   - `useUIStore` (`shared/stores/uiStore.ts`): Estado de UI compartido (sidebar colapsado, copilot abierto, modales).
 - **Stores de Características (Feature Stores)**:
-  - `useHorariosListStore`: Consulta y filtros para la grilla semanal global de horarios.
+  - `useHorariosListStore` (`features/scheduling/horarios-consulta/application/useHorariosListStore.ts`): Consulta y filtros para la grilla semanal global de horarios.
   - `useDocentesStore`: Listado paginado y filtros de búsqueda de docentes.
   - `docenteHorariosStore`: Gestión de horarios específicos asignados a un docente.
   - `useBulkAsignacionStore`: Creación y asignación de múltiples horarios por lote.
   - `useEditScheduleStore`: Edición individual y por lote de horarios existentes.
-  - `useAttendanceConfigStore`: Listado, registro, edición y baja de reglas/umbrales de asistencia.
+  - `useAttendanceConfigStore` (`features/asistencia-reglas/application/useAttendanceConfigStore.ts`): Listado, registro, edición y baja de reglas/umbrales de asistencia.
   - `useSolapamientosStore`: Detección y listado de cruces/solapamientos de horarios.
 
 ## Testing
