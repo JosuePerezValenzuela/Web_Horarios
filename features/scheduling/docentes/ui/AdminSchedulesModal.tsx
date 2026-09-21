@@ -6,7 +6,8 @@ import { toast } from "@umss/estilos-base/components"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { CalendarIcon, AlertCircle, Pencil, Trash2, ChevronDown, ClipboardList } from "lucide-react"
-import { UmssModal, Button, Checkbox, Badge, SearchableSelect } from "@umss/estilos-base/components"
+import { UmssModal, Button, Checkbox, Badge } from "@umss/estilos-base/components"
+import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
 import {
   Table,
   TableHeader,
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import { useAdminCatalogosStore } from "@/shared/stores/catalogos/useAdminCatalogosStore"
 import type {
   AdminScheduleRaw,
   DocenteScheduleMeta,
@@ -36,11 +38,8 @@ import type {
   TipoCargo,
 } from "../domain/types"
 import {
-  fetchHorarioCatalogo,
   crearAsignacionHorario,
   patchAsignacionHorario,
-  fetchTipoAsignacionHorarioAdministrativo,
-  fetchTipoCargos,
   eliminarAsignacionHorario,
 } from "../application/api"
 
@@ -119,12 +118,17 @@ export function AdminSchedulesModal({
   const [selectedCargoId, setSelectedCargoId] = useState<number | "">("")
   const [selectedDias, setSelectedDias] = useState<number[]>([]) // Array of days (1-5)
   const [selectedTipoId, setSelectedTipoId] = useState<number | "">("")
-  const [catalogList, setCatalogList] = useState<HorarioCatalogoItem[]>([])
-  const [tipoList, setTipoList] = useState<TipoAsignacionAdministrativo[]>([])
-  const [cargoList, setCargoList] = useState<TipoCargo[]>([])
-  const [loadingCatalog, setLoadingCatalog] = useState(false)
-  const [loadingTipos, setLoadingTipos] = useState(false)
-  const [loadingCargos, setLoadingCargos] = useState(false)
+  const {
+    catalogList,
+    tipoList,
+    cargoList,
+    loadingCatalog,
+    loadingTipos,
+    loadingCargos,
+    fetchCatalog,
+    fetchTipos,
+    fetchCargos,
+  } = useAdminCatalogosStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [overlapError, setOverlapError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState<number | null>(null)
@@ -137,7 +141,17 @@ export function AdminSchedulesModal({
   const [globalEditPermiteClases, setGlobalEditPermiteClases] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  const [cargoSearch, setCargoSearch] = useState("")
+
   const todayStr = useMemo(() => getLocalTodayStr(), [])
+
+  const filteredCargoList = useMemo(() => {
+    if (!cargoSearch.trim()) return cargoList
+    const q = cargoSearch.toLowerCase()
+    return cargoList.filter(
+      (c) => c.descripcion.toLowerCase().includes(q) || c.codigo.toLowerCase().includes(q)
+    )
+  }, [cargoList, cargoSearch])
 
   // ── Active (vigentes) schedules ──────────────────────────────────────────────
   const activeSchedules = useMemo(() => {
@@ -322,62 +336,13 @@ export function AdminSchedulesModal({
   // Load catalogs when form opens or edit mode enters
   useEffect(() => {
     if (isFormOpen || isEditMode) {
-      if (cargoList.length === 0) {
-        const loadCargos = async () => {
-          setLoadingCargos(true)
-          try {
-            const res = await fetchTipoCargos(1, 100)
-            if (res && res.data) {
-              setCargoList(res.data.filter((c) => c.activo !== false))
-            }
-          } catch (err) {
-            console.error("Error al cargar tipos de cargos:", err)
-          } finally {
-            setLoadingCargos(false)
-          }
-        }
-        loadCargos()
-      }
+      fetchCargos()
     }
     if (isFormOpen) {
-      if (catalogList.length === 0) {
-        const loadCatalog = async () => {
-          setLoadingCatalog(true)
-          try {
-            const res = await fetchHorarioCatalogo(1, 100)
-            if (res.success && res.data) setCatalogList(res.data)
-            else toast.error("Error al cargar el catálogo de horarios")
-          } catch (err) {
-            console.error(err)
-            toast.error("Error al cargar el catálogo de horarios")
-          } finally {
-            setLoadingCatalog(false)
-          }
-        }
-        loadCatalog()
-      }
-      if (tipoList.length === 0) {
-        const loadTipos = async () => {
-          setLoadingTipos(true)
-          try {
-            const res = await fetchTipoAsignacionHorarioAdministrativo(1, 100)
-            if (res.success && res.data) {
-              // Only active types can be selected for new assignments
-              setTipoList(res.data.filter((t) => t.activo))
-            } else {
-              toast.error("Error al cargar los tipos de asignación")
-            }
-          } catch (err) {
-            console.error(err)
-            toast.error("Error al cargar los tipos de asignación")
-          } finally {
-            setLoadingTipos(false)
-          }
-        }
-        loadTipos()
-      }
+      fetchCatalog()
+      fetchTipos()
     }
-  }, [isFormOpen, isEditMode, catalogList.length, tipoList.length, cargoList.length])
+  }, [isFormOpen, isEditMode, fetchCargos, fetchCatalog, fetchTipos])
 
   // Real-time overlap validation
   useEffect(() => {
@@ -465,12 +430,9 @@ export function AdminSchedulesModal({
         resetForm()
         setIsFormOpen(false)
         onAssigned?.()
-      } else {
-        toast.error("Error al asignar los horarios administrativos.")
       }
     } catch (err) {
       console.error(err)
-      toast.error("Error inesperado al asignar los horarios administrativos")
     } finally {
       setIsSubmitting(false)
     }
@@ -484,12 +446,9 @@ export function AdminSchedulesModal({
       if (res.success) {
         toast.success("Asignación de horario eliminada correctamente")
         onAssigned?.()
-      } else {
-        toast.error("Error al eliminar la asignación de horario")
       }
     } catch (err) {
       console.error(err)
-      toast.error("Error inesperado al eliminar la asignación")
     } finally {
       setIsDeleting(null)
     }
@@ -549,7 +508,6 @@ export function AdminSchedulesModal({
           const res = await patchAsignacionHorario(schedule.id, payload)
           if (!res.success) {
             allOk = false
-            toast.error(res.message || `Error al actualizar horario con ID ${schedule.id}`)
           }
         })
       )
@@ -562,7 +520,6 @@ export function AdminSchedulesModal({
       onAssigned?.()
     } catch (err) {
       console.error(err)
-      toast.error("Error inesperado al guardar los cambios")
     } finally {
       setIsSaving(false)
     }
@@ -653,7 +610,7 @@ export function AdminSchedulesModal({
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
-                      className="w-full justify-start text-left font-normal h-11 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                      className="w-full justify-start text-left font-normal h-11 rounded-lg border border-border bg-card text-foreground hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-form-focus/50 focus-visible:border-form-focus focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none"
                     >
                       <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
                       {globalEditFechaFin
@@ -731,19 +688,24 @@ export function AdminSchedulesModal({
                     {loadingCargos ? (
                       <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
                     ) : (
-                      <SearchableSelect
-                        id="select-global-cargo"
-                        placeholder="Seleccione tipo de cargo..."
-                        searchPlaceholder="Buscar cargo de autoridad..."
-                        options={cargoList.map((c) => ({
-                          value: c.id.toString(),
-                          label: `${c.descripcion} (${c.codigo})`,
-                        }))}
-                        value={globalEditCargoId ? globalEditCargoId.toString() : ""}
+                      <Select
+                        value={globalEditCargoId ? globalEditCargoId.toString() : undefined}
                         onValueChange={(val) => setGlobalEditCargoId(val ? Number(val) : "")}
-                        allOption={false}
-                        className="w-full"
-                      />
+                      >
+                        <SelectTrigger id="select-global-cargo" className="w-full">
+                          <SelectValue placeholder="Seleccione tipo de cargo..." />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          searchPlaceholder="Buscar cargo de autoridad..."
+                          onFilterChange={setCargoSearch}
+                        >
+                          {filteredCargoList.map((c) => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.descripcion} ({c.codigo})
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
                     )}
                   </div>
                 )}
@@ -801,7 +763,7 @@ export function AdminSchedulesModal({
                     <div className="text-xs text-muted-foreground py-3">Cargando tipos...</div>
                   ) : (
                     <Select
-                      value={selectedTipoId.toString()}
+                      value={selectedTipoId ? selectedTipoId.toString() : undefined}
                       onValueChange={(val) => setSelectedTipoId(Number(val))}
                     >
                       <SelectTrigger
@@ -881,7 +843,10 @@ export function AdminSchedulesModal({
                         >
                           Hora de Entrada <span className="text-red-500">*</span>
                         </label>
-                        <Select value={selectedStart} onValueChange={handleStartChange}>
+                        <Select
+                          value={selectedStart || undefined}
+                          onValueChange={handleStartChange}
+                        >
                           <SelectTrigger
                             id="select-hora-inicio"
                             className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
@@ -905,7 +870,7 @@ export function AdminSchedulesModal({
                         >
                           Hora de Salida <span className="text-red-500">*</span>
                         </label>
-                        <Select value={selectedEnd} onValueChange={handleEndChange}>
+                        <Select value={selectedEnd || undefined} onValueChange={handleEndChange}>
                           <SelectTrigger
                             id="select-hora-fin"
                             className="h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
@@ -953,7 +918,7 @@ export function AdminSchedulesModal({
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-border bg-card text-foreground hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-form-focus/50 focus-visible:border-form-focus focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none"
                         >
                           <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
                           {fechaInicio ? format(fechaInicio, "dd-MM-yyyy") : "Seleccionar fecha"}
@@ -980,7 +945,7 @@ export function AdminSchedulesModal({
                       <PopoverTrigger asChild>
                         <Button
                           variant="outline"
-                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-gray-300 dark:border-[#333333] bg-white dark:bg-[#242424] text-foreground hover:bg-white hover:text-foreground"
+                          className="w-full justify-start text-left font-normal h-12 rounded-lg border border-border bg-card text-foreground hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-form-focus/50 focus-visible:border-form-focus focus-visible:ring-offset-0 focus:outline-none focus-visible:outline-none"
                         >
                           <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
                           {fechaFin ? format(fechaFin, "dd-MM-yyyy") : "Sin límite"}
@@ -1047,19 +1012,24 @@ export function AdminSchedulesModal({
                       {loadingCargos ? (
                         <div className="text-xs text-muted-foreground py-2">Cargando cargos...</div>
                       ) : (
-                        <SearchableSelect
-                          id="select-tipo-cargo"
-                          placeholder="Seleccione tipo de cargo..."
-                          searchPlaceholder="Buscar cargo de autoridad..."
-                          options={cargoList.map((c) => ({
-                            value: c.id.toString(),
-                            label: `${c.descripcion} (${c.codigo})`,
-                          }))}
-                          value={selectedCargoId ? selectedCargoId.toString() : ""}
+                        <Select
+                          value={selectedCargoId ? selectedCargoId.toString() : undefined}
                           onValueChange={(val) => setSelectedCargoId(val ? Number(val) : "")}
-                          allOption={false}
-                          className="w-full"
-                        />
+                        >
+                          <SelectTrigger id="select-tipo-cargo" className="w-full">
+                            <SelectValue placeholder="Seleccione tipo de cargo..." />
+                          </SelectTrigger>
+                          <SearchableSelectContent
+                            searchPlaceholder="Buscar cargo de autoridad..."
+                            onFilterChange={setCargoSearch}
+                          >
+                            {filteredCargoList.map((c) => (
+                              <SelectItem key={c.id} value={c.id.toString()}>
+                                {c.descripcion} ({c.codigo})
+                              </SelectItem>
+                            ))}
+                          </SearchableSelectContent>
+                        </Select>
                       )}
                     </div>
                   )}

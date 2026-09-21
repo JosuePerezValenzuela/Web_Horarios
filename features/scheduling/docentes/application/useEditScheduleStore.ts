@@ -17,7 +17,7 @@ import type {
   SolapamientoInfo,
 } from "../domain/types"
 import { horariosApi, type BuscarAmbienteRequest } from "@/shared/services/api/client"
-import { infraApiClient } from "@/shared/services/api/infraClient"
+import { useInfraStore } from "@/shared/stores/catalogos/useInfraStore"
 
 function formatMinutes(minutes: number): string {
   const h = Math.floor(minutes / 60)
@@ -29,7 +29,7 @@ function mapScheduleToEntry(schedule: NormalizedSchedule): EditScheduleEntry {
   return {
     id: crypto.randomUUID(),
     dbId: schedule.dbId,
-    dia: schedule.day - 1, // 1-6 → 0-5 (infra format)
+    dia: schedule.day, // 1-7 (contract: 1=Lunes, ..., 7=Domingo)
     horaInicio: formatMinutes(schedule.startMin),
     horaFin: formatMinutes(schedule.endMin),
     ambienteId: schedule.ambienteId ?? undefined,
@@ -40,6 +40,7 @@ function mapScheduleToEntry(schedule: NormalizedSchedule): EditScheduleEntry {
     ambienteCodigo: schedule.ambienteCodigo ?? undefined,
     fechaInicio: schedule.fechaInicioRaw ?? undefined,
     fechaFin: schedule.fechaFinRaw ?? undefined,
+    virtual: schedule.virtual ?? false,
   }
 }
 
@@ -170,14 +171,23 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
             to: new Date(`${firstWithDates.fechaFinRaw}T00:00:00`),
           }
         : undefined
-    set({
+    const infra = useInfraStore.getState()
+    set((state) => ({
       isOpen: true,
       selectedGroup: group,
       existingSchedules: schedules,
       dateRange,
       entries,
       highlightedEntryId,
-    })
+      facultades:
+        state.facultades.length === 0 && infra.facultades.length > 0
+          ? (infra.facultades as unknown as InfraFacultad[])
+          : state.facultades,
+      tiposAmbiente:
+        state.tiposAmbiente.length === 0 && infra.tiposAmbiente.length > 0
+          ? (infra.tiposAmbiente as unknown as InfraTipoAmbiente[])
+          : state.tiposAmbiente,
+    }))
     get().fetchInitialData()
   },
 
@@ -206,6 +216,7 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
       horaFin: "",
       fechaInicio: dateRange?.from?.toISOString().split("T")[0],
       fechaFin: dateRange?.to?.toISOString().split("T")[0],
+      virtual: false,
     }
     set((state) => ({ entries: [...state.entries, entry] }))
   },
@@ -266,6 +277,7 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     const state = get()
     const entry = state.entries.find((e) => e.id === entryId)
     if (!entry || entry.dia === null || !entry.horaInicio || !entry.horaFin) return
+    if (!state.selectedGroup?.persona_grupo_id) return
 
     // Resolve filters: entry overrides fallback to global
     const entryF = state.entryFilters[entryId]
@@ -286,19 +298,21 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     try {
       const fechaInicio = entry.fechaInicio ?? state.dateRange?.from?.toISOString().split("T")[0]
       const fechaFin = entry.fechaFin ?? state.dateRange?.to?.toISOString().split("T")[0]
+      if (!fechaInicio || !fechaFin) return
+
       const payload: BuscarAmbienteRequest = {
-        dia: entry.dia,
+        persona_grupo_id: state.selectedGroup.persona_grupo_id,
+        dia: entry.dia, // 1-7
         hora_inicio: entry.horaInicio,
         hora_fin: entry.horaFin,
         fecha_inicio: fechaInicio,
         fecha_fin: fechaFin,
-        persona_grupo_id: state.selectedGroup?.persona_grupo_id,
         facultad_ids: facultadIds.length > 0 ? facultadIds : undefined,
         bloque_ids: bloqueIds.length > 0 ? bloqueIds : undefined,
         tipo_ambiente_ids: tipoIds.length > 0 ? tipoIds : undefined,
         capacidad_min: capacidadMin ?? undefined,
         page: 1,
-        take: 30,
+        take: 50,
       }
 
       const response = await horariosApi.buscarAmbientes(payload)
@@ -358,8 +372,8 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
         // Self-exclusion: skip if entry's dbId matches this schedule's dbId
         if (entry.dbId !== null && schedule.dbId !== null && entry.dbId === schedule.dbId) continue
 
-        // entry.dia is 0-6, schedule.day is 1-6 → entry.dia + 1 === schedule.day
-        if (entry.dia + 1 !== schedule.day) continue
+        // entry.dia is 1-7, schedule.day is 1-7
+        if (entry.dia !== schedule.day) continue
 
         if (eStart < schedule.endMin && eEnd > schedule.startMin) {
           solapamientos.push({
@@ -388,21 +402,28 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
       if (!original) return true // Send if it wasn't matched
 
       // Check if any field changed
-      const originalDay = original.day - 1 // 1-6 -> 0-5
+      const originalDay = original.day // 1-7
       const originalStart = formatMinutes(original.startMin)
       const originalEnd = formatMinutes(original.endMin)
       const originalAmbiente = original.ambienteId ?? undefined
+      const originalVirtual = Boolean(original.virtual)
 
       const dayChanged = e.dia !== originalDay
       const startChanged = e.horaInicio !== originalStart
       const endChanged = e.horaFin !== originalEnd
       const ambienteChanged = e.ambienteId !== originalAmbiente
+      const virtualChanged = e.virtual !== undefined && Boolean(e.virtual) !== originalVirtual
 
-      return dayChanged || startChanged || endChanged || ambienteChanged
+      return dayChanged || startChanged || endChanged || ambienteChanged || virtualChanged
     })
 
     const createItems = entries.filter(
-      (e) => e.dbId === null && e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId != null
+      (e) =>
+        e.dbId === null &&
+        e.dia !== null &&
+        e.horaInicio &&
+        e.horaFin &&
+        (e.ambienteId != null || e.virtual)
     )
 
     if (updateItems.length === 0 && createItems.length === 0) {
@@ -428,38 +449,77 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     try {
       // Build payload with entryId tracking for accurate error mapping
       payloadEntries = [
-        ...updateItems.map((e) => ({
-          entryId: e.id,
-          item: {
-            id: e.dbId!,
-            ...(e.dia !== null && { dia: e.dia }),
-            ...(e.horaInicio && { hora_inicio: e.horaInicio }),
-            ...(e.horaFin && { hora_fin: e.horaFin }),
-            ...(e.ambienteId != null && { aula_id: e.ambienteId }),
-            ...(e.fechaInicio && { fecha_inicio: e.fechaInicio }),
-            ...(e.fechaFin && { fecha_fin: e.fechaFin }),
-          } as EditarHorarioItem,
-        })),
+        ...updateItems.map((e) => {
+          const original = existingSchedules.find((s) => s.dbId === e.dbId)
+          const item: EditarHorarioItem = { id: e.dbId! }
+
+          if (original) {
+            const originalDay = original.day
+            const originalStart = formatMinutes(original.startMin)
+            const originalEnd = formatMinutes(original.endMin)
+            const originalAmbiente = original.ambienteId ?? undefined
+            const originalVirtual = Boolean(original.virtual)
+
+            if (e.dia !== null && e.dia !== originalDay) {
+              item.dia = e.dia
+            }
+            if (e.horaInicio && e.horaInicio !== originalStart) {
+              item.hora_inicio = e.horaInicio
+            }
+            if (e.horaFin && e.horaFin !== originalEnd) {
+              item.hora_fin = e.horaFin
+            }
+            if (e.virtual !== undefined && Boolean(e.virtual) !== originalVirtual) {
+              item.virtual = Boolean(e.virtual)
+            }
+            // If virtual changed to true or is true, aula_id must be null
+            if (Boolean(e.virtual)) {
+              if (!originalVirtual || originalAmbiente !== undefined) {
+                item.aula_id = null
+              }
+            } else if (e.ambienteId !== originalAmbiente) {
+              item.aula_id = e.ambienteId ?? null
+            }
+          } else {
+            // Fallback if original not found
+            if (e.dia !== null) item.dia = e.dia
+            if (e.horaInicio) item.hora_inicio = e.horaInicio
+            if (e.horaFin) item.hora_fin = e.horaFin
+            item.virtual = Boolean(e.virtual)
+            item.aula_id = Boolean(e.virtual) ? null : (e.ambienteId ?? null)
+          }
+
+          return {
+            entryId: e.id,
+            item,
+          }
+        }),
         ...createItems.map((e) => ({
           entryId: e.id,
           item: {
             dia: e.dia!,
             hora_inicio: e.horaInicio,
             hora_fin: e.horaFin,
-            aula_id: e.ambienteId!,
+            aula_id: Boolean(e.virtual) ? null : (e.ambienteId ?? null),
+            virtual: Boolean(e.virtual),
           } as EditarHorarioItem,
         })),
       ]
 
       const horarios = payloadEntries.map((pe) => pe.item)
 
-      const payload: EditarHorariosBatchRequest = { horarios }
+      const fechaInicio = dateRange?.from
+        ? dateRange.from.toISOString().split("T")[0]
+        : (entries.find((e) => e.fechaInicio)?.fechaInicio ?? "")
+      const fechaFin = dateRange?.to
+        ? dateRange.to.toISOString().split("T")[0]
+        : (entries.find((e) => e.fechaFin)?.fechaFin ?? "")
 
-      // Root fields required for creates
-      if (needsRootFields) {
-        payload.persona_grupo_id = selectedGroup.persona_grupo_id
-        payload.fecha_inicio = dateRange!.from!.toISOString().split("T")[0]
-        payload.fecha_fin = dateRange!.to!.toISOString().split("T")[0]
+      const payload: EditarHorariosBatchRequest = {
+        persona_grupo_id: selectedGroup.persona_grupo_id,
+        fecha_inicio: fechaInicio,
+        fecha_fin: fechaFin,
+        horarios,
       }
 
       const response: EditarHorariosBatchResponse = await horariosApi.editarBatch(payload)
@@ -490,18 +550,17 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
   },
 
   fetchInitialData: async () => {
+    if (get().facultades.length > 0 && get().tiposAmbiente.length > 0) {
+      return
+    }
+
     try {
-      const facultadesRes = await infraApiClient.get<{ items: InfraFacultad[] }>(
-        "/facultades?page=1&limit=200&activo=true&orderBy=nombre&orderDir=asc"
-      )
-
-      const tiposRes = await infraApiClient.get<{ items: InfraTipoAmbiente[] }>(
-        "/tipo_ambientes?page=1&limit=1000&activo=true&orderDir=asc&orderBy=nombre"
-      )
-
+      const infra = useInfraStore.getState()
+      await Promise.all([infra.fetchFacultades(), infra.fetchTiposAmbiente()])
+      const freshInfra = useInfraStore.getState()
       set({
-        facultades: facultadesRes.items || [],
-        tiposAmbiente: tiposRes.items || [],
+        facultades: (freshInfra.facultades as unknown as InfraFacultad[]) || [],
+        tiposAmbiente: (freshInfra.tiposAmbiente as unknown as InfraTipoAmbiente[]) || [],
       })
     } catch (error) {
       console.error("Error fetching initial infrastructure data:", error)
@@ -521,7 +580,12 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
     }
   },
 
-  reset: () => set({ ...INITIAL_STATE }),
+  reset: () =>
+    set((state) => ({
+      ...INITIAL_STATE,
+      facultades: state.facultades,
+      tiposAmbiente: state.tiposAmbiente,
+    })),
 }))
 
 // ── Adapter: wraps useEditScheduleStore into AmbienteSearchContract ──

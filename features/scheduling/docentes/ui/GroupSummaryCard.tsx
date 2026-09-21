@@ -1,5 +1,6 @@
 import {
   Button,
+  toast,
   UmssCard as Card,
   UmssCardContent as CardContent,
   UmssCardHeader as CardHeader,
@@ -48,6 +49,12 @@ export function GroupSummaryCard({
     group.carga_horaria !== undefined &&
     group.carga_horaria !== null &&
     calculatedCarga !== group.carga_horaria
+
+  // Check if workload is already completely assigned
+  const isWorkloadComplete =
+    group.carga_horaria !== undefined &&
+    group.carga_horaria !== null &&
+    calculatedCarga >= group.carga_horaria
 
   return (
     <Card
@@ -147,10 +154,25 @@ export function GroupSummaryCard({
                 size="xs"
                 onClick={(e) => {
                   e.stopPropagation()
+                  if (isWorkloadComplete) {
+                    toast.info(
+                      "Esta asignación ya asignó toda su carga horaria semanal, puede editar las existentes o eliminar horarios para crear nuevas",
+                      { id: `workload-complete-${group.groupKey}` }
+                    )
+                    return
+                  }
                   onAddClick(group)
                 }}
                 aria-label="Agregar horarios"
-                className="h-7 w-7 p-0"
+                title={
+                  isWorkloadComplete
+                    ? "Esta asignación ya asignó toda su carga horaria semanal, puede editar las existentes o eliminar horarios para crear nuevas"
+                    : "Agregar horarios"
+                }
+                className={cn(
+                  "h-7 w-7 p-0",
+                  isWorkloadComplete && "opacity-50 cursor-not-allowed hover:bg-secondary"
+                )}
               >
                 <Plus className="size-3.5 text-muted-foreground hover:text-foreground" />
               </Button>

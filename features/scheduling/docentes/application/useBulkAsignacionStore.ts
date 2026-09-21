@@ -16,7 +16,7 @@ import type {
   EditarHorariosBatchRequest,
 } from "../domain/types"
 import { horariosApi, type BuscarAmbienteRequest } from "@/shared/services/api/client"
-import { infraApiClient } from "@/shared/services/api/infraClient"
+import { useInfraStore } from "@/shared/stores/catalogos/useInfraStore"
 
 interface BulkAsignacionState {
   // Modal
@@ -126,7 +126,19 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
   ...INITIAL_STATE,
 
   openModal: (group: GroupInfo) => {
-    set({ isOpen: true, selectedGroup: group })
+    const infra = useInfraStore.getState()
+    set((state) => ({
+      isOpen: true,
+      selectedGroup: group,
+      facultades:
+        state.facultades.length === 0 && infra.facultades.length > 0
+          ? (infra.facultades as unknown as InfraFacultad[])
+          : state.facultades,
+      tiposAmbiente:
+        state.tiposAmbiente.length === 0 && infra.tiposAmbiente.length > 0
+          ? (infra.tiposAmbiente as unknown as InfraTipoAmbiente[])
+          : state.tiposAmbiente,
+    }))
     get().fetchInitialData()
   },
 
@@ -151,6 +163,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       dia: null,
       horaInicio: "",
       horaFin: "",
+      virtual: false,
     }
     set((state) => ({ entries: [...state.entries, entry] }))
   },
@@ -211,6 +224,8 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
     const state = get()
     const entry = state.entries.find((e) => e.id === entryId)
     if (!entry || entry.dia === null || !entry.horaInicio || !entry.horaFin) return
+    if (!state.selectedGroup?.persona_grupo_id) return
+    if (!state.dateRange?.from || !state.dateRange?.to) return
 
     // Resolve filters: entry overrides fallback to global
     const entryF = state.entryFilters[entryId]
@@ -230,18 +245,18 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
     try {
       const payload: BuscarAmbienteRequest = {
-        dia: entry.dia,
+        persona_grupo_id: state.selectedGroup.persona_grupo_id,
+        dia: entry.dia, // 1-7
         hora_inicio: entry.horaInicio,
         hora_fin: entry.horaFin,
-        fecha_inicio: state.dateRange?.from?.toISOString().split("T")[0],
-        fecha_fin: state.dateRange?.to?.toISOString().split("T")[0],
-        persona_grupo_id: state.selectedGroup?.persona_grupo_id,
+        fecha_inicio: state.dateRange.from.toISOString().split("T")[0],
+        fecha_fin: state.dateRange.to.toISOString().split("T")[0],
         facultad_ids: facultadIds.length > 0 ? facultadIds : undefined,
         bloque_ids: bloqueIds.length > 0 ? bloqueIds : undefined,
         tipo_ambiente_ids: tipoIds.length > 0 ? tipoIds : undefined,
         capacidad_min: capacidadMin ?? undefined,
         page: 1,
-        take: 30,
+        take: 50,
       }
 
       const response = await horariosApi.buscarAmbientes(payload)
@@ -298,9 +313,8 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
       const eEnd = toMinutes(entry.horaFin)
 
       for (const schedule of existingSchedules) {
-        // NormalizedSchedule.day is 1-6 (1=Lunes)
-        // entry.dia is 0-6 (0=Lunes), so entry.dia + 1 === schedule.day
-        if (entry.dia + 1 !== schedule.day) continue
+        // NormalizedSchedule.day is 1-7 (1=Lunes), entry.dia is 1-7 (1=Lunes)
+        if (entry.dia !== schedule.day) continue
 
         if (eStart < schedule.endMin && eEnd > schedule.startMin) {
           solapamientos.push({
@@ -327,7 +341,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
 
     // Filter entries with valid data
     const validEntries = entries.filter(
-      (e) => e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId
+      (e) => e.dia !== null && e.horaInicio && e.horaFin && (e.ambienteId != null || e.virtual)
     )
 
     if (validEntries.length === 0) {
@@ -356,7 +370,8 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
           dia: e.dia!,
           hora_inicio: e.horaInicio,
           hora_fin: e.horaFin,
-          aula_id: e.ambienteId!,
+          aula_id: Boolean(e.virtual) ? null : (e.ambienteId ?? null),
+          virtual: Boolean(e.virtual),
         } as EditarHorarioItem,
       }))
 
@@ -395,18 +410,17 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
   },
 
   fetchInitialData: async () => {
+    if (get().facultades.length > 0 && get().tiposAmbiente.length > 0) {
+      return
+    }
+
     try {
-      const facultadesRes = await infraApiClient.get<{ items: InfraFacultad[] }>(
-        "/facultades?page=1&limit=200&activo=true&orderBy=nombre&orderDir=asc"
-      )
-
-      const tiposRes = await infraApiClient.get<{ items: InfraTipoAmbiente[] }>(
-        "/tipo_ambientes?page=1&limit=1000&activo=true&orderDir=asc&orderBy=nombre"
-      )
-
+      const infra = useInfraStore.getState()
+      await Promise.all([infra.fetchFacultades(), infra.fetchTiposAmbiente()])
+      const freshInfra = useInfraStore.getState()
       set({
-        facultades: facultadesRes.items || [],
-        tiposAmbiente: tiposRes.items || [],
+        facultades: (freshInfra.facultades as unknown as InfraFacultad[]) || [],
+        tiposAmbiente: (freshInfra.tiposAmbiente as unknown as InfraTipoAmbiente[]) || [],
       })
     } catch (error) {
       console.error("Error fetching initial infrastructure data:", error)
@@ -426,7 +440,12 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
     }
   },
 
-  reset: () => set({ ...INITIAL_STATE }),
+  reset: () =>
+    set((state) => ({
+      ...INITIAL_STATE,
+      facultades: state.facultades,
+      tiposAmbiente: state.tiposAmbiente,
+    })),
 }))
 
 // ── Adapter: wraps useBulkAsignacionStore into AmbienteSearchContract ──

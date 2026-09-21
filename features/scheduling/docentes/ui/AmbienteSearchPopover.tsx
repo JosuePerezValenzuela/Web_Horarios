@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle } from "lucide-react"
 
 import type {
@@ -10,7 +10,13 @@ import type {
   InfraBloque,
 } from "../domain/types"
 
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { MultiSelect } from "@/components/ui/multi-select"
@@ -49,8 +55,8 @@ export function AmbienteSearchPopover({
   onOpenChange,
   adapter,
 }: AmbienteSearchPopoverProps) {
-  const [facultadSearch, setFacultadSearch] = useState("")
   const [availableBloques, setAvailableBloques] = useState<InfraBloque[]>([])
+  const [facultadSearch, setFacultadSearch] = useState("")
 
   // ── Adapter reads ──────────────────────────
   const entry = adapter.getEntry(entryId)
@@ -87,12 +93,6 @@ export function AmbienteSearchPopover({
   const hasDateSource = hasGlobalDates || hasEntryDates
   const isComplete = entry?.dia !== null && !!entry?.horaInicio && !!entry?.horaFin && hasDateSource
   const isLoading = loadingAmbientesForEntry === entryId
-
-  const filteredFacultades = facultades.filter((facultad) =>
-    facultadSearch.trim()
-      ? facultad.nombre.toLowerCase().includes(facultadSearch.trim().toLowerCase())
-      : true
-  )
 
   // ── Fetch available bloques when facultad changes ──
   useEffect(() => {
@@ -144,7 +144,7 @@ export function AmbienteSearchPopover({
 
   // ── Filter handlers ──────────────────────────
   const handleFacultadChange = (value: string) => {
-    if (value === "none") {
+    if (!value || value === "none" || value === "all") {
       setAvailableBloques([])
       adapter.setEntryFilters(entryId, { selectedFacultades: [], selectedBloques: [] })
     } else {
@@ -218,6 +218,12 @@ export function AmbienteSearchPopover({
     onOpenChange(false)
   }
 
+  const filteredFacultades = useMemo(() => {
+    if (!facultadSearch.trim()) return facultades
+    const q = facultadSearch.toLowerCase()
+    return facultades.filter((f) => f.nombre.toLowerCase().includes(q))
+  }, [facultades, facultadSearch])
+
   // ── Render ───────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -235,14 +241,20 @@ export function AmbienteSearchPopover({
           <div>
             <Label className="text-[10px] font-medium leading-4">Facultad</Label>
             <Select
-              value={effectiveFacultad[0]?.id?.toString() ?? "none"}
+              value={effectiveFacultad[0]?.id?.toString() ?? "all"}
               onValueChange={handleFacultadChange}
             >
-              <SelectTrigger size="sm" className="mt-0.5 text-xs">
-                <SelectValue placeholder="Facultad" />
+              <SelectTrigger className="mt-0.5 h-8 text-xs">
+                <SelectValue placeholder="Todas las facultades" />
               </SelectTrigger>
-              <SearchableSelectContent onFilterChange={setFacultadSearch}>
-                <SelectItem value="none">Todas</SelectItem>
+              <SearchableSelectContent
+                searchPlaceholder="Buscar facultad..."
+                onFilterChange={setFacultadSearch}
+                onKeyDownCapture={(e) => {
+                  if (e.key === "Escape") e.stopPropagation()
+                }}
+              >
+                <SelectItem value="all">Todas las facultades</SelectItem>
                 {filteredFacultades.map((f) => (
                   <SelectItem key={f.id} value={f.id.toString()}>
                     {f.nombre}
@@ -329,41 +341,61 @@ export function AmbienteSearchPopover({
             </div>
           ) : (
             <>
-              <div className="max-h-45 min-h-45 space-y-1 overflow-y-auto">
-                {sortedAmbientes.map((amb) => (
-                  <button
-                    key={amb.id}
-                    type="button"
-                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs transition-colors hover:bg-accent ${
-                      amb.tiene_solapamiento_propio
-                        ? "bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
-                        : ""
-                    }`}
-                    onClick={() => handleSelect(amb)}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        {amb.tiene_solapamiento_propio && (
-                          <AlertTriangle className="size-3 shrink-0 text-amber-500" />
-                        )}
-                        <span className="truncate font-semibold text-foreground">
-                          {amb.codigo ? `[${amb.codigo}] ` : ""}
-                          {amb.nombre}
-                        </span>
-                        {amb.tiene_solapamiento_propio && (
-                          <span className="shrink-0 text-[10px] text-amber-600 dark:text-amber-400">
-                            Mismo docente
+              <div className="max-h-56 min-h-45 space-y-1.5 overflow-y-auto">
+                {sortedAmbientes.map((amb) => {
+                  const capacidadVal = amb.capacidad_total ?? amb.capacidad
+                  const tipoVal = amb.tipo_ambiente_nombre ?? amb.tipo
+                  const bloqueVal = amb.bloque_nombre ?? amb.edificio_nombre
+
+                  return (
+                    <button
+                      key={amb.id}
+                      type="button"
+                      className={`flex w-full items-center justify-between rounded-xl border border-border/40 p-2.5 text-left text-xs transition-colors hover:bg-accent/60 ${
+                        amb.tiene_solapamiento_propio
+                          ? "border-amber-400/40 bg-amber-500/10 hover:bg-amber-500/15"
+                          : "bg-card hover:border-border"
+                      }`}
+                      onClick={() => handleSelect(amb)}
+                    >
+                      <div className="min-w-0 flex-1 space-y-1">
+                        {/* Line 1: [codigo] nombre + solapamiento */}
+                        <div className="flex items-center gap-1.5">
+                          {amb.tiene_solapamiento_propio && (
+                            <AlertTriangle className="size-3.5 shrink-0 text-amber-500" />
+                          )}
+                          <span className="truncate font-semibold text-foreground">
+                            {amb.codigo ? `[${amb.codigo}] ` : ""}
+                            {amb.nombre}
                           </span>
-                        )}
+                          {amb.tiene_solapamiento_propio && (
+                            <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                              Mismo docente
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Line 2: Capacidad, Tipo, Bloque */}
+                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground">
+                          {capacidadVal != null && (
+                            <span>
+                              Capacidad:{" "}
+                              <strong className="text-foreground/80">{capacidadVal}</strong>
+                            </span>
+                          )}
+                          {tipoVal && (
+                            <span>
+                              · Tipo:{" "}
+                              <span className="font-medium text-foreground/80">{tipoVal}</span>
+                            </span>
+                          )}
+                          {bloqueVal && <span>· Bloque: {bloqueVal}</span>}
+                          {amb.piso != null && <span>· Piso {amb.piso}</span>}
+                        </div>
                       </div>
-                      <div className="mt-0.5 text-muted-foreground">
-                        {amb.edificio_nombre && <span>{amb.edificio_nombre} · </span>}
-                        {amb.tipo && <span>{amb.tipo} · </span>}
-                        <span>Cap. {amb.capacidad}</span>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  )
+                })}
               </div>
 
               {/* Legend */}

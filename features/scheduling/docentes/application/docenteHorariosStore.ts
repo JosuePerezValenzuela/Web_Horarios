@@ -22,6 +22,17 @@ import type {
   AdminScheduleRaw,
 } from "../domain/types"
 
+export interface DocenteScheduleCacheEntry {
+  docente: DocenteScheduleMeta | null
+  schedules: NormalizedSchedule[]
+  groups: GroupSummary[]
+  adminSchedules: AdminSchedule[]
+  rawAdminSchedules: AdminScheduleRaw[]
+  period: number
+  timeRange: TimeRange
+  rows: TimeRow[]
+}
+
 interface DocenteHorariosState {
   docente: DocenteScheduleMeta | null
   schedules: NormalizedSchedule[]
@@ -33,6 +44,7 @@ interface DocenteHorariosState {
   rows: TimeRow[]
   loading: boolean
   error: string | null
+  docenteCache: Record<string, DocenteScheduleCacheEntry>
   fetchByDocenteId: (id: string) => Promise<void>
   setPeriod: (period: number) => void
   clear: () => void
@@ -56,13 +68,23 @@ const INITIAL_STATE = {
   rows: buildRows(EMPTY_RANGE, DEFAULT_PERIOD),
   loading: false,
   error: null,
+  docenteCache: {},
 }
 
 export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get) => ({
   ...INITIAL_STATE,
 
   fetchByDocenteId: async (id: string) => {
-    set({ loading: true, error: null })
+    const cached = get().docenteCache[id]
+    if (cached) {
+      set({
+        ...cached,
+        loading: false,
+        error: null,
+      })
+    } else {
+      set({ loading: true, error: null })
+    }
 
     try {
       const response = await getDocenteHorariosById(id)
@@ -119,7 +141,7 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
       }
       const adjustedTimeRange = { startMin, endMin }
 
-      set({
+      const entry: DocenteScheduleCacheEntry = {
         docente: normalized.docente,
         schedules: hydratedSchedules,
         groups: normalized.groups,
@@ -128,8 +150,16 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
         period,
         timeRange: adjustedTimeRange,
         rows: buildRows(adjustedTimeRange, period),
+      }
+
+      set((state) => ({
+        ...entry,
+        docenteCache: {
+          ...state.docenteCache,
+          [id]: entry,
+        },
         loading: false,
-      })
+      }))
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "No se pudieron cargar los horarios",
@@ -147,5 +177,9 @@ export const useDocenteHorariosStore = create<DocenteHorariosState>()((set, get)
     })
   },
 
-  clear: () => set({ ...INITIAL_STATE }),
+  clear: () =>
+    set((state) => ({
+      ...INITIAL_STATE,
+      docenteCache: state.docenteCache,
+    })),
 }))

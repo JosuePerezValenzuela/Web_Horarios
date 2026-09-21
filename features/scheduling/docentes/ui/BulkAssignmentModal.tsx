@@ -27,7 +27,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  Checkbox,
   DateRangePicker,
+  Select,
 } from "@umss/estilos-base/components"
 import {
   Dialog,
@@ -38,23 +40,16 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { TimePicker } from "@/components/ui/time-picker"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { horariosApi } from "@/shared/services/api/client"
 
 const DIA_LABELS: Record<number, string> = {
-  0: "Lunes",
-  1: "Martes",
-  2: "Miércoles",
-  3: "Jueves",
-  4: "Viernes",
-  5: "Sábado",
-  6: "Domingo",
+  1: "Lunes",
+  2: "Martes",
+  3: "Miércoles",
+  4: "Jueves",
+  5: "Viernes",
+  6: "Sábado",
+  7: "Domingo",
 }
 
 export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignmentModalProps) {
@@ -109,15 +104,12 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
 
   const toTimeLabel = (value: string) => value || "--"
 
-  const getDeleteErrorMessage = (error: unknown, fallback: string) => {
-    const apiError = error as Error & { body?: { message?: string } }
-    return apiError?.body?.message || apiError?.message || fallback
-  }
-
   // ── Computed ─────────────────────────────────────────
   const allEntriesIncomplete =
     entries.length === 0 ||
-    entries.every((e) => e.dia === null || !e.horaInicio || !e.horaFin || !e.ambienteId)
+    entries.every(
+      (e) => e.dia === null || !e.horaInicio || !e.horaFin || (!e.ambienteId && !e.virtual)
+    )
 
   const hasValidDateRange = dateRange?.from != null && dateRange?.to != null
 
@@ -129,13 +121,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       addEntry()
     }
   }, [mode, isOpen, entries.length, addEntry])
-
-  // Trigger toast on initial load error
-  useEffect(() => {
-    if (initialLoadError) {
-      toast.error(initialLoadError)
-    }
-  }, [initialLoadError])
 
   // ── Handlers ─────────────────────────────────────────
   const doSubmit = useCallback(async () => {
@@ -149,13 +134,11 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
         bulkCloseModal()
         onAssigned?.()
       } else {
-        toast.error(result.message || "Error en la asignación")
-
         if (result.erroredEntryId) {
           setErrorEntryId(result.erroredEntryId)
         } else if (result.errorIndex !== undefined) {
           const validEntries = bulkEntries.filter(
-            (e) => e.dia !== null && e.horaInicio && e.horaFin && e.ambienteId
+            (e) => e.dia !== null && e.horaInicio && e.horaFin && (e.ambienteId || e.virtual)
           )
           const erroredEntry = validEntries[result.errorIndex]
           if (erroredEntry) {
@@ -171,8 +154,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
         editClose()
         onAssigned?.()
       } else {
-        toast.error(result.message || "Error al editar horarios")
-
         if (result.erroredEntryId) {
           setErrorEntryId(result.erroredEntryId)
         } else if (result.errorIndex !== undefined) {
@@ -203,6 +184,15 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
     if (invalidEntry) {
       toast.error("La hora de inicio debe ser menor a la hora de fin")
       setErrorEntryId(invalidEntry.id)
+      return
+    }
+
+    const missingAmbiente = entries.find(
+      (e) => e.dia !== null && e.horaInicio && e.horaFin && !e.ambienteId && !e.virtual
+    )
+    if (missingAmbiente) {
+      toast.error("Seleccione un ambiente o marque el horario como virtual")
+      setErrorEntryId(missingAmbiente.id)
       return
     }
 
@@ -272,7 +262,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
       await onAssigned?.()
     } catch (error) {
       const apiError = error as Error & { status?: number }
-      toast.error(getDeleteErrorMessage(error, "No se pudo eliminar el horario"))
       if (apiError.status === 404) {
         await onAssigned?.()
       }
@@ -290,363 +279,393 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
 
   // ── Render ───────────────────────────────────────────
   return (
-    <Dialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          setSolapamientoOpen(false)
-          setPendingSolapamientos([])
-          setErrorEntryId(null)
-          if (mode === "create") {
-            bulkCloseModal()
-          } else {
-            editClose()
+    <>
+      <Dialog
+        open={isOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSolapamientoOpen(false)
+            setPendingSolapamientos([])
+            setErrorEntryId(null)
+            if (mode === "create") {
+              bulkCloseModal()
+            } else {
+              editClose()
+            }
           }
-        }
-      }}
-    >
-      <DialogContent className="flex max-h-[90vh] w-full flex-col p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl min-w-[320px] sm:min-w-[550px] md:min-w-[650px] lg:min-w-[750px]">
-        <DialogHeader className="shrink-0 px-4 pt-4 pb-2 pr-12 sm:px-6 sm:pt-6 sm:pb-2 sm:pr-14">
-          <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
-            <DialogTitle className="shrink-0 text-base font-semibold text-foreground sm:text-lg">
-              {mode === "edit" ? "Editar Horarios" : "Asignar Horarios"}
-            </DialogTitle>
-            <DialogDescription className="min-w-0 text-xs text-muted-foreground sm:text-sm">
-              {selectedGroup && <span className="font-medium">{selectedGroup.materia}</span>}
-              {selectedGroup && <> · Grupo {selectedGroup.grupo}</>}
-            </DialogDescription>
-          </div>
-        </DialogHeader>
-
-        <div className="flex flex-col overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
-          {/* ═══ Global Date Range + Filters ═══ */}
-          <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
-            {/* Date range row */}
-            <div className="mb-4">
-              <Label className="text-xs">Rango de fechas</Label>
-              <div className="mt-1">
-                <DateRangePicker
-                  value={dateRange}
-                  onValueChange={(range) => {
-                    if (!range?.from || !range?.to) return
-                    if (mode === "create") {
-                      bulk.setDateRange(range)
-                      return
-                    }
-                    editSetDateRange(range)
-                    const fechaInicio = range.from.toISOString().split("T")[0]
-                    const fechaFin = range.to.toISOString().split("T")[0]
-                    entries.forEach((entry) => {
-                      updateEntry(entry.id, { fechaInicio, fechaFin })
-                    })
-                  }}
-                  locale={es}
-                />
-              </div>
+        }}
+      >
+        <DialogContent className="flex max-h-[90vh] w-full flex-col p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl xl:max-w-4xl min-w-[320px] sm:min-w-[550px] md:min-w-[650px] lg:min-w-[750px]">
+          <DialogHeader className="shrink-0 px-4 pt-4 pb-2 pr-12 sm:px-6 sm:pt-6 sm:pb-2 sm:pr-14">
+            <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-2.5">
+              <DialogTitle className="shrink-0 text-base font-semibold text-foreground sm:text-lg">
+                {mode === "edit" ? "Editar Horarios" : "Asignar Horarios"}
+              </DialogTitle>
+              <DialogDescription className="min-w-0 text-xs text-muted-foreground sm:text-sm">
+                {selectedGroup && <span className="font-medium">{selectedGroup.materia}</span>}
+                {selectedGroup && <> · Grupo {selectedGroup.grupo}</>}
+              </DialogDescription>
             </div>
+          </DialogHeader>
 
-            {/* Location filters intentionally hidden in both modes */}
-          </section>
-
-          {/* ═══ Entries Table ═══ */}
-          <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
-            <h3 className="mb-3 text-sm font-semibold">Horarios a asignar</h3>
-
-            {entries.length === 0 ? (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/10 p-8 text-center">
-                <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground/80 mb-3">
-                  <Plus className="size-6" />
+          <div className="flex flex-col overflow-y-auto px-4 pb-4 sm:px-6 sm:pb-6">
+            {/* ═══ Global Date Range + Filters ═══ */}
+            <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
+              {/* Date range row */}
+              <div className="mb-4">
+                <Label className="text-xs">Rango de fechas</Label>
+                <div className="mt-1">
+                  <DateRangePicker
+                    value={dateRange}
+                    onValueChange={(range) => {
+                      if (!range?.from || !range?.to) return
+                      if (mode === "create") {
+                        bulk.setDateRange(range)
+                        return
+                      }
+                      editSetDateRange(range)
+                      const fechaInicio = range.from.toISOString().split("T")[0]
+                      const fechaFin = range.to.toISOString().split("T")[0]
+                      entries.forEach((entry) => {
+                        updateEntry(entry.id, { fechaInicio, fechaFin })
+                      })
+                    }}
+                    locale={es}
+                  />
                 </div>
-                <h4 className="text-sm font-semibold text-foreground">Sin horarios asignados</h4>
-                <p className="mt-1 text-xs text-muted-foreground max-w-[280px]">
-                  {mode === "edit"
-                    ? "Este grupo no tiene horarios asignados en este período. Agregá un horario nuevo para comenzar."
-                    : "No hay horarios cargados en la lista de asignación."}
-                </p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => addEntry()}>
-                  <Plus className="mr-1 size-3.5" />
-                  Agregar horario
-                </Button>
               </div>
-            ) : (
-              <div className="max-h-75 overflow-auto rounded-xl border border-border/50 shadow-sm">
-                <table className="w-full caption-bottom text-sm">
-                  <thead className="sticky top-0 z-10 bg-muted">
-                    <tr className="border-b-2 border-border/80">
-                      <th className="h-10 w-8 px-2 text-left align-middle text-xs font-semibold text-foreground">
-                        #
-                      </th>
-                      <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
-                        Día
-                      </th>
-                      <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
-                        Inicio
-                      </th>
-                      <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
-                        Fin
-                      </th>
-                      <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
-                        Ambiente
-                      </th>
-                      <th className="h-10 w-10 px-2 text-center align-middle text-xs font-semibold text-foreground" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entries.map((entry, index) => {
-                      const isErrored = errorEntryId === entry.id
-                      const isHighlighted = mode === "edit" && editHighlightedEntryId === entry.id
 
-                      return (
-                        <tr
-                          key={entry.id}
-                          className={`border-b border-border/30 transition-colors hover:bg-primary/5 ${
-                            isErrored
-                              ? "border-l-2 border-l-destructive bg-destructive/5"
-                              : isHighlighted
-                                ? "border-l-2 border-l-primary bg-primary/5"
-                                : ""
-                          }`}
-                        >
-                          <td className="px-2 py-2 align-middle text-xs text-muted-foreground">
-                            {index + 1}
-                          </td>
-                          <td className="px-2 py-2 align-middle">
-                            <Select
-                              value={entry.dia?.toString() ?? ""}
-                              onValueChange={(v) =>
-                                updateEntry(entry.id, {
-                                  dia: v ? Number(v) : null,
-                                })
-                              }
-                            >
-                              <SelectTrigger className="h-8 w-full min-w-25">
-                                <SelectValue placeholder="Día" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {Object.entries(DIA_LABELS).map(([id, label]) => (
-                                  <SelectItem key={id} value={id}>
-                                    {label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </td>
-                          <td className="px-2 py-2 align-middle">
-                            <TimePicker
-                              value={entry.horaInicio}
-                              onChange={(val) =>
-                                updateEntry(entry.id, {
-                                  horaInicio: val,
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="px-2 py-2 align-middle">
-                            <TimePicker
-                              value={entry.horaFin}
-                              onChange={(val) =>
-                                updateEntry(entry.id, {
-                                  horaFin: val,
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="px-2 py-2 align-middle">
-                            {(() => {
-                              const hasEntryData =
-                                entry.dia !== null && !!entry.horaInicio && !!entry.horaFin
-                              const hasDateData =
-                                mode === "create"
-                                  ? hasValidDateRange
-                                  : hasValidDateRange ||
-                                    Boolean(
-                                      ((entry as EditScheduleEntry).fechaInicio ?? "") &&
-                                      ((entry as EditScheduleEntry).fechaFin ?? "")
-                                    )
-                              const canSelectAmbiente = hasEntryData && hasDateData
+              {/* Location filters intentionally hidden in both modes */}
+            </section>
 
-                              return (
-                                <Button
-                                  variant="outline"
-                                  size="xs"
-                                  className={
-                                    entry.ambienteLabel
-                                      ? "h-7 w-full justify-start text-xs bg-muted border-border text-foreground font-medium hover:bg-muted/70"
-                                      : "h-7 w-full justify-start text-xs"
-                                  }
-                                  onClick={() => {
-                                    if (!canSelectAmbiente) {
-                                      const missing: string[] = []
-                                      if (!hasDateData) missing.push("rango de fechas")
-                                      if (entry.dia === null) missing.push("día")
-                                      if (!entry.horaInicio) missing.push("hora inicio")
-                                      if (!entry.horaFin) missing.push("hora fin")
-                                      toast.error(`Completá: ${missing.join(", ")}`)
-                                      return
-                                    }
-                                    if (
-                                      entry.horaInicio &&
-                                      entry.horaFin &&
-                                      entry.horaInicio >= entry.horaFin
-                                    ) {
-                                      toast.error(
-                                        "La hora de inicio debe ser menor a la hora de fin"
-                                      )
-                                      return
-                                    }
-                                    setAmbientePopoverEntry(entry.id)
+            {/* ═══ Entries Table ═══ */}
+            <section className="mb-4 rounded-2xl border border-border bg-muted/30 p-3 sm:p-4">
+              <h3 className="mb-3 text-sm font-semibold">Horarios a asignar</h3>
+
+              {entries.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-border bg-muted/10 p-8 text-center">
+                  <div className="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground/80 mb-3">
+                    <Plus className="size-6" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-foreground">Sin horarios asignados</h4>
+                  <p className="mt-1 text-xs text-muted-foreground max-w-[280px]">
+                    {mode === "edit"
+                      ? "Este grupo no tiene horarios asignados en este período. Agregá un horario nuevo para comenzar."
+                      : "No hay horarios cargados en la lista de asignación."}
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-4" onClick={() => addEntry()}>
+                    <Plus className="mr-1 size-3.5" />
+                    Agregar horario
+                  </Button>
+                </div>
+              ) : (
+                <div className="max-h-75 overflow-auto rounded-xl border border-border/50 shadow-sm">
+                  <table className="w-full caption-bottom text-sm">
+                    <thead className="sticky top-0 z-10 bg-muted">
+                      <tr className="border-b-2 border-border/80">
+                        <th className="h-10 w-8 px-2 text-left align-middle text-xs font-semibold text-foreground">
+                          #
+                        </th>
+                        <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
+                          Día
+                        </th>
+                        <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
+                          Inicio
+                        </th>
+                        <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
+                          Fin
+                        </th>
+                        <th className="h-10 px-2 text-left align-middle text-xs font-semibold text-foreground">
+                          Ambiente
+                        </th>
+                        <th className="h-10 w-16 px-2 text-center align-middle text-xs font-semibold text-foreground">
+                          Virtual
+                        </th>
+                        <th className="h-10 w-10 px-2 text-center align-middle text-xs font-semibold text-foreground" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entries.map((entry, index) => {
+                        const isErrored = errorEntryId === entry.id
+                        const isHighlighted = mode === "edit" && editHighlightedEntryId === entry.id
+
+                        return (
+                          <tr
+                            key={entry.id}
+                            className={`border-b border-border/30 transition-colors hover:bg-primary/5 ${
+                              isErrored
+                                ? "border-l-2 border-l-destructive bg-destructive/5"
+                                : isHighlighted
+                                  ? "border-l-2 border-l-primary bg-primary/5"
+                                  : ""
+                            }`}
+                          >
+                            <td className="px-2 py-2 align-middle text-xs text-muted-foreground">
+                              {index + 1}
+                            </td>
+                            <td className="px-2 py-2 align-middle">
+                              <Select
+                                options={Object.entries(DIA_LABELS).map(([id, label]) => ({
+                                  value: id,
+                                  label,
+                                }))}
+                                value={entry.dia?.toString() ?? ""}
+                                onValueChange={(v) =>
+                                  updateEntry(entry.id, {
+                                    dia: v ? Number(v) : null,
+                                  })
+                                }
+                                placeholder="Día"
+                                height="sm"
+                                width="full"
+                                className="min-w-28 text-xs"
+                              />
+                            </td>
+                            <td className="px-2 py-2 align-middle">
+                              <TimePicker
+                                value={entry.horaInicio}
+                                onChange={(val) =>
+                                  updateEntry(entry.id, {
+                                    horaInicio: val,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2 align-middle">
+                              <TimePicker
+                                value={entry.horaFin}
+                                onChange={(val) =>
+                                  updateEntry(entry.id, {
+                                    horaFin: val,
+                                  })
+                                }
+                              />
+                            </td>
+                            <td className="px-2 py-2 align-middle">
+                              {entry.virtual ? (
+                                <div className="flex h-7 w-full items-center justify-center rounded-lg bg-muted/50 px-2 text-xs text-muted-foreground italic border border-dashed border-border/70">
+                                  Sin aula física (Virtual)
+                                </div>
+                              ) : (
+                                (() => {
+                                  const hasEntryData =
+                                    entry.dia !== null && !!entry.horaInicio && !!entry.horaFin
+                                  const hasDateData =
+                                    mode === "create"
+                                      ? hasValidDateRange
+                                      : hasValidDateRange ||
+                                        Boolean(
+                                          ((entry as EditScheduleEntry).fechaInicio ?? "") &&
+                                          ((entry as EditScheduleEntry).fechaFin ?? "")
+                                        )
+                                  const canSelectAmbiente = hasEntryData && hasDateData
+
+                                  return (
+                                    <Button
+                                      variant="outline"
+                                      size="xs"
+                                      className={
+                                        entry.ambienteLabel
+                                          ? "h-7 w-full justify-start text-xs bg-muted border-border text-foreground font-medium hover:bg-muted/70"
+                                          : "h-7 w-full justify-start text-xs"
+                                      }
+                                      onClick={() => {
+                                        if (!canSelectAmbiente) {
+                                          const missing: string[] = []
+                                          if (!hasDateData) missing.push("rango de fechas")
+                                          if (entry.dia === null) missing.push("día")
+                                          if (!entry.horaInicio) missing.push("hora inicio")
+                                          if (!entry.horaFin) missing.push("hora fin")
+                                          toast.error(`Completá: ${missing.join(", ")}`)
+                                          return
+                                        }
+                                        if (
+                                          entry.horaInicio &&
+                                          entry.horaFin &&
+                                          entry.horaInicio >= entry.horaFin
+                                        ) {
+                                          toast.error(
+                                            "La hora de inicio debe ser menor a la hora de fin"
+                                          )
+                                          return
+                                        }
+                                        setAmbientePopoverEntry(entry.id)
+                                      }}
+                                      title={
+                                        !canSelectAmbiente
+                                          ? "Definí rango, día, hora inicio y hora fin para seleccionar ambiente"
+                                          : entry.ambienteLabel || entry.ambienteCodigo
+                                            ? `Cambiar ambiente (${entry.ambienteCodigo || entry.ambienteLabel})`
+                                            : "Seleccionar ambiente"
+                                      }
+                                    >
+                                      {entry.ambienteLabel || entry.ambienteCodigo
+                                        ? `Cambiar: ${entry.ambienteCodigo || entry.ambienteLabel}`
+                                        : "Seleccionar"}
+                                    </Button>
+                                  )
+                                })()
+                              )}
+                            </td>
+                            <td className="px-2 py-2 text-center align-middle">
+                              <div className="flex items-center justify-center">
+                                <Checkbox
+                                  checked={Boolean(entry.virtual)}
+                                  onCheckedChange={(checked) => {
+                                    const isVirtual = Boolean(checked)
+                                    updateEntry(entry.id, {
+                                      virtual: isVirtual,
+                                      ...(isVirtual && {
+                                        ambienteId: undefined,
+                                        ambienteLabel: undefined,
+                                        ambienteCodigo: undefined,
+                                      }),
+                                    })
                                   }}
-                                  title={
-                                    !canSelectAmbiente
-                                      ? "Definí rango, día, hora inicio y hora fin para seleccionar ambiente"
-                                      : entry.ambienteLabel || entry.ambienteCodigo
-                                        ? `Cambiar ambiente (${entry.ambienteCodigo || entry.ambienteLabel})`
-                                        : "Seleccionar ambiente"
-                                  }
-                                >
-                                  {entry.ambienteLabel || entry.ambienteCodigo
-                                    ? `Cambiar: ${entry.ambienteCodigo || entry.ambienteLabel}`
-                                    : "Seleccionar"}
-                                </Button>
-                              )
-                            })()}
-                          </td>
-                          <td className="px-2 py-2 text-center align-middle">
-                            <Button
-                              variant="secondary"
-                              size="xs"
-                              disabled={mode === "create" && entries.length <= 1}
-                              onClick={() => handleRowDeleteClick(entry.id)}
-                              title={mode === "create" ? "Remover de la lista" : "Eliminar horario"}
-                              className="h-7 w-7 p-0"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Add entry */}
-            {entries.length > 0 && (
-              <div className="mt-3 flex justify-end">
-                <Button variant="outline" size="sm" onClick={() => addEntry()}>
-                  <Plus className="mr-1 size-3.5" />
-                  Agregar horario
-                </Button>
-              </div>
-            )}
-          </section>
-
-          {/* ═══ Alert Area ═══ */}
-          <div className="space-y-2">
-            <SolapamientoWarning
-              open={solapamientoOpen}
-              onOpenChange={handleSolapamientoOpenChange}
-              solapamientos={pendingSolapamientos}
-              onConfirm={handleConfirm}
-              onCancel={handleCancel}
-            />
-          </div>
-
-          <AlertDialog
-            open={pendingDeleteEntry !== null}
-            onOpenChange={(open) => {
-              if (!open && !deletingEntry) {
-                setPendingDeleteEntryId(null)
-              }
-            }}
-          >
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Eliminar horario</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta acción eliminará este horario de este grupo en la base de datos de manera
-                  irreversible.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-
-              {pendingDeleteEntry && (
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs">
-                  <p>
-                    <span className="font-semibold">Día:</span>{" "}
-                    {pendingDeleteEntry.dia !== null
-                      ? DIA_LABELS[pendingDeleteEntry.dia] || pendingDeleteEntry.dia
-                      : "--"}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Inicio:</span>{" "}
-                    {toTimeLabel(pendingDeleteEntry.horaInicio)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Fin:</span>{" "}
-                    {toTimeLabel(pendingDeleteEntry.horaFin)}
-                  </p>
-                  <p>
-                    <span className="font-semibold">Ambiente:</span>{" "}
-                    {pendingDeleteEntry.ambienteCodigo ||
-                      pendingDeleteEntry.ambienteLabel ||
-                      "Sin ambiente"}
-                  </p>
+                                  aria-label="Modalidad virtual"
+                                  title="Marcar como horario virtual"
+                                />
+                              </div>
+                            </td>
+                            <td className="px-2 py-2 text-center align-middle">
+                              <Button
+                                variant="secondary"
+                                size="xs"
+                                disabled={mode === "create" && entries.length <= 1}
+                                onClick={() => handleRowDeleteClick(entry.id)}
+                                title={
+                                  mode === "create" ? "Remover de la lista" : "Eliminar horario"
+                                }
+                                className="h-7 w-7 p-0"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
 
-              <AlertDialogFooter>
-                <AlertDialogCancel disabled={deletingEntry}>Cancelar</AlertDialogCancel>
-                <AlertDialogAction
-                  variant="danger"
-                  disabled={deletingEntry}
-                  onClick={(event) => {
-                    event.preventDefault()
-                    void handleConfirmDeleteRow()
-                  }}
-                >
-                  {deletingEntry ? "Eliminando..." : "Eliminar horario"}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              {/* Add entry */}
+              {entries.length > 0 && (
+                <div className="mt-3 flex justify-end">
+                  <Button variant="outline" size="sm" onClick={() => addEntry()}>
+                    <Plus className="mr-1 size-3.5" />
+                    Agregar horario
+                  </Button>
+                </div>
+              )}
+            </section>
 
-          {/* ═══ Submit Button ═══ */}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
-              {entries.length > 0 &&
-                `${entries.length} horario${entries.length !== 1 ? "s" : ""} definido${entries.length !== 1 ? "s" : ""}`}
-              {allEntriesIncomplete && entries.length > 0 && " — complete los datos para asignar"}
-            </span>
+            {/* ═══ Alert Area ═══ */}
+            <div className="space-y-2">
+              <SolapamientoWarning
+                open={solapamientoOpen}
+                onOpenChange={handleSolapamientoOpenChange}
+                solapamientos={pendingSolapamientos}
+                onConfirm={handleConfirm}
+                onCancel={handleCancel}
+              />
+            </div>
 
-            <Button
-              size="lg"
-              disabled={
-                submitting ||
-                (mode === "create" && (!selectedGroup || !hasValidDateRange)) ||
-                entries.length === 0 ||
-                allEntriesIncomplete
-              }
-              onClick={handleSubmit}
+            <AlertDialog
+              open={pendingDeleteEntry !== null}
+              onOpenChange={(open) => {
+                if (!open && !deletingEntry) {
+                  setPendingDeleteEntryId(null)
+                }
+              }}
             >
-              {submitting
-                ? "Guardando..."
-                : mode === "edit"
-                  ? "Guardar cambios"
-                  : `Asignar ${entries.length} horario${entries.length !== 1 ? "s" : ""}`}
-            </Button>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminar horario</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción eliminará este horario de este grupo en la base de datos de manera
+                    irreversible.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+
+                {pendingDeleteEntry && (
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs">
+                    <p>
+                      <span className="font-semibold">Día:</span>{" "}
+                      {pendingDeleteEntry.dia !== null
+                        ? DIA_LABELS[pendingDeleteEntry.dia] || pendingDeleteEntry.dia
+                        : "--"}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Inicio:</span>{" "}
+                      {toTimeLabel(pendingDeleteEntry.horaInicio)}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Fin:</span>{" "}
+                      {toTimeLabel(pendingDeleteEntry.horaFin)}
+                    </p>
+                    <p>
+                      <span className="font-semibold">Ambiente:</span>{" "}
+                      {pendingDeleteEntry.ambienteCodigo ||
+                        pendingDeleteEntry.ambienteLabel ||
+                        "Sin ambiente"}
+                    </p>
+                  </div>
+                )}
+
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deletingEntry}>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="danger"
+                    disabled={deletingEntry}
+                    onClick={(event) => {
+                      event.preventDefault()
+                      void handleConfirmDeleteRow()
+                    }}
+                  >
+                    {deletingEntry ? "Eliminando..." : "Eliminar horario"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            {/* ═══ Submit Button ═══ */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {entries.length > 0 &&
+                  `${entries.length} horario${entries.length !== 1 ? "s" : ""} definido${entries.length !== 1 ? "s" : ""}`}
+                {allEntriesIncomplete && entries.length > 0 && " — complete los datos para asignar"}
+              </span>
+
+              <Button
+                size="lg"
+                disabled={
+                  submitting ||
+                  (mode === "create" && (!selectedGroup || !hasValidDateRange)) ||
+                  entries.length === 0 ||
+                  allEntriesIncomplete
+                }
+                onClick={handleSubmit}
+              >
+                {submitting
+                  ? "Guardando..."
+                  : mode === "edit"
+                    ? "Guardar cambios"
+                    : `Asignar ${entries.length} horario${entries.length !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
           </div>
-        </div>
-        {/* ═══ Ambiente Search Overlay ═══ */}
-        <AmbienteSearchPopover
-          entryId={ambientePopoverEntry ?? ""}
-          open={ambientePopoverEntry !== null}
-          onOpenChange={(open) => {
-            if (!open) setAmbientePopoverEntry(null)
-          }}
-          adapter={ambienteAdapter}
-        />
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+      {/* ═══ Ambiente Search Overlay ═══ */}
+      <AmbienteSearchPopover
+        entryId={ambientePopoverEntry ?? ""}
+        open={ambientePopoverEntry !== null}
+        onOpenChange={(open) => {
+          if (!open) setAmbientePopoverEntry(null)
+        }}
+        adapter={ambienteAdapter}
+      />
+    </>
   )
 }

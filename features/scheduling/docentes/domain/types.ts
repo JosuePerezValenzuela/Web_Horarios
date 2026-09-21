@@ -112,6 +112,8 @@ export interface DocenteHorarioApiSchedule {
   materia_codigo?: string | null
   primario?: boolean | null
   primario_id?: number | string | null
+  virtual?: boolean | null
+  es_virtual?: boolean | null
 }
 
 export interface DocenteHorarioApiGroup {
@@ -195,6 +197,7 @@ export interface NormalizedSchedule {
   primario_id?: number | null
   isSecondary?: boolean
   toneIndex?: number
+  virtual?: boolean
 }
 
 export interface GroupSummary {
@@ -271,7 +274,20 @@ export interface InfraAmbiente {
   id: number
   codigo: string
   nombre: string
-  capacidad: number
+  nombre_corto?: string | null
+  capacidad?: number
+  capacidad_total?: number
+  capacidad_examen?: number
+  piso?: number
+  tipo?: string
+  tipo_ambiente_id?: number
+  tipo_ambiente_nombre?: string
+  bloque_id?: number
+  bloque_nombre?: string
+  facultad_id?: number
+  facultad_nombre?: string
+  campus_id?: number
+  campus_nombre?: string
   edificio?: {
     id: number
     nombre: string
@@ -279,9 +295,6 @@ export interface InfraAmbiente {
   edificio_nombre?: string
   edificio_bloque?: string
   edificio_id?: number
-  tipo?: string
-  facultad_nombre?: string
-  facultad_id?: number
   tiene_solapamiento_propio?: boolean
 }
 
@@ -332,6 +345,7 @@ export interface HorarioEntry {
   ambienteId?: number
   ambienteLabel?: string
   ambienteCodigo?: string
+  virtual?: boolean
   error?: string | null
 }
 
@@ -343,7 +357,8 @@ export interface BulkAssignPayload {
     dia: number
     hora_inicio: string
     hora_fin: string
-    aula_id: number
+    aula_id?: number
+    virtual?: boolean
   }>
 }
 
@@ -369,6 +384,7 @@ export interface EditScheduleEntry {
   ambienteCodigo?: string
   fechaInicio?: string
   fechaFin?: string
+  virtual?: boolean
   error?: string | null
 }
 
@@ -377,22 +393,16 @@ export interface EditarHorarioItem {
   dia?: number
   hora_inicio?: string
   hora_fin?: string
-  aula_id?: number
+  aula_id?: number | null
   fecha_inicio?: string
   fecha_fin?: string
+  virtual?: boolean
 }
 
 export interface EditarHorariosBatchRequest {
-  persona_grupo_id?: number
-  fecha_inicio?: string
-  fecha_fin?: string
-  horarios: EditarHorarioItem[]
-}
-
-export interface EditarHorariosBatchRequest {
-  persona_grupo_id?: number
-  fecha_inicio?: string
-  fecha_fin?: string
+  persona_grupo_id: number
+  fecha_inicio: string
+  fecha_fin: string
   horarios: EditarHorarioItem[]
 }
 

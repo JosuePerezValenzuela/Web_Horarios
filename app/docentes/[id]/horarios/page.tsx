@@ -85,6 +85,23 @@ export default function DocenteHorariosRoutePage() {
   }, [clear, docenteId, fetchByDocenteId, setSidebarCollapsed])
 
   const handleAddClick = (group: GroupSummary) => {
+    const groupSchedules = schedules.filter((s) => s.groupKey === group.groupKey)
+    const totalMinutes = groupSchedules.reduce((sum, s) => sum + s.durationMin, 0)
+    const equivalentMin = group.minutos_carga_horaria_especifico || 90
+    const calculatedCarga = parseFloat((totalMinutes / equivalentMin).toFixed(2))
+
+    if (
+      group.carga_horaria !== undefined &&
+      group.carga_horaria !== null &&
+      calculatedCarga >= group.carga_horaria
+    ) {
+      toast.info(
+        "Esta asignación ya asignó toda su carga horaria semanal, puede editar las existentes o eliminar horarios para crear nuevas",
+        { id: `workload-complete-${group.groupKey}` }
+      )
+      return
+    }
+
     const groupInfo: GroupInfo = {
       persona_grupo_id: group.persona_grupo_id,
       groupKey: group.groupKey,
@@ -224,6 +241,7 @@ export default function DocenteHorariosRoutePage() {
                     <th className="px-3 py-2 text-left text-xs font-semibold">Inicio</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold">Fin</th>
                     <th className="px-3 py-2 text-left text-xs font-semibold">Ambiente</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold">Modalidad</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -238,6 +256,9 @@ export default function DocenteHorariosRoutePage() {
                       <td className="px-3 py-2 text-xs">{formatMinutesAsTime(schedule.endMin)}</td>
                       <td className="px-3 py-2 text-xs">
                         {schedule.ambienteLabel || "Sin ambiente"}
+                      </td>
+                      <td className="px-3 py-2 text-xs">
+                        {schedule.virtual ? "Virtual" : "Presencial"}
                       </td>
                     </tr>
                   ))}

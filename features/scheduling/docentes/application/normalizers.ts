@@ -342,6 +342,12 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
         ? Boolean(schedule.primario)
         : undefined,
     primario_id: toNumber(schedule.primario_id),
+    virtual:
+      typeof schedule.virtual === "boolean"
+        ? schedule.virtual
+        : schedule.es_virtual !== undefined && schedule.es_virtual !== null
+          ? Boolean(schedule.es_virtual)
+          : false,
   }
 }
 
