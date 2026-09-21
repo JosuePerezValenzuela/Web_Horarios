@@ -101,7 +101,7 @@ export function TeacherSchedulePage({
   }, [rawAdminSchedules])
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:gap-5">
+    <div className="flex h-full min-h-0 w-full max-w-full min-w-0 flex-col gap-4 overflow-hidden lg:gap-5">
       <header className="rounded-3xl border border-border bg-card p-3 md:p-4">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex min-w-0 flex-1 flex-row items-center gap-3">
@@ -190,7 +190,7 @@ export function TeacherSchedulePage({
         </section>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
+      <div className="grid min-h-0 flex-1 w-full max-w-full min-w-0 gap-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:items-stretch overflow-hidden">
         <aside className="flex min-h-0 flex-col rounded-3xl border border-border bg-card p-3 md:p-4 max-h-80 lg:max-h-full lg:h-full overflow-hidden">
           <div className="space-y-1.5">
             <Label htmlFor="periodo-horario" className="text-sm font-medium">

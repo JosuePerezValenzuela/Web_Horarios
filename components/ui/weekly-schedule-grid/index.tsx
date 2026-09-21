@@ -297,23 +297,21 @@ export function WeeklyScheduleGrid({
 
   const colCount = visibleDays.length
 
-  const gridMinWidth = useMemo(() => {
-    return `${Math.max(500, 60 + visibleDays.length * 92)}px`
-  }, [visibleDays.length])
-
   return (
     <div
       className={cn(
-        "h-full max-h-full w-full max-w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card",
+        "h-full max-h-full w-full max-w-full min-w-0 overflow-hidden rounded-3xl border border-border bg-card [--grid-col-min:0px] sm:[--grid-col-min:85px] md:[--grid-col-min:90px]",
         className
       )}
     >
       <div className="h-full max-h-full w-full overflow-auto">
-        <div style={{ minWidth: gridMinWidth }}>
+        <div className="w-full min-w-full flex flex-col">
           {/* Day header row */}
           <div
             className="sticky top-0 z-40 grid border-b-[2px] border-border bg-muted/90 backdrop-blur-[4px]"
-            style={{ gridTemplateColumns: `60px repeat(${colCount}, minmax(0, 1fr))` }}
+            style={{
+              gridTemplateColumns: `60px repeat(${colCount}, minmax(var(--grid-col-min, 0px), 1fr))`,
+            }}
           >
             <div className="sticky left-0 z-50 border-r-[2px] border-border bg-muted px-2 py-2 text-center text-[10px] font-bold uppercase tracking-wider text-muted-foreground md:px-3 md:py-3 flex items-center justify-center">
               Hora
@@ -380,7 +378,9 @@ export function WeeklyScheduleGrid({
             {/* Day columns */}
             <div
               className="grid"
-              style={{ gridTemplateColumns: `60px repeat(${colCount}, minmax(0, 1fr))` }}
+              style={{
+                gridTemplateColumns: `60px repeat(${colCount}, minmax(var(--grid-col-min, 0px), 1fr))`,
+              }}
             >
               {/* Dedicated sticky Hours column */}
               <div
