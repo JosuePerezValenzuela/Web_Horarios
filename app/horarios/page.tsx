@@ -234,13 +234,12 @@ export default function HorariosListPage() {
     fetchFacultades()
   }, [fetchFacultades])
 
-  // Carga inicial de infraestructura al montar o mostrar filtros
+  // Carga inicial de infraestructura al montar o mostrar filtros: Únicamente Campus
   useEffect(() => {
     if (showFilters) {
       fetchCampus()
-      fetchFacultadesInfra()
     }
-  }, [showFilters, fetchCampus, fetchFacultadesInfra])
+  }, [showFilters, fetchCampus])
 
   // Asegurar que la facultad actualmente seleccionada no sea filtrada por la búsqueda del dropdown
   const filteredFacultades = useMemo(() => {
@@ -278,17 +277,33 @@ export default function HorariosListPage() {
       .slice(0, 100)
   }, [campus, campusSearch, filters.infraCampusId])
 
-  // Asegurar que la facultad de infraestructura seleccionada no se filtre
+  // Asegurar que la facultad de infraestructura seleccionada no se filtre y que pertenezca al campus
   const filteredFacultadesInfra = useMemo(() => {
     const term = facultadInfraSearch.toLowerCase().trim()
-    const selectedId = filters.infraFacultadId
+    const selectedCampusId = filters.infraCampusId
+    const selectedFacId = filters.infraFacultadId
+
+    if (!selectedCampusId) return []
+
     return facultadesInfra
       .filter((f) => {
-        if (selectedId && f.id === selectedId) return true
-        return f.nombre.toLowerCase().includes(term)
+        const matchesCampus =
+          (f.campus_ids && f.campus_ids.includes(selectedCampusId)) ||
+          (f.campuses && f.campuses.some((c) => Number(c.id) === selectedCampusId)) ||
+          !f.campus_ids
+
+        if (!matchesCampus) return false
+
+        if (selectedFacId && Number(f.id) === selectedFacId) return true
+
+        return (
+          f.nombre.toLowerCase().includes(term) ||
+          (f.nombre_corto && f.nombre_corto.toLowerCase().includes(term)) ||
+          (f.codigo && f.codigo.toLowerCase().includes(term))
+        )
       })
       .slice(0, 100)
-  }, [facultadesInfra, facultadInfraSearch, filters.infraFacultadId])
+  }, [facultadesInfra, facultadInfraSearch, filters.infraCampusId, filters.infraFacultadId])
 
   // Asegurar que el bloque seleccionado no se filtre
   const filteredBloques = useMemo(() => {
@@ -427,17 +442,18 @@ export default function HorariosListPage() {
   const handleCampusChange = (value: string) => {
     const campusId = value === "none" ? undefined : Number(value)
     setFilter("infraCampusId", campusId)
+    setFilter("infraFacultadId", undefined)
     setFilter("infraBloqueId", undefined)
     setFilter("infraAulaId", undefined)
     clearBloques()
     clearAmbientes()
+    setFacultadInfraSearch("")
+    setBloqueSearch("")
+    setAmbienteSearch("")
 
-    const facId = filters.infraFacultadId
-
-    if (campusId || facId) {
-      fetchBloques(facId ? facId.toString() : undefined, campusId ? campusId.toString() : undefined)
-    }
-    if ((campusId && facId) || (!campusId && !facId)) {
+    if (campusId) {
+      fetchFacultadesInfra()
+    } else {
       triggerFetchIfValid()
     }
   }
@@ -449,15 +465,15 @@ export default function HorariosListPage() {
     setFilter("infraAulaId", undefined)
     clearBloques()
     clearAmbientes()
+    setBloqueSearch("")
+    setAmbienteSearch("")
 
     const campusId = filters.infraCampusId
 
-    if (facId || campusId) {
-      fetchBloques(facId ? facId.toString() : undefined, campusId ? campusId.toString() : undefined)
+    if (facId && campusId) {
+      fetchBloques(facId.toString(), campusId.toString())
     }
-    if ((campusId && facId) || (!campusId && !facId)) {
-      triggerFetchIfValid()
-    }
+    triggerFetchIfValid()
   }
 
   const handleBloqueChange = (value: string) => {
@@ -465,6 +481,7 @@ export default function HorariosListPage() {
     setFilter("infraBloqueId", bloqueId)
     setFilter("infraAulaId", undefined)
     clearAmbientes()
+    setAmbienteSearch("")
 
     if (bloqueId) {
       fetchAmbientes(bloqueId.toString())
@@ -871,7 +888,7 @@ export default function HorariosListPage() {
                             filters.infraFacultadId ? filters.infraFacultadId.toString() : "none"
                           }
                           onValueChange={handleFacultadInfraChange}
-                          disabled={loadingInfra || !!errorInfra}
+                          disabled={loadingInfra || !!errorInfra || !filters.infraCampusId}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
@@ -880,7 +897,9 @@ export default function HorariosListPage() {
                                   ? "Servicio no disponible"
                                   : loadingInfra
                                     ? "Cargando..."
-                                    : "Seleccione Facultad"
+                                    : !filters.infraCampusId
+                                      ? "Seleccione Campus primero"
+                                      : "Seleccione Facultad"
                               }
                             />
                           </SelectTrigger>
@@ -906,12 +925,7 @@ export default function HorariosListPage() {
                         <Select
                           value={filters.infraBloqueId ? filters.infraBloqueId.toString() : "none"}
                           onValueChange={handleBloqueChange}
-                          disabled={
-                            loadingInfra ||
-                            !!errorInfra ||
-                            !filters.infraCampusId ||
-                            !filters.infraFacultadId
-                          }
+                          disabled={loadingInfra || !!errorInfra || !filters.infraFacultadId}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
@@ -920,8 +934,8 @@ export default function HorariosListPage() {
                                   ? "Servicio no disponible"
                                   : loadingInfra
                                     ? "Cargando..."
-                                    : !filters.infraCampusId || !filters.infraFacultadId
-                                      ? "Seleccione Campus y Facultad"
+                                    : !filters.infraFacultadId
+                                      ? "Seleccione Facultad primero"
                                       : "Seleccione Bloque"
                               }
                             />

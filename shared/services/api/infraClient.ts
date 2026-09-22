@@ -99,6 +99,9 @@ export interface FacultadInfra {
   id: number | string
   nombre: string
   codigo?: string
+  nombre_corto?: string | null
+  campus_ids?: number[]
+  campuses?: Array<{ id: number | string; nombre: string }>
 }
 
 export interface Bloque {
