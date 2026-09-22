@@ -123,27 +123,9 @@ export function ScheduleCard({
 
   const isActive = isOpen || isHovered
 
-  const commonClassName = cn(
-    BASE_CARD_CLASSES,
-    mode === "peek" ? PEEK_CLASSES : mode === "compact" ? COMPACT_CLASSES : FULL_CLASSES,
-    isActive
-      ? "ring-2 ring-primary ring-offset-1 shadow-md -translate-y-[1px]"
-      : "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1",
-    (isClickable || mode === "full") && "cursor-pointer",
-    className
-  )
-
-  // Continuation indicator: a colored left border stripe
-  const continuationStripe = isContinuation ? (
-    <span
-      className="absolute inset-y-0 left-0 w-[3px] rounded-l-lg"
-      style={{ backgroundColor: accentColor }}
-      aria-hidden
-    />
-  ) : null
-
   // Combined Badge text construction (e.g. "G: 1 - Aula: 691B")
   const schedule = item.meta?.schedule as NormalizedSchedule | undefined
+  const isVirtual = Boolean(item.isVirtual ?? schedule?.virtual)
   const rawGroup = schedule?.grupo || item.badge?.replace("G: ", "") || ""
   const rawAula =
     schedule?.ambienteLabel?.replace("Ambiente: ", "").replace("Aula ", "") ||
@@ -151,22 +133,47 @@ export function ScheduleCard({
     ""
 
   const showAula =
-    rawAula && rawAula !== "Sin ambiente" && rawAula !== "Sin aula" && rawAula !== "No asignado"
-
-  const isVirtual = Boolean(schedule?.virtual)
+    rawAula &&
+    rawAula !== "Sin ambiente" &&
+    rawAula !== "Sin aula" &&
+    rawAula !== "No asignado" &&
+    rawAula !== "Virtual"
 
   const combinedBadgeParts: string[] = []
   if (rawGroup) combinedBadgeParts.push(`G: ${rawGroup}`)
   if (showAula) combinedBadgeParts.push(`Aula: ${rawAula}`)
-  if (isVirtual) combinedBadgeParts.push("Virtual")
   const combinedBadgeText = combinedBadgeParts.join(" - ")
+
+  const commonClassName = cn(
+    BASE_CARD_CLASSES,
+    mode === "peek" ? PEEK_CLASSES : mode === "compact" ? COMPACT_CLASSES : FULL_CLASSES,
+    isActive
+      ? "ring-2 ring-primary ring-offset-1 shadow-md -translate-y-[1px]"
+      : "focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1",
+    isVirtual &&
+      "!border-2 !border-dashed !border-indigo-500/80 dark:!border-indigo-400 shadow-md shadow-indigo-500/10 before:absolute before:inset-0 before:bg-[linear-gradient(135deg,rgba(99,102,241,0.08)_25%,transparent_25%,transparent_50%,rgba(99,102,241,0.08)_50%,rgba(99,102,241,0.08)_75%,transparent_75%,transparent_100%)] before:bg-[length:12px_12px] before:pointer-events-none before:rounded-lg",
+    (isClickable || mode === "full") && "cursor-pointer",
+    className
+  )
+
+  // Continuation indicator: a colored left border stripe
+  const continuationStripe = isContinuation ? (
+    <span
+      className="absolute inset-y-0 left-0 w-[3px] rounded-l-lg z-20"
+      style={{ backgroundColor: accentColor }}
+      aria-hidden
+    />
+  ) : null
 
   if (mode === "peek") {
     return (
       <article className={commonClassName} style={combinedStyle}>
         {continuationStripe}
-        <p className="truncate text-[10px] font-semibold leading-none text-foreground/95 w-full">
-          {item.title}
+        <p className="truncate text-[10px] font-semibold leading-none text-foreground/95 w-full flex items-center justify-center gap-1 z-10">
+          {isVirtual && (
+            <Laptop className="size-2.5 text-indigo-600 dark:text-indigo-400 shrink-0 stroke-[2.5]" />
+          )}
+          <span className="truncate">{item.title}</span>
         </p>
       </article>
     )
@@ -188,10 +195,28 @@ export function ScheduleCard({
     >
       {continuationStripe}
 
+      {/* Marca de agua de fondo para clases virtuales */}
+      {isVirtual && (
+        <Laptop
+          className="absolute -bottom-1 -right-1 size-11 text-indigo-600/15 dark:text-indigo-400/20 pointer-events-none -rotate-12 select-none z-0"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Tag llamativo superior para clases virtuales */}
+      {isVirtual && (
+        <div className="flex w-full justify-center mb-1 z-10">
+          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8.5px] font-black tracking-wider uppercase bg-indigo-600 dark:bg-indigo-500 text-white shadow-xs border border-indigo-400/30">
+            <Laptop className="size-2.5 stroke-[2.5]" />
+            Virtual
+          </span>
+        </div>
+      )}
+
       {/* 1. Title of the subject (Clamped to 3 lines) */}
       <p
         className={cn(
-          "font-bold leading-snug tracking-tight text-foreground/95 w-full break-words line-clamp-3",
+          "font-bold leading-snug tracking-tight text-foreground/95 w-full break-words line-clamp-3 z-10",
           mode === "compact" ? "text-[10px]" : "text-[11px]"
         )}
       >
@@ -202,7 +227,7 @@ export function ScheduleCard({
       {item.description && (
         <p
           className={cn(
-            "font-semibold text-foreground/80 w-full break-words line-clamp-2 mt-0.5",
+            "font-semibold text-foreground/80 w-full break-words line-clamp-2 mt-0.5 z-10",
             mode === "compact" ? "text-[8.5px]" : "text-[9.5px]"
           )}
         >
@@ -212,7 +237,7 @@ export function ScheduleCard({
 
       {/* 3. Combined Group/Room Badge */}
       {combinedBadgeText && (
-        <div className="mt-1 flex w-full justify-center">
+        <div className="mt-1 flex w-full justify-center z-10">
           <span
             className={cn(
               "inline-flex shrink-0 items-center justify-center rounded-md border font-bold leading-none shadow-[0_1px_2px_rgba(0,0,0,0.05)]",
@@ -300,13 +325,13 @@ export function ScheduleCard({
           )}
 
           {/* Modalidad */}
-          {schedule?.virtual && (
+          {isVirtual && (
             <div className="flex items-start gap-2">
               <span className="font-semibold text-muted-foreground shrink-0 w-16 mt-0.5">
                 Modalidad:
               </span>
-              <span className="flex items-center gap-1.5 font-medium text-primary">
-                <Laptop className="size-3.5 text-primary shrink-0" />
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md font-bold text-xs bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                <Laptop className="size-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
                 <span>Virtual</span>
               </span>
             </div>

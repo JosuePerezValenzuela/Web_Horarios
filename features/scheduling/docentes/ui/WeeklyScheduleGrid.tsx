@@ -26,6 +26,7 @@ function toScheduleItem(schedule: NormalizedSchedule): ScheduleItem {
     description: schedule.docente || undefined,
     colorIndex: schedule.colorIndex,
     toneIndex: schedule.toneIndex,
+    isVirtual: schedule.virtual,
     meta: { schedule },
   }
 }

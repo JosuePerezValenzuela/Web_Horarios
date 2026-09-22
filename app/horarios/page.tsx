@@ -369,6 +369,7 @@ export default function HorariosListPage() {
       badge: `G: ${schedule.grupo}`,
       description: schedule.docente,
       colorIndex: schedule.colorIndex,
+      isVirtual: schedule.virtual,
       meta: { schedule },
     }))
   }, [normalizedSchedules])

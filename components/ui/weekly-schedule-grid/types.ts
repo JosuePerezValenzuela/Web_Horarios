@@ -27,6 +27,7 @@ export interface ScheduleItem {
   // Theming
   colorIndex: number // integer, used by resolveColorToken
   toneIndex?: number // integer, used for primary (0) vs secondary (1, 2, ...) tones
+  isVirtual?: boolean // marks virtual modality schedule
   // Optional callbacks data
   meta?: Record<string, unknown> // any extra data for callbacks
 }

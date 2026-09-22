@@ -20,6 +20,7 @@ function normalizedToItem(schedule: NormalizedSchedule) {
     subtitle: schedule.ambienteLabel || undefined,
     badge: `G: ${schedule.grupo}`,
     colorIndex: schedule.colorIndex,
+    isVirtual: schedule.virtual,
     meta: { schedule },
   }
 }

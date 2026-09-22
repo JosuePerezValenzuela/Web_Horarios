@@ -101,6 +101,7 @@ export interface DocenteHorarioApiSchedule {
   fechaFin?: string | null
   fecha_inicio?: string | null
   fecha_fin?: string | null
+  vigencia?: string | null
   grupoRef?: DocenteHorarioApiGroupRef | null
   materiaRef?: DocenteHorarioApiSubjectRef | null
   persona?: {

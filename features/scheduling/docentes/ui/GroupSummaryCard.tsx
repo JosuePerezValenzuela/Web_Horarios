@@ -6,7 +6,7 @@ import {
   UmssCardHeader as CardHeader,
   UmssCardTitle as CardTitle,
 } from "@umss/estilos-base/components"
-import { Pencil, Plus, Trash2 } from "lucide-react"
+import { Pencil, Plus, Trash2, Laptop } from "lucide-react"
 
 import type { GroupSummary, NormalizedSchedule } from "../domain/types"
 import { resolveGroupColorToken } from "./groupColorTokens"
@@ -77,6 +77,12 @@ export function GroupSummaryCard({
           {group.isSecondary && (
             <span className="inline-flex items-center rounded-md bg-muted text-muted-foreground dark:bg-muted/60 dark:text-slate-300 border border-border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
               Secundario
+            </span>
+          )}
+          {groupSchedules.some((s) => s.virtual) && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+              <Laptop className="size-2.5" />
+              Virtual
             </span>
           )}
           {isWorkloadMismatched && (

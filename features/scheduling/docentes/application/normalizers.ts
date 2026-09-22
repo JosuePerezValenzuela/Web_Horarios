@@ -213,6 +213,9 @@ function formatDate(dateStr: string | null | undefined): string {
 }
 
 function normalizeFechasLabel(schedule: DocenteHorarioApiSchedule): string {
+  if (schedule.vigencia && schedule.vigencia.trim() && schedule.vigencia.trim() !== "No definido") {
+    return schedule.vigencia.trim()
+  }
   const inicio = formatDate(toStringValue(schedule.fechaInicio ?? schedule.fecha_inicio, ""))
   const fin = formatDate(toStringValue(schedule.fechaFin ?? schedule.fecha_fin, ""))
 
@@ -307,9 +310,17 @@ function normalizeSingleSchedule(schedule: DocenteHorarioApiSchedule): Normalize
       ? rawFechaFin.trim()
       : null
 
+  const isVirtual =
+    typeof schedule.virtual === "boolean"
+      ? schedule.virtual
+      : schedule.es_virtual !== undefined && schedule.es_virtual !== null
+        ? Boolean(schedule.es_virtual)
+        : false
+
   const rawAulaCodigo = schedule.aula_codigo ?? schedule.aulaCodigo
   const cleanAula = rawAulaCodigo != null ? String(rawAulaCodigo).trim() : ""
-  const ambienteLabel = cleanAula || normalizeAmbienteLabel(schedule.ambiente)
+  const ambienteLabel =
+    cleanAula || (isVirtual ? "Virtual" : normalizeAmbienteLabel(schedule.ambiente))
 
   const docente = schedule.persona?.nombres ?? schedule.docente ?? ""
 
