@@ -266,7 +266,7 @@ export default function PartesDiariosPage() {
   const [facultadesInfraList, setFacultadesInfraList] = useState<FacultadInfra[]>([])
   const [loadingBloques, setLoadingBloques] = useState<boolean>(false)
   const [loadingAmbientes, setLoadingAmbientes] = useState<boolean>(false)
-  const [virtualFilter, setVirtualFilter] = useState<string>("")
+  const [virtualFilter, setVirtualFilter] = useState<string>("false")
 
   // Estados de carga y datos
   const [loading, setLoading] = useState<boolean>(false)
