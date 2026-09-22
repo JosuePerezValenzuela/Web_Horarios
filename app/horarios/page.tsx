@@ -323,8 +323,9 @@ export default function HorariosListPage() {
     const selectedId = filters.infraAulaId
     return ambientes
       .filter((a) => {
-        if (selectedId && a.id === selectedId) return true
-        return a.nombre.toLowerCase().includes(term)
+        if (selectedId && Number(a.id) === selectedId) return true
+        const label = a.codigo || a.nombre
+        return label.toLowerCase().includes(term) || a.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
   }, [ambientes, ambienteSearch, filters.infraAulaId])
@@ -986,7 +987,7 @@ export default function HorariosListPage() {
                             <SelectItem value="none">Seleccione Ambiente</SelectItem>
                             {filteredAmbientes.map((a) => (
                               <SelectItem key={a.id} value={a.id.toString()}>
-                                {a.nombre}
+                                {a.codigo || a.nombre}
                               </SelectItem>
                             ))}
                           </SearchableSelectContent>
