@@ -4,7 +4,6 @@ import fs from "fs"
 import path from "path"
 import type {
   ReporteMensualResponse,
-  ReporteMensualPersona,
   AlertaRetrasoItem,
   AlertaFaltaItem,
   AlertaInasistenciaConsecutivaItem,
@@ -34,7 +33,6 @@ export async function POST(request: NextRequest) {
       fecha_hasta,
       alcance = "facultad",
       objetivo,
-      personas = [],
       alertas = { mas_3_retrasos: [], "3_faltas_mas": [], inasistencias_consecutivas: [] },
     } = reporte
     const facultadCodigo = objetivo || ""
@@ -56,35 +54,6 @@ export async function POST(request: NextRequest) {
       minute: "2-digit",
     })
 
-    // ==========================================
-    // 1. TABLA PRINCIPAL DE PERSONAL (4 SECCIONES)
-    // ==========================================
-    const personasRowsHtml = personas
-      .map((p: ReporteMensualPersona, idx: number) => {
-        return `
-        <tr class="hover:bg-gray-50/50">
-          <td style="text-align: center; font-family: monospace; color: #6b7280; width: 30px; vertical-align: middle;">${idx + 1}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 75px; vertical-align: middle;">${p.persona_codigo}</td>
-          <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px;">${p.persona_nombres}</td>
-          <!-- 1. Carga Horaria -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 75px; background-color: #f8fafc;">${p.carga_horaria ?? 0} hrs</td>
-          <!-- 2. Faltas -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #dc2626; font-weight: 500;">${p.faltas?.carga_faltas ?? 0}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #b45309;">${p.faltas?.retrasos_min ?? 0}m</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #047857;">${p.faltas?.anticipados_min ?? 0}m</td>
-          <!-- 3. Justificaciones -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${p.justificaciones?.carga_justificada ?? 0}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${p.justificaciones?.retrasos_min_justificados ?? 0}m</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${p.justificaciones?.anticipado_min_justificados ?? 0}m</td>
-          <!-- 4. Consolidado -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.carga_consolidada ?? 0}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.minutos_retraso_consolidado ?? 0}m</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${p.consolidado?.minutos_anticipado_consolidado ?? 0}m</td>
-        </tr>
-      `
-      })
-      .join("")
-
     // Helper to get evidence list from an alert item
     const getEvidencias = (
       item: AlertaRetrasoItem | AlertaFaltaItem | AlertaInasistenciaConsecutivaItem
@@ -101,18 +70,24 @@ export async function POST(request: NextRequest) {
     const listaFaltas = alertas?.["3_faltas_mas"] || []
     const listaInasistencias = alertas?.inasistencias_consecutivas || []
 
+    // Helper: reemplaza 0, null o undefined por "-" para no saturar el reporte de ceros
+    const formatMinutesOrDash = (min: number | null | undefined): string => {
+      if (min === null || min === undefined || min === 0) return "—"
+      return `${min} min`
+    }
+
     // ==========================================
-    // 2. ALERTAS: RETRASOS (1 fila por docente con sub-filas agrupadas)
+    // 1. ALERTAS: RETRASOS (Con divisor marcado entre docentes y reemplazo de 0 por -)
     // ==========================================
     const retrasosRowsHtml = listaRetrasos
       .map((item: AlertaRetrasoItem) => {
         const evs = getEvidencias(item)
         if (evs.length === 0) {
           return `
-          <tr>
-            <td style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle;">${item.persona_codigo}</td>
-            <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px;">${item.persona_nombres}</td>
-            <td colspan="6" style="text-align: center; color: #9ca3af; padding: 6px;">Sin detalle de incidencias registradas</td>
+          <tr class="teacher-divider">
+            <td class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 500; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+            <td class="teacher-rowspan font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">${item.persona_nombres}</td>
+            <td colspan="8" style="text-align: center; color: #9ca3af; padding: 6px;">Sin detalle de incidencias registradas</td>
           </tr>
         `
         }
@@ -120,33 +95,42 @@ export async function POST(request: NextRequest) {
         const first = evs[0]
         const remaining = evs.slice(1)
         const rowspan = evs.length
+        const isSingle = remaining.length === 0
 
         const firstRow = `
-        <tr>
-          <td rowspan="${rowspan}" style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle; background-color: #fafafa;">${item.persona_codigo}</td>
-          <td rowspan="${rowspan}" class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px; background-color: #fafafa;">${item.persona_nombres}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${first.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "Clase"} (${first.asignatura_codigo || ""}) - G: ${first.grupo_nombre || ""}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${first.hora_inicio} - ${first.hora_fin}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${first.hora_ingreso_tickeo || "S/R"}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 75px;">${first.minutos_retraso ?? 0} min</td>
-          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${first.aula_codigo || "S/R"}</td>
+        <tr class="${isSingle ? "teacher-divider" : ""}">
+          <td rowspan="${rowspan}" class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 600; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+          <td rowspan="${rowspan}" class="teacher-rowspan font-bold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">
+            <div>${item.persona_nombres}</div>
+            <div style="font-size: 7.5px; color: #b45309; font-weight: normal; margin-top: 2px;">${item.count ?? rowspan} retrasos</div>
+          </td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${first.fecha}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "—"} (${first.asignatura_codigo || "—"}) - G: ${first.grupo_nombre || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 85px;">${first.hora_inicio} - ${first.hora_fin}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${first.hora_ingreso_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${first.hora_salida_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 65px;">${formatMinutesOrDash(first.minutos_retraso)}</td>
+          <td style="text-align: center; font-family: monospace; color: #047857; vertical-align: middle; width: 65px;">${formatMinutesOrDash(first.minutos_anticipados)}</td>
+          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 75px;">${first.aula_codigo || "—"}</td>
         </tr>
       `
 
         const otherRows = remaining
-          .map(
-            (ev) => `
-        <tr>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${ev.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "Clase"} (${ev.asignatura_codigo || ""}) - G: ${ev.grupo_nombre || ""}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${ev.hora_ingreso_tickeo || "S/R"}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 75px;">${ev.minutos_retraso ?? 0} min</td>
-          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${ev.aula_codigo || "S/R"}</td>
+          .map((ev, rIdx) => {
+            const isLast = rIdx === remaining.length - 1
+            return `
+        <tr class="${isLast ? "teacher-divider" : ""}">
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${ev.fecha}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "—"} (${ev.asignatura_codigo || "—"}) - G: ${ev.grupo_nombre || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 85px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${ev.hora_ingreso_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${ev.hora_salida_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #b45309; vertical-align: middle; width: 65px;">${formatMinutesOrDash(ev.minutos_retraso)}</td>
+          <td style="text-align: center; font-family: monospace; color: #047857; vertical-align: middle; width: 65px;">${formatMinutesOrDash(ev.minutos_anticipados)}</td>
+          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 75px;">${ev.aula_codigo || "—"}</td>
         </tr>
       `
-          )
+          })
           .join("")
 
         return firstRow + otherRows
@@ -154,17 +138,17 @@ export async function POST(request: NextRequest) {
       .join("")
 
     // ==========================================
-    // 3. ALERTAS: FALTAS (1 fila por docente con sub-filas agrupadas)
+    // 2. ALERTAS: FALTAS (Con divisor marcado entre docentes)
     // ==========================================
     const faltasRowsHtml = listaFaltas
       .map((item: AlertaFaltaItem) => {
         const evs = getEvidencias(item)
         if (evs.length === 0) {
           return `
-          <tr>
-            <td style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle;">${item.persona_codigo}</td>
-            <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px;">${item.persona_nombres}</td>
-            <td colspan="5" style="text-align: center; color: #9ca3af; padding: 6px;">Sin detalle de faltas registradas</td>
+          <tr class="teacher-divider">
+            <td class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 500; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+            <td class="teacher-rowspan font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">${item.persona_nombres}</td>
+            <td colspan="7" style="text-align: center; color: #9ca3af; padding: 6px;">Sin detalle de faltas registradas</td>
           </tr>
         `
         }
@@ -172,31 +156,40 @@ export async function POST(request: NextRequest) {
         const first = evs[0]
         const remaining = evs.slice(1)
         const rowspan = evs.length
+        const isSingle = remaining.length === 0
 
         const firstRow = `
-        <tr>
-          <td rowspan="${rowspan}" style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle; background-color: #fafafa;">${item.persona_codigo}</td>
-          <td rowspan="${rowspan}" class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px; background-color: #fafafa;">${item.persona_nombres}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${first.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "Clase"} (${first.asignatura_codigo || ""}) - G: ${first.grupo_nombre || ""}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${first.hora_inicio} - ${first.hora_fin}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 85px;">FALTA</td>
-          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${first.aula_codigo || "S/R"}</td>
+        <tr class="${isSingle ? "teacher-divider" : ""}">
+          <td rowspan="${rowspan}" class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 600; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+          <td rowspan="${rowspan}" class="teacher-rowspan font-bold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">
+            <div>${item.persona_nombres}</div>
+            <div style="font-size: 7.5px; color: #dc2626; font-weight: normal; margin-top: 2px;">${item.count ?? rowspan} faltas</div>
+          </td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${first.fecha}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${first.asignatura_nombre || first.asignatura_codigo || "—"} (${first.asignatura_codigo || "—"}) - G: ${first.grupo_nombre || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 85px;">${first.hora_inicio} - ${first.hora_fin}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${first.hora_ingreso_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${first.hora_salida_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 65px;">FALTA</td>
+          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 75px;">${first.aula_codigo || "—"}</td>
         </tr>
       `
 
         const otherRows = remaining
-          .map(
-            (ev) => `
-        <tr>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 80px;">${ev.fecha}</td>
-          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "Clase"} (${ev.asignatura_codigo || ""}) - G: ${ev.grupo_nombre || ""}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 90px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
-          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 85px;">FALTA</td>
-          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 85px;">${ev.aula_codigo || "S/R"}</td>
+          .map((ev, rIdx) => {
+            const isLast = rIdx === remaining.length - 1
+            return `
+        <tr class="${isLast ? "teacher-divider" : ""}">
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 75px;">${ev.fecha}</td>
+          <td style="text-align: left; vertical-align: middle; font-size: 8.5px;">${ev.asignatura_nombre || ev.asignatura_codigo || "—"} (${ev.asignatura_codigo || "—"}) - G: ${ev.grupo_nombre || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 85px;">${ev.hora_inicio} - ${ev.hora_fin}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${ev.hora_ingreso_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 70px;">${ev.hora_salida_tickeo || "—"}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 65px;">FALTA</td>
+          <td style="text-align: center; font-size: 8.5px; vertical-align: middle; width: 75px;">${ev.aula_codigo || "—"}</td>
         </tr>
       `
-          )
+          })
           .join("")
 
         return firstRow + otherRows
@@ -204,7 +197,7 @@ export async function POST(request: NextRequest) {
       .join("")
 
     // ==========================================
-    // 4. ALERTAS: INASISTENCIAS CONSECUTIVAS (1 fila por docente con sub-filas agrupadas)
+    // 3. ALERTAS: INASISTENCIAS CONSECUTIVAS (Con divisor marcado entre docentes)
     // ==========================================
     const inasistenciasRowsHtml = listaInasistencias
       .map((item: AlertaInasistenciaConsecutivaItem) => {
@@ -232,9 +225,9 @@ export async function POST(request: NextRequest) {
 
         if (secuencias.length === 0) {
           return `
-          <tr>
-            <td style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle;">${item.persona_codigo}</td>
-            <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px;">${item.persona_nombres}</td>
+          <tr class="teacher-divider">
+            <td class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 500; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+            <td class="teacher-rowspan font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">${item.persona_nombres}</td>
             <td colspan="3" style="text-align: center; color: #9ca3af; padding: 6px;">Sin secuencias consecutivas detectadas</td>
           </tr>
         `
@@ -243,24 +236,25 @@ export async function POST(request: NextRequest) {
         const firstSec = secuencias[0]
         const remainingSec = secuencias.slice(1)
         const rowspan = secuencias.length
+        const isSingle = remainingSec.length === 0
 
         const formatEvsList = (evs: AlertaOcurrenciaDetalle[]) =>
           evs
             .map(
               (e) =>
-                `<div>• <b>${e.fecha}</b>: ${e.asignatura_nombre || e.asignatura_codigo || "Clase"} (${e.hora_inicio || ""}-${e.hora_fin || ""}) G: ${e.grupo_nombre || ""}</div>`
+                `<div>• <b>${e.fecha}</b> (${e.hora_inicio || "—"}-${e.hora_fin || "—"}): ${e.asignatura_nombre || e.asignatura_codigo || "Clase"} - G: ${e.grupo_nombre || "—"} | Aula: ${e.aula_codigo || "—"}</div>`
             )
             .join("")
 
         const firstRow = `
-        <tr>
-          <td rowspan="${rowspan}" style="text-align: center; font-family: monospace; font-weight: 500; width: 90px; vertical-align: middle; background-color: #fafafa;">${item.persona_codigo}</td>
-          <td rowspan="${rowspan}" class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 180px; background-color: #fafafa;">${item.persona_nombres}</td>
+        <tr class="${isSingle ? "teacher-divider" : ""}">
+          <td rowspan="${rowspan}" class="teacher-rowspan" style="text-align: center; font-family: monospace; font-weight: 600; width: 85px; vertical-align: middle;">${item.persona_codigo}</td>
+          <td rowspan="${rowspan}" class="teacher-rowspan font-bold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px; width: 170px;">${item.persona_nombres}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 150px; font-weight: 500;">
             Desde: ${firstSec.fecha_inicio}<br />Hasta: ${firstSec.fecha_fin}
           </td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 95px;">
-            ${firstSec.cantidad_ocurrencias ?? firstSec.evidencias?.length ?? 0} clases
+            ${firstSec.cantidad_ocurrencias ?? firstSec.evidencias?.length ?? "—"} clases
           </td>
           <td style="text-align: left; vertical-align: middle; font-size: 8px; padding: 5px;">
             ${formatEvsList(firstSec.evidencias || [])}
@@ -269,21 +263,22 @@ export async function POST(request: NextRequest) {
       `
 
         const otherRows = remainingSec
-          .map(
-            (sec) => `
-        <tr>
+          .map((sec, sIdx) => {
+            const isLast = sIdx === remainingSec.length - 1
+            return `
+        <tr class="${isLast ? "teacher-divider" : ""}">
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 150px; font-weight: 500;">
             Desde: ${sec.fecha_inicio}<br />Hasta: ${sec.fecha_fin}
           </td>
           <td style="text-align: center; font-family: monospace; font-weight: bold; color: #dc2626; vertical-align: middle; width: 95px;">
-            ${sec.cantidad_ocurrencias ?? sec.evidencias?.length ?? 0} clases
+            ${sec.cantidad_ocurrencias ?? sec.evidencias?.length ?? "—"} clases
           </td>
           <td style="text-align: left; vertical-align: middle; font-size: 8px; padding: 5px;">
             ${formatEvsList(sec.evidencias || [])}
           </td>
         </tr>
       `
-          )
+          })
           .join("")
 
         return firstRow + otherRows
@@ -321,7 +316,7 @@ export async function POST(request: NextRequest) {
               border-collapse: collapse !important;
               text-align: left;
               font-size: 9px;
-              border: none !important;
+              border: 1.5px solid #4b5563 !important;
             }
             .signatures-table th {
               background-color: #f3f4f6;
@@ -329,17 +324,21 @@ export async function POST(request: NextRequest) {
               font-weight: bold;
               text-transform: uppercase;
               font-size: 8px;
+              border: 1px solid #9ca3af !important;
+              border-bottom: 2px solid #4b5563 !important;
+              padding: 6px 4px !important;
             }
-            .signatures-table th, .signatures-table td {
+            .signatures-table td {
               border: 1px solid #d1d5db !important;
               padding: 5px 4px !important;
             }
-            .sec-header {
-              text-align: center;
-              font-weight: 800;
-              font-size: 8.5px;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
+            .teacher-divider td {
+              border-bottom: 2.5px solid #374151 !important;
+            }
+            .teacher-rowspan {
+              border-right: 2px solid #6b7280 !important;
+              border-bottom: 2.5px solid #374151 !important;
+              background-color: #f9fafb !important;
             }
           </style>
         </head>
@@ -363,7 +362,7 @@ export async function POST(request: NextRequest) {
                       </div>
                       <div class="text-right flex flex-col justify-end items-end">
                         <h2 class="font-roboto font-black text-[#001B47] text-sm leading-tight uppercase">
-                          REPORTE MENSUAL DE ASISTENCIA
+                          REPORTE MENSUAL DE ALERTAS E INCIDENCIAS
                         </h2>
                         <div class="font-mono text-gray-400 text-[8px] mt-1 text-right">
                           Generado por: ${userName}<br />
@@ -380,8 +379,8 @@ export async function POST(request: NextRequest) {
                         <span class="uppercase font-semibold">${alcance}</span>
                       </div>
                       <div>
-                        <span class="font-bold text-gray-950">Facultad / Objetivo: </span>
-                        ${facultadNombre || facultadCodigo} (${facultadCodigo})
+                        <span class="font-bold text-gray-950">Facultad: </span>
+                        <b>${facultadNombre || facultadCodigo}</b> (${facultadCodigo})
                       </div>
                     </div>
                     <div class="text-right self-center">
@@ -399,101 +398,65 @@ export async function POST(request: NextRequest) {
               <tr>
                 <td class="border-none p-0">
                   <div>
-                    <!-- SECCIÓN 1: DETALLE DE TODAS LAS PERSONAS (4 SECCIONES) -->
-                    <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 6px 0; text-transform: uppercase; color: #003770;">
-                      1. Resumen por Personal y Cargas Horarias
+                    <!-- SECCIÓN 1: ALERTA DE RETRASOS -->
+                    <h3 style="font-size: 11px; font-weight: bold; margin: 8px 0 6px 0; text-transform: uppercase; color: #b45309;">
+                      1. Reporte de Alertas — Retrasos Recurrentes (&gt; 3 retrasos)
                     </h3>
-                    <table class="signatures-table" style="margin-bottom: 20px;">
+                    <table class="signatures-table" style="margin-bottom: 22px;">
                       <thead>
                         <tr>
-                          <th rowspan="2" style="width: 30px; text-align: center;">N°</th>
-                          <th rowspan="2" style="width: 75px; text-align: center;">Código</th>
-                          <th rowspan="2">Docente / Funcionario</th>
-                          <th class="sec-header" style="background-color: #e2e8f0; color: #1e293b; width: 75px;">1. Carga Horaria</th>
-                          <th colspan="3" class="sec-header" style="background-color: #fee2e2; color: #991b1b;">2. Faltas</th>
-                          <th colspan="3" class="sec-header" style="background-color: #dbeafe; color: #1e40af;">3. Justificaciones</th>
-                          <th colspan="3" class="sec-header" style="background-color: #dcfce7; color: #166534;">4. Consolidado</th>
-                        </tr>
-                        <tr>
-                          <!-- 1. Carga Horaria -->
-                          <th style="width: 75px; text-align: center;">Carga Base</th>
-                          <!-- 2. Faltas -->
-                          <th style="width: 65px; text-align: center;">Carga Falt.</th>
-                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
-                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
-                          <!-- 3. Justificaciones -->
-                          <th style="width: 65px; text-align: center;">Carga Just.</th>
-                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
-                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
-                          <!-- 4. Consolidado -->
-                          <th style="width: 65px; text-align: center;">Carga Cons.</th>
-                          <th style="width: 65px; text-align: center;">Retraso (m)</th>
-                          <th style="width: 65px; text-align: center;">Anticip. (m)</th>
+                          <th style="width: 85px; text-align: center;">Código</th>
+                          <th style="width: 170px;">Docente</th>
+                          <th style="width: 75px; text-align: center;">Fecha</th>
+                          <th>Materia y Grupo</th>
+                          <th style="width: 85px; text-align: center;">Horario Clase</th>
+                          <th style="width: 70px; text-align: center;">Tickeo Ingreso</th>
+                          <th style="width: 70px; text-align: center;">Tickeo Salida</th>
+                          <th style="width: 65px; text-align: center;">Retraso</th>
+                          <th style="width: 65px; text-align: center;">Anticipado</th>
+                          <th style="width: 75px; text-align: center;">Aula</th>
                         </tr>
                       </thead>
                       <tbody>
-                        ${personasRowsHtml || '<tr><td colspan="13" style="text-align: center; color: #9ca3af; padding: 12px;">Sin registros de personal en este período</td></tr>'}
+                        ${retrasosRowsHtml || '<tr><td colspan="10" style="text-align: center; color: #9ca3af; padding: 12px;">Sin alertas de retrasos registradas</td></tr>'}
                       </tbody>
                     </table>
 
-                    <!-- SECCIÓN 2: ALERTA DE RETRASOS (INICIA EN HOJA NUEVA) -->
-                    <div class="page-break"></div>
-                    <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #b45309;">
-                      2. Reporte de Alertas — Retrasos Recurrentes (&gt; 3 retrasos)
-                    </h3>
-                    <table class="signatures-table" style="margin-bottom: 20px;">
-                      <thead>
-                        <tr>
-                          <th style="width: 90px; text-align: center;">Código</th>
-                          <th style="width: 180px;">Docente</th>
-                          <th style="width: 80px; text-align: center;">Fecha</th>
-                          <th>Asignatura y Grupo</th>
-                          <th style="width: 90px; text-align: center;">Horario Clase</th>
-                          <th style="width: 75px; text-align: center;">Tickeo Ingreso</th>
-                          <th style="width: 75px; text-align: center;">Retraso</th>
-                          <th style="width: 85px; text-align: center;">Aula</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        ${retrasosRowsHtml || '<tr><td colspan="8" style="text-align: center; color: #9ca3af; padding: 12px;">Sin alertas de retrasos registradas</td></tr>'}
-                      </tbody>
-                    </table>
-
-                    <!-- SECCIÓN 3: ALERTA DE FALTAS (INICIA EN HOJA NUEVA) -->
-                    <div class="page-break"></div>
+                    <!-- SECCIÓN 2: ALERTA DE FALTAS -->
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #dc2626;">
-                      3. Reporte de Alertas — Faltas Acumuladas (3 faltas o más)
+                      2. Reporte de Alertas — Faltas Acumuladas (3 faltas o más)
                     </h3>
-                    <table class="signatures-table" style="margin-bottom: 20px;">
+                    <table class="signatures-table" style="margin-bottom: 22px;">
                       <thead>
                         <tr>
-                          <th style="width: 90px; text-align: center;">Código</th>
-                          <th style="width: 180px;">Docente</th>
-                          <th style="width: 80px; text-align: center;">Fecha</th>
-                          <th>Asignatura y Grupo</th>
-                          <th style="width: 90px; text-align: center;">Horario Clase</th>
-                          <th style="width: 85px; text-align: center;">Estado</th>
-                          <th style="width: 85px; text-align: center;">Aula</th>
+                          <th style="width: 85px; text-align: center;">Código</th>
+                          <th style="width: 170px;">Docente</th>
+                          <th style="width: 75px; text-align: center;">Fecha</th>
+                          <th>Materia y Grupo</th>
+                          <th style="width: 85px; text-align: center;">Horario Clase</th>
+                          <th style="width: 70px; text-align: center;">Tickeo Ingreso</th>
+                          <th style="width: 70px; text-align: center;">Tickeo Salida</th>
+                          <th style="width: 65px; text-align: center;">Estado</th>
+                          <th style="width: 75px; text-align: center;">Aula</th>
                         </tr>
                       </thead>
                       <tbody>
-                        ${faltasRowsHtml || '<tr><td colspan="7" style="text-align: center; color: #9ca3af; padding: 12px;">Sin alertas de faltas registradas</td></tr>'}
+                        ${faltasRowsHtml || '<tr><td colspan="9" style="text-align: center; color: #9ca3af; padding: 12px;">Sin alertas de faltas registradas</td></tr>'}
                       </tbody>
                     </table>
 
-                    <!-- SECCIÓN 4: INASISTENCIAS CONSECUTIVAS (INICIA EN HOJA NUEVA) -->
-                    <div class="page-break"></div>
+                    <!-- SECCIÓN 3: INASISTENCIAS CONSECUTIVAS -->
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #7f1d1d;">
-                      4. Reporte de Alertas — Inasistencias Consecutivas (Secuencia de 6 o más días)
+                      3. Reporte de Alertas — Inasistencias Consecutivas (Secuencia de 6 o más días)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 10px;">
                       <thead>
                         <tr>
-                          <th style="width: 90px; text-align: center;">Código</th>
-                          <th style="width: 180px;">Docente</th>
+                          <th style="width: 85px; text-align: center;">Código</th>
+                          <th style="width: 170px;">Docente</th>
                           <th style="width: 150px; text-align: center;">Período Evaluado</th>
                           <th style="width: 95px; text-align: center;">Faltas Seguidas</th>
-                          <th>Evidencias de Inasistencia (Asignatura - Fecha - Horario)</th>
+                          <th>Evidencias de Inasistencia (Asignatura - Fecha - Horario - Aula)</th>
                         </tr>
                       </thead>
                       <tbody>
