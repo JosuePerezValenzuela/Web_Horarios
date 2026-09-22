@@ -26,10 +26,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
-import { MultiSelect } from "@/components/ui/multi-select"
-import { TimePicker } from "@/components/ui/time-picker"
 import type { DateRange } from "react-day-picker"
 import { Badge, DateRangePicker } from "@umss/estilos-base/components"
 import { WeeklyScheduleGrid as GlobalWeeklyScheduleGrid } from "@/components/ui/weekly-schedule-grid"
@@ -89,7 +93,6 @@ export default function HorariosListPage() {
     horarios,
     normalizedSchedules,
     filters,
-    pagination,
     loading,
     error: listError,
     setFilter,
@@ -178,7 +181,7 @@ export default function HorariosListPage() {
   // Asegurar que la asignatura actualmente seleccionada no sea filtrada por la búsqueda del dropdown
   const filteredAsignaturas = useMemo(() => {
     const term = asignaturaSearch.toLowerCase().trim()
-    const selectedCodigo = filters.asignatura_codigo?.[0]
+    const selectedCodigo = filters.asignatura_codigo
     return asignaturas
       .filter((a) => {
         if (selectedCodigo && a.codigo === selectedCodigo) return true
@@ -189,16 +192,22 @@ export default function HorariosListPage() {
 
   // Obtener grupos únicos de las asignaturas seleccionadas basándonos en los horarios cargados
   const availableGroups = useMemo(() => {
-    if (!filters.asignatura_codigo || filters.asignatura_codigo.length === 0) return []
+    if (!filters.asignatura_codigo) return []
 
-    // Filtrar los grupos asegurándonos que pertenecen a las asignaturas seleccionadas
+    // Filtrar los grupos asegurándonos que pertenecen a la asignatura seleccionada
     const groups = horarios
-      .filter((h) => h.asignatura && filters.asignatura_codigo?.includes(h.asignatura.codigo))
+      .filter((h) => h.asignatura && h.asignatura.codigo === filters.asignatura_codigo)
       .map((h) => h.grupo)
       .filter((g): g is string => !!g)
 
     return Array.from(new Set(groups)).sort()
   }, [horarios, filters.asignatura_codigo])
+
+  const groupOptions = useMemo(() => {
+    const set = new Set(availableGroups)
+    if (filters.grupo) set.add(filters.grupo)
+    return Array.from(set).sort()
+  }, [availableGroups, filters.grupo])
 
   // Conversión local para DatePickerRange
   const dateRangeValue = useMemo<DateRange | undefined>(() => {
@@ -260,50 +269,50 @@ export default function HorariosListPage() {
   // Asegurar que el campus seleccionado no se filtre
   const filteredCampus = useMemo(() => {
     const term = campusSearch.toLowerCase().trim()
-    const selectedId = filters.infra_campus_id
+    const selectedId = filters.infraCampusId
     return campus
       .filter((c) => {
-        if (selectedId && c.id.toString() === selectedId) return true
+        if (selectedId && c.id === selectedId) return true
         return c.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [campus, campusSearch, filters.infra_campus_id])
+  }, [campus, campusSearch, filters.infraCampusId])
 
   // Asegurar que la facultad de infraestructura seleccionada no se filtre
   const filteredFacultadesInfra = useMemo(() => {
     const term = facultadInfraSearch.toLowerCase().trim()
-    const selectedId = filters.infra_facultad_id
+    const selectedId = filters.infraFacultadId
     return facultadesInfra
       .filter((f) => {
-        if (selectedId && f.id.toString() === selectedId) return true
+        if (selectedId && f.id === selectedId) return true
         return f.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [facultadesInfra, facultadInfraSearch, filters.infra_facultad_id])
+  }, [facultadesInfra, facultadInfraSearch, filters.infraFacultadId])
 
   // Asegurar que el bloque seleccionado no se filtre
   const filteredBloques = useMemo(() => {
     const term = bloqueSearch.toLowerCase().trim()
-    const selectedId = filters.infra_bloque_id
+    const selectedId = filters.infraBloqueId
     return bloques
       .filter((b) => {
-        if (selectedId && b.id.toString() === selectedId) return true
+        if (selectedId && b.id === selectedId) return true
         return b.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [bloques, bloqueSearch, filters.infra_bloque_id])
+  }, [bloques, bloqueSearch, filters.infraBloqueId])
 
   // Asegurar que el ambiente seleccionado no se filtre
   const filteredAmbientes = useMemo(() => {
     const term = ambienteSearch.toLowerCase().trim()
-    const selectedId = filters.infra_ambiente_id
+    const selectedId = filters.infraAulaId
     return ambientes
       .filter((a) => {
-        if (selectedId && a.id.toString() === selectedId) return true
+        if (selectedId && a.id === selectedId) return true
         return a.nombre.toLowerCase().includes(term)
       })
       .slice(0, 100)
-  }, [ambientes, ambienteSearch, filters.infra_ambiente_id])
+  }, [ambientes, ambienteSearch, filters.infraAulaId])
 
   const [customPeriod, setCustomPeriod] = useState<number | "">("")
 
@@ -366,16 +375,16 @@ export default function HorariosListPage() {
     if (value === "none") {
       setFilter("facultad_codigo", undefined)
       setFilter("plan_estudio_codigo", undefined)
-      setFilter("asignatura_codigo", [])
-      setFilter("grupo", [])
+      setFilter("asignatura_codigo", undefined)
+      setFilter("grupo", undefined)
       clearCarreras()
       clearAsignaturas()
     } else {
       setFilter("facultad_codigo", value)
       // Resetear filtros dependientes aguas abajo al cambiar facultad
       setFilter("plan_estudio_codigo", undefined)
-      setFilter("asignatura_codigo", [])
-      setFilter("grupo", [])
+      setFilter("asignatura_codigo", undefined)
+      setFilter("grupo", undefined)
 
       const fac = facultades.find((f) => f.codigo === value)
       if (fac) {
@@ -390,8 +399,8 @@ export default function HorariosListPage() {
   const handleCarreraChange = (value: string) => {
     const nextCarreraCodigo = value === "none" ? undefined : value
     setFilter("plan_estudio_codigo", nextCarreraCodigo)
-    setFilter("asignatura_codigo", []) // reset asignatura
-    setFilter("grupo", []) // reset group
+    setFilter("asignatura_codigo", undefined) // reset asignatura
+    setFilter("grupo", undefined) // reset group
 
     const fac = facultades.find((f) => f.codigo === filters.facultad_codigo)
     const carr = carreras.find((c) => c.codigo === nextCarreraCodigo)
@@ -405,12 +414,10 @@ export default function HorariosListPage() {
   const handleClearAcademicFilters = () => {
     setFilter("facultad_codigo", undefined)
     setFilter("plan_estudio_codigo", undefined)
-    setFilter("asignatura_codigo", [])
-    setFilter("grupo", [])
+    setFilter("asignatura_codigo", undefined)
+    setFilter("grupo", undefined)
     setFilter("fecha_desde", undefined)
     setFilter("fecha_hasta", undefined)
-    setFilter("hora_desde", undefined)
-    setFilter("hora_hasta", undefined)
     clearCarreras()
     clearAsignaturas()
     triggerFetchIfValid()
@@ -418,65 +425,64 @@ export default function HorariosListPage() {
   }
 
   const handleCampusChange = (value: string) => {
-    const campusId = value === "none" ? undefined : value
-    setFilter("infra_campus_id", campusId)
-    setFilter("infra_bloque_id", undefined)
-    setFilter("infra_ambiente_id", undefined)
-    setFilter("aula_id", undefined)
+    const campusId = value === "none" ? undefined : Number(value)
+    setFilter("infraCampusId", campusId)
+    setFilter("infraBloqueId", undefined)
+    setFilter("infraAulaId", undefined)
     clearBloques()
     clearAmbientes()
 
-    const facId = filters.infra_facultad_id
+    const facId = filters.infraFacultadId
 
     if (campusId || facId) {
-      fetchBloques(facId, campusId)
+      fetchBloques(facId ? facId.toString() : undefined, campusId ? campusId.toString() : undefined)
     }
-    triggerFetchIfValid()
+    if ((campusId && facId) || (!campusId && !facId)) {
+      triggerFetchIfValid()
+    }
   }
 
   const handleFacultadInfraChange = (value: string) => {
-    const facId = value === "none" ? undefined : value
-    setFilter("infra_facultad_id", facId)
-    setFilter("infra_bloque_id", undefined)
-    setFilter("infra_ambiente_id", undefined)
-    setFilter("aula_id", undefined)
+    const facId = value === "none" ? undefined : Number(value)
+    setFilter("infraFacultadId", facId)
+    setFilter("infraBloqueId", undefined)
+    setFilter("infraAulaId", undefined)
     clearBloques()
     clearAmbientes()
 
-    const campusId = filters.infra_campus_id
+    const campusId = filters.infraCampusId
 
     if (facId || campusId) {
-      fetchBloques(facId, campusId)
+      fetchBloques(facId ? facId.toString() : undefined, campusId ? campusId.toString() : undefined)
     }
-    triggerFetchIfValid()
+    if ((campusId && facId) || (!campusId && !facId)) {
+      triggerFetchIfValid()
+    }
   }
 
   const handleBloqueChange = (value: string) => {
-    const bloqueId = value === "none" ? undefined : value
-    setFilter("infra_bloque_id", bloqueId)
-    setFilter("infra_ambiente_id", undefined)
-    setFilter("aula_id", undefined)
+    const bloqueId = value === "none" ? undefined : Number(value)
+    setFilter("infraBloqueId", bloqueId)
+    setFilter("infraAulaId", undefined)
     clearAmbientes()
 
     if (bloqueId) {
-      fetchAmbientes(bloqueId)
+      fetchAmbientes(bloqueId.toString())
     }
     triggerFetchIfValid()
   }
 
   const handleAmbienteChange = (value: string) => {
-    const ambienteId = value === "none" ? undefined : value
-    setFilter("infra_ambiente_id", ambienteId)
-    setFilter("aula_id", ambienteId)
+    const aulaId = value === "none" ? undefined : Number(value)
+    setFilter("infraAulaId", aulaId)
     triggerFetchIfValid()
   }
 
   const handleClearInfraFilters = () => {
-    setFilter("infra_campus_id", undefined)
-    setFilter("infra_facultad_id", undefined)
-    setFilter("infra_bloque_id", undefined)
-    setFilter("infra_ambiente_id", undefined)
-    setFilter("aula_id", undefined)
+    setFilter("infraCampusId", undefined)
+    setFilter("infraFacultadId", undefined)
+    setFilter("infraBloqueId", undefined)
+    setFilter("infraAulaId", undefined)
     clearBloques()
     clearAmbientes()
     setCampusSearch("")
@@ -521,7 +527,7 @@ export default function HorariosListPage() {
                     variant="outline"
                     className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border-border"
                   >
-                    {pagination.totalRecords} registros
+                    {horarios.length} registros
                   </Badge>
                 </div>
               </div>
@@ -586,7 +592,7 @@ export default function HorariosListPage() {
                 {/* Tarjeta 1: Filtros Académicos */}
                 <div
                   className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "7 1 0%" }}
+                  style={{ flex: "6 1 0%" }}
                 >
                   <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -723,9 +729,9 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
                         <Select
-                          value={filters.asignatura_codigo?.[0] || "none"}
+                          value={filters.asignatura_codigo || "none"}
                           onValueChange={(val) => {
-                            setFilter("asignatura_codigo", val === "none" ? [] : [val])
+                            setFilter("asignatura_codigo", val === "none" ? undefined : val)
                             triggerFetchIfValid()
                           }}
                           disabled={loadingAsignaturas || !isMandatoryFiltersSet}
@@ -757,29 +763,32 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
                           <Label className="text-xs font-semibold text-foreground">Grupo</Label>
-                          {(!filters.asignatura_codigo ||
-                            filters.asignatura_codigo.length === 0) && (
+                          {!filters.asignatura_codigo && (
                             <span className="text-[10px] text-muted-foreground font-normal">
                               Requiere asignatura
                             </span>
                           )}
                         </div>
-                        <MultiSelect
-                          options={availableGroups.map((g) => ({
-                            value: g,
-                            label: `Grupo ${g}`,
-                          }))}
-                          value={filters.grupo || []}
+                        <Select
+                          value={filters.grupo || "none"}
                           onValueChange={(val) => {
-                            setFilter("grupo", val as string[])
+                            setFilter("grupo", val === "none" ? undefined : val)
                             triggerFetchIfValid()
                           }}
-                          disabled={
-                            !filters.asignatura_codigo || filters.asignatura_codigo.length === 0
-                          }
-                          selectAll
-                          placeholder="Seleccione Grupos"
-                        />
+                          disabled={!filters.asignatura_codigo}
+                        >
+                          <SelectTrigger className="h-9 text-xs">
+                            <SelectValue placeholder="Seleccione Grupo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Todos los grupos</SelectItem>
+                            {groupOptions.map((g) => (
+                              <SelectItem key={g} value={g}>
+                                Grupo {g}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
                       {/* Filtro Rango de Fechas */}
@@ -793,33 +802,6 @@ export default function HorariosListPage() {
                           placeholder="Seleccionar rango"
                         />
                       </div>
-
-                      {/* Filtro Rango de Horas */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">
-                          Rango Horario
-                        </Label>
-                        <div className="grid grid-cols-2 gap-2">
-                          <TimePicker
-                            value={filters.hora_desde}
-                            onChange={(val) => {
-                              setFilter("hora_desde", val || undefined)
-                              triggerFetchIfValid()
-                            }}
-                            disabled={!isMandatoryFiltersSet}
-                            className="h-9 text-xs"
-                          />
-                          <TimePicker
-                            value={filters.hora_hasta}
-                            onChange={(val) => {
-                              setFilter("hora_hasta", val || undefined)
-                              triggerFetchIfValid()
-                            }}
-                            disabled={!isMandatoryFiltersSet}
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -827,7 +809,7 @@ export default function HorariosListPage() {
                 {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
                 <div
                   className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "3 1 0%" }}
+                  style={{ flex: "4 1 0%" }}
                 >
                   <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
@@ -850,7 +832,7 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Campus</Label>
                         <Select
-                          value={filters.infra_campus_id || "none"}
+                          value={filters.infraCampusId ? filters.infraCampusId.toString() : "none"}
                           onValueChange={handleCampusChange}
                           disabled={loadingInfra || !!errorInfra}
                         >
@@ -885,7 +867,9 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Facultad</Label>
                         <Select
-                          value={filters.infra_facultad_id || "none"}
+                          value={
+                            filters.infraFacultadId ? filters.infraFacultadId.toString() : "none"
+                          }
                           onValueChange={handleFacultadInfraChange}
                           disabled={loadingInfra || !!errorInfra}
                         >
@@ -920,13 +904,13 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Bloque</Label>
                         <Select
-                          value={filters.infra_bloque_id || "none"}
+                          value={filters.infraBloqueId ? filters.infraBloqueId.toString() : "none"}
                           onValueChange={handleBloqueChange}
                           disabled={
                             loadingInfra ||
                             !!errorInfra ||
-                            !filters.infra_campus_id ||
-                            !filters.infra_facultad_id
+                            !filters.infraCampusId ||
+                            !filters.infraFacultadId
                           }
                         >
                           <SelectTrigger className="h-9 text-xs">
@@ -936,7 +920,7 @@ export default function HorariosListPage() {
                                   ? "Servicio no disponible"
                                   : loadingInfra
                                     ? "Cargando..."
-                                    : !filters.infra_campus_id || !filters.infra_facultad_id
+                                    : !filters.infraCampusId || !filters.infraFacultadId
                                       ? "Seleccione Campus y Facultad"
                                       : "Seleccione Bloque"
                               }
@@ -962,9 +946,9 @@ export default function HorariosListPage() {
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">Ambiente</Label>
                         <Select
-                          value={filters.infra_ambiente_id || "none"}
+                          value={filters.infraAulaId ? filters.infraAulaId.toString() : "none"}
                           onValueChange={handleAmbienteChange}
-                          disabled={loadingInfra || !!errorInfra || !filters.infra_bloque_id}
+                          disabled={loadingInfra || !!errorInfra || !filters.infraBloqueId}
                         >
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue
@@ -973,7 +957,7 @@ export default function HorariosListPage() {
                                   ? "Servicio no disponible"
                                   : loadingInfra
                                     ? "Cargando..."
-                                    : !filters.infra_bloque_id
+                                    : !filters.infraBloqueId
                                       ? "Seleccione Bloque primero"
                                       : "Seleccione Ambiente"
                               }
