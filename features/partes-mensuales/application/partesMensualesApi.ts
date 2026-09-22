@@ -92,7 +92,7 @@ export interface ReporteMensualResponse {
   id: number
   fecha_desde: string
   fecha_hasta: string
-  alcance: "facultad" | string
+  alcance: "facultad" | "plan_estudio" | string
   objetivo: string
   membership?: ReporteMensualMembership
   personas: ReporteMensualPersona[]
@@ -102,7 +102,7 @@ export interface ReporteMensualResponse {
 export interface GenerarReporteMensualRequest {
   fecha_desde: string
   fecha_hasta: string
-  alcance: "facultad"
+  alcance: "facultad" | "plan_estudio"
   objetivo: string
 }
 

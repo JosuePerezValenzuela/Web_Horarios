@@ -16,10 +16,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json()
-    const { reporte, userName, facultadNombre } = body as {
+    const { reporte, userName, facultadNombre, objetivoNombre } = body as {
       reporte: ReporteMensualResponse
       userName: string
       facultadNombre?: string
+      objetivoNombre?: string
     }
 
     if (!reporte) {
@@ -37,7 +38,6 @@ export async function POST(request: NextRequest) {
       personas = [],
       alertas = { mas_3_retrasos: [], "3_faltas_mas": [], inasistencias_consecutivas: [] },
     } = reporte
-    const facultadCodigo = objetivo || ""
 
     let logoBase64 = ""
     try {
@@ -412,11 +412,11 @@ export async function POST(request: NextRequest) {
                     <div class="flex flex-col gap-1">
                       <div>
                         <span class="font-bold text-gray-950">Alcance: </span>
-                        <span class="uppercase font-semibold">${alcance}</span>
+                        <span class="uppercase font-semibold">${alcance === "plan_estudio" ? "PLAN DE ESTUDIO" : "FACULTAD"}</span>
                       </div>
                       <div>
-                        <span class="font-bold text-gray-950">Facultad: </span>
-                        <b>${facultadNombre || facultadCodigo}</b> (${facultadCodigo})
+                        <span class="font-bold text-gray-950">${alcance === "plan_estudio" ? "Plan de Estudio" : "Facultad"}: </span>
+                        <b>${objetivoNombre || facultadNombre || objetivo}</b> (${objetivo})
                       </div>
                     </div>
                     <div class="text-right self-center">
@@ -594,7 +594,7 @@ export async function POST(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="parte_mensual_${facultadCodigo}_${fecha_desde}_${fecha_hasta}.pdf"`,
+        "Content-Disposition": `inline; filename="parte_mensual_${alcance}_${objetivo}_${fecha_desde}_${fecha_hasta}.pdf"`,
       },
     })
   } catch (error) {

@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
+import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
 import { useAuthStore } from "@/features/auth/application/authStore"
 import {
   partesMensualesApi,
@@ -36,6 +37,7 @@ import {
 
 export default function PartesMensualesPage() {
   const { facultades, fetchFacultades } = useFacultadesStore()
+  const { carreras, fetchCarreras, loading: loadingCarreras } = useCarrerasStore()
   const { user } = useAuthStore()
 
   // Estado local del reporte
@@ -43,42 +45,91 @@ export default function PartesMensualesPage() {
   const [loading, setLoading] = useState(false)
 
   // Filtros de Búsqueda
-  const [alcance, setAlcance] = useState<string>("facultad")
+  const [alcance, setAlcance] = useState<"facultad" | "plan_estudio">("facultad")
   const [selectedFacultadId, setSelectedFacultadId] = useState<string>("")
+  const [filtroFacultadId, setFiltroFacultadId] = useState<string>("all")
+  const [selectedPlanId, setSelectedPlanId] = useState<string>("")
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
   const [facultadSearch, setFacultadSearch] = useState("")
+  const [planSearch, setPlanSearch] = useState("")
   const [generatingPdf, setGeneratingPdf] = useState(false)
 
   useEffect(() => {
     fetchFacultades()
   }, [fetchFacultades])
 
+  useEffect(() => {
+    if (alcance === "plan_estudio") {
+      if (filtroFacultadId && filtroFacultadId !== "all") {
+        fetchCarreras(filtroFacultadId)
+      } else {
+        fetchCarreras()
+      }
+    }
+  }, [alcance, filtroFacultadId, fetchCarreras])
+
   // Filtrar facultades por búsqueda
-  const filteredFacultades = facultades.filter(
-    (f) =>
-      f.nombre.toLowerCase().includes(facultadSearch.toLowerCase()) ||
-      f.codigo.toLowerCase().includes(facultadSearch.toLowerCase())
-  )
+  const filteredFacultades = useMemo(() => {
+    return facultades.filter(
+      (f) =>
+        f.nombre.toLowerCase().includes(facultadSearch.toLowerCase()) ||
+        f.codigo.toLowerCase().includes(facultadSearch.toLowerCase())
+    )
+  }, [facultades, facultadSearch])
+
+  // Filtrar planes de estudio por búsqueda
+  const filteredCarreras = useMemo(() => {
+    return carreras.filter((c) => {
+      const term = planSearch.toLowerCase()
+      return (
+        c.nombre.toLowerCase().includes(term) ||
+        c.codigo.toLowerCase().includes(term) ||
+        String(c.id).includes(term)
+      )
+    })
+  }, [carreras, planSearch])
 
   const handleBuscar = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (alcance !== "facultad") {
-      toast.error("Actualmente el alcance soportado es únicamente 'facultad'")
-      return
-    }
-
-    if (!selectedFacultadId) {
-      toast.error("Por favor seleccione una facultad")
-      return
-    }
     if (!dateRange || !dateRange.from || !dateRange.to) {
       toast.error("Por favor seleccione un rango de fechas")
       return
     }
 
-    const fac = facultades.find((f) => String(f.id) === selectedFacultadId)
-    if (!fac) return
+    if (dateRange.from > dateRange.to) {
+      toast.error("La fecha de inicio debe ser anterior o igual a la fecha de fin")
+      return
+    }
+
+    let objetivo = ""
+
+    if (alcance === "facultad") {
+      if (!selectedFacultadId) {
+        toast.error("Por favor seleccione una facultad")
+        return
+      }
+      const fac = facultades.find((f) => String(f.id) === selectedFacultadId)
+      if (!fac) {
+        toast.error("Facultad no encontrada")
+        return
+      }
+      objetivo = fac.codigo.trim().toUpperCase()
+    } else if (alcance === "plan_estudio") {
+      if (!selectedPlanId) {
+        toast.error("Por favor seleccione un plan de estudio")
+        return
+      }
+      const planIdNum = parseInt(selectedPlanId.trim(), 10)
+      if (isNaN(planIdNum) || planIdNum <= 0) {
+        toast.error("El plan de estudio seleccionado debe tener un identificador numérico válido")
+        return
+      }
+      objetivo = String(planIdNum)
+    } else {
+      toast.error("Alcance no reconocido")
+      return
+    }
 
     // Convert dates to YYYY-MM-DD local timezone strings
     const toLocalYmd = (d: Date) => {
@@ -92,8 +143,8 @@ export default function PartesMensualesPage() {
       const data = await partesMensualesApi.generar({
         fecha_desde: toLocalYmd(dateRange.from),
         fecha_hasta: toLocalYmd(dateRange.to),
-        alcance: "facultad",
-        objetivo: fac.codigo.trim().toUpperCase(),
+        alcance,
+        objetivo,
       })
       setReporte(data)
       toast.success("Parte mensual generado y consultado con éxito")
@@ -111,14 +162,28 @@ export default function PartesMensualesPage() {
     const toastId = toast.loading("Generando documento PDF oficial...")
 
     try {
-      const fac = facultades.find((f) => f.codigo === reporte.objetivo)
+      const isPlan = reporte.alcance === "plan_estudio"
+      const targetCarrera = isPlan
+        ? carreras.find((c) => String(c.id) === String(reporte.objetivo))
+        : null
+      const targetFac = !isPlan
+        ? facultades.find((f) => f.codigo.toUpperCase() === reporte.objetivo.toUpperCase())
+        : null
+
+      const objetivoNombre = isPlan
+        ? targetCarrera
+          ? `${targetCarrera.nombre} (${targetCarrera.codigo || targetCarrera.id})`
+          : `Plan ${reporte.objetivo}`
+        : targetFac?.nombre || reporte.objetivo
+
       const res = await fetch("/api/pdf/reporte-mensuales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           reporte,
           userName: user?.name || "Administrador",
-          facultadNombre: fac?.nombre || reporte.objetivo,
+          facultadNombre: objetivoNombre,
+          objetivoNombre,
         }),
       })
 
@@ -156,8 +221,23 @@ export default function PartesMensualesPage() {
     return []
   }
 
-  const facultadNombreSeleccionada =
-    facultades.find((f) => f.codigo === reporte?.objetivo)?.nombre || reporte?.objetivo || "—"
+  const isPlanReporte = reporte?.alcance === "plan_estudio"
+  const planObj = isPlanReporte
+    ? carreras.find((c) => String(c.id) === String(reporte?.objetivo))
+    : null
+  const facObj = !isPlanReporte
+    ? facultades.find((f) => f.codigo.toUpperCase() === reporte?.objetivo?.toUpperCase())
+    : null
+
+  const targetNombreDisplay = isPlanReporte
+    ? planObj
+      ? `${planObj.nombre} (${planObj.codigo || planObj.id})`
+      : `Plan ID: ${reporte?.objetivo}`
+    : facObj?.nombre || reporte?.objetivo || "—"
+
+  const isFormValid =
+    Boolean(dateRange?.from && dateRange?.to) &&
+    (alcance === "facultad" ? Boolean(selectedFacultadId) : Boolean(selectedPlanId))
 
   return (
     <ProtectedRoute>
@@ -170,13 +250,14 @@ export default function PartesMensualesPage() {
           {/* Cabecera Principal */}
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-3 shrink-0 gap-3">
             <div className="flex items-center gap-2.5">
-              <CalendarRange className="w-6 h-6 text-[#003770] dark:text-blue-400" />
+              <CalendarRange className="w-6 h-6 text-primary" />
               <div>
-                <h1 className="text-lg md:text-xl font-roboto font-black text-[#001B47] dark:text-white uppercase tracking-wide">
+                <h1 className="text-lg md:text-xl font-roboto font-black text-foreground uppercase tracking-wide">
                   Control de Partes Mensuales
                 </h1>
                 <p className="text-xs text-muted-foreground font-medium">
-                  Generación y consulta de alertas e incidencias de asistencia mensual por facultad.
+                  Generación y consulta de alertas e incidencias de asistencia mensual por facultad
+                  o plan de estudio.
                 </p>
               </div>
             </div>
@@ -186,15 +267,25 @@ export default function PartesMensualesPage() {
           <header className="rounded-2xl border border-border bg-card p-3.5 shadow-xs shrink-0 w-full min-w-0 max-w-full">
             <form onSubmit={handleBuscar}>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 w-full min-w-0 max-w-full">
-                {/* 1. Alcance (Dinámico: facultad) */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-2">
+                {/* 1. Alcance */}
+                <div
+                  className={`grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 ${
+                    alcance === "facultad" ? "lg:col-span-2" : "lg:col-span-3"
+                  }`}
+                >
                   <label
                     htmlFor="alcance-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground select-none block h-5 leading-5 truncate"
                   >
                     Alcance
                   </label>
-                  <Select value={alcance} onValueChange={setAlcance}>
+                  <Select
+                    value={alcance}
+                    onValueChange={(val: "facultad" | "plan_estudio") => {
+                      setAlcance(val)
+                      setReporte(null)
+                    }}
+                  >
                     <SelectTrigger
                       id="alcance-select"
                       className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
@@ -203,43 +294,133 @@ export default function PartesMensualesPage() {
                     </SelectTrigger>
                     <SearchableSelectContent>
                       <SelectItem value="facultad">Facultad</SelectItem>
+                      <SelectItem value="plan_estudio">Plan de Estudio</SelectItem>
                     </SearchableSelectContent>
                   </Select>
                 </div>
 
-                {/* 2. Facultad (Se lista si el alcance es facultad) */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-4">
-                  <label
-                    htmlFor="facultad-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
-                  >
-                    Facultad Objetivo
-                  </label>
-                  <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
-                    <SelectTrigger
-                      id="facultad-select"
-                      className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
+                {/* 2. Target Selector: Si es facultad -> Facultad Objetivo. Si es plan_estudio -> Facultad (Filtro) + Plan Objetivo */}
+                {alcance === "facultad" ? (
+                  <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-4">
+                    <label
+                      htmlFor="facultad-select"
+                      className="text-xs font-bold uppercase tracking-wider text-muted-foreground select-none block h-5 leading-5 truncate"
                     >
-                      <SelectValue placeholder="Seleccione una facultad" />
-                    </SelectTrigger>
-                    <SearchableSelectContent
-                      onFilterChange={setFacultadSearch}
-                      onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
-                    >
-                      {filteredFacultades.map((f) => (
-                        <SelectItem key={f.id} value={String(f.id)}>
-                          {f.nombre} ({f.codigo})
-                        </SelectItem>
-                      ))}
-                    </SearchableSelectContent>
-                  </Select>
-                </div>
+                      Facultad Objetivo
+                    </label>
+                    <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
+                      <SelectTrigger
+                        id="facultad-select"
+                        className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
+                      >
+                        <SelectValue placeholder="Seleccione una facultad" />
+                      </SelectTrigger>
+                      <SearchableSelectContent
+                        onFilterChange={setFacultadSearch}
+                        onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
+                      >
+                        {filteredFacultades.map((f) => (
+                          <SelectItem key={f.id} value={String(f.id)}>
+                            {f.nombre} ({f.codigo})
+                          </SelectItem>
+                        ))}
+                      </SearchableSelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <>
+                    {/* Filtro Opcional de Facultad para acotar carreras */}
+                    <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-4">
+                      <label
+                        htmlFor="filtro-facultad-plan"
+                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground select-none block h-5 leading-5 truncate"
+                      >
+                        Facultad (Filtro)
+                      </label>
+                      <Select
+                        value={filtroFacultadId}
+                        onValueChange={(val) => {
+                          setFiltroFacultadId(val)
+                          setSelectedPlanId("")
+                        }}
+                      >
+                        <SelectTrigger
+                          id="filtro-facultad-plan"
+                          className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
+                        >
+                          <SelectValue placeholder="Todas las facultades" />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setFacultadSearch}
+                          onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
+                        >
+                          <SelectItem value="all">Todas las facultades</SelectItem>
+                          {filteredFacultades.map((f) => (
+                            <SelectItem key={f.id} value={String(f.id)}>
+                              {f.nombre} ({f.codigo})
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Plan de Estudio Objetivo */}
+                    <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-2 lg:col-span-5">
+                      <label
+                        htmlFor="plan-select"
+                        className="text-xs font-bold uppercase tracking-wider text-muted-foreground select-none block h-5 leading-5 truncate"
+                      >
+                        Plan de Estudio Objetivo
+                      </label>
+                      <Select
+                        value={selectedPlanId}
+                        onValueChange={setSelectedPlanId}
+                        disabled={loadingCarreras}
+                      >
+                        <SelectTrigger
+                          id="plan-select"
+                          className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
+                        >
+                          <SelectValue
+                            placeholder={
+                              loadingCarreras
+                                ? "Cargando planes..."
+                                : "Seleccione un plan de estudio"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setPlanSearch}
+                          onKeyDownCapture={(e) => e.key === "Escape" && e.stopPropagation()}
+                        >
+                          {filteredCarreras.length === 0 ? (
+                            <div className="p-2 text-xs text-muted-foreground text-center">
+                              {loadingCarreras
+                                ? "Cargando..."
+                                : "No se encontraron planes de estudio"}
+                            </div>
+                          ) : (
+                            filteredCarreras.map((c) => (
+                              <SelectItem key={c.id} value={String(c.id)}>
+                                {c.nombre} ({c.codigo || c.id})
+                              </SelectItem>
+                            ))
+                          )}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+                  </>
+                )}
 
                 {/* 3. Rango de Fechas */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-3">
+                <div
+                  className={`grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 ${
+                    alcance === "facultad" ? "lg:col-span-3" : "lg:col-span-7"
+                  }`}
+                >
                   <label
                     htmlFor="filtro-rango-fechas"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
+                    className="text-xs font-bold uppercase tracking-wider text-muted-foreground select-none block h-5 leading-5 truncate"
                   >
                     Rango de Fechas
                   </label>
@@ -254,7 +435,11 @@ export default function PartesMensualesPage() {
                 </div>
 
                 {/* 4. Botón de Acción alineado automáticamente en altura y posición */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-3">
+                <div
+                  className={`grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 ${
+                    alcance === "facultad" ? "lg:col-span-3" : "lg:col-span-5"
+                  }`}
+                >
                   <label
                     className="text-xs font-bold uppercase tracking-wider select-none block h-5 leading-5 truncate invisible hidden sm:block"
                     aria-hidden="true"
@@ -264,8 +449,8 @@ export default function PartesMensualesPage() {
                   <Button
                     type="submit"
                     size="lg"
-                    disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                    className="w-full h-full min-h-11 max-w-full min-w-0 overflow-hidden rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs truncate"
+                    disabled={loading || !isFormValid}
+                    className="w-full h-full min-h-11 max-w-full min-w-0 overflow-hidden rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 cursor-pointer text-xs truncate"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin shrink-0" />
@@ -286,7 +471,7 @@ export default function PartesMensualesPage() {
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
                 <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-row items-center justify-between gap-2">
                   <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-[#003770] dark:text-blue-400" />
+                    <UserCheck className="w-4 h-4 text-primary" />
                     Resumen del Reporte Solicitado
                   </div>
                   <Button
@@ -309,20 +494,20 @@ export default function PartesMensualesPage() {
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
                       Alcance
                     </span>
-                    <span className="text-xs font-bold text-foreground capitalize">
-                      {reporte.alcance}
+                    <span className="text-xs font-bold text-foreground">
+                      {reporte.alcance === "plan_estudio" ? "Plan de Estudio" : "Facultad"}
                     </span>
                   </div>
 
                   <div className="p-2 bg-muted/20 border border-border rounded-xl">
                     <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
-                      Facultad
+                      {reporte.alcance === "plan_estudio" ? "Plan de Estudio" : "Facultad"}
                     </span>
                     <span
                       className="text-xs font-bold text-foreground line-clamp-1"
-                      title={facultadNombreSeleccionada}
+                      title={targetNombreDisplay}
                     >
-                      {facultadNombreSeleccionada}
+                      {targetNombreDisplay}
                     </span>
                   </div>
 
