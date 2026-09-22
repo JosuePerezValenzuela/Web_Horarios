@@ -185,19 +185,19 @@ export default function PartesMensualesPage() {
           {/* Formulario de Filtros y Generación */}
           <header className="rounded-2xl border border-border bg-card p-3.5 shadow-xs shrink-0 w-full min-w-0 max-w-full">
             <form onSubmit={handleBuscar}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 w-full min-w-0 max-w-full">
                 {/* 1. Alcance (Dinámico: facultad) */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-2">
                   <label
                     htmlFor="alcance-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
                   >
                     Alcance
                   </label>
                   <Select value={alcance} onValueChange={setAlcance}>
                     <SelectTrigger
                       id="alcance-select"
-                      className="w-full h-full min-h-11 text-xs rounded-xl bg-card border-border text-foreground"
+                      className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
                     >
                       <SelectValue placeholder="Seleccione Alcance" />
                     </SelectTrigger>
@@ -208,17 +208,17 @@ export default function PartesMensualesPage() {
                 </div>
 
                 {/* 2. Facultad (Se lista si el alcance es facultad) */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-4">
                   <label
                     htmlFor="facultad-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
                   >
                     Facultad Objetivo
                   </label>
                   <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
                     <SelectTrigger
                       id="facultad-select"
-                      className="w-full h-full min-h-11 text-xs rounded-xl bg-card border-border text-foreground"
+                      className="w-full h-full min-h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
                     >
                       <SelectValue placeholder="Seleccione una facultad" />
                     </SelectTrigger>
@@ -235,43 +235,44 @@ export default function PartesMensualesPage() {
                   </Select>
                 </div>
 
-                {/* 3. Rango de Fechas (Período) */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                {/* 3. Rango de Fechas */}
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-3">
                   <label
                     htmlFor="filtro-rango-fechas"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block h-5 leading-5 truncate"
                   >
-                    Rango de Fechas (Período)
+                    Rango de Fechas
                   </label>
                   <DateRangePicker
                     id="filtro-rango-fechas"
                     value={dateRange}
                     onValueChange={setDateRange}
+                    dateFormat="dd/MM/yyyy"
                     placeholder="Seleccione Rango de Fechas"
-                    className="w-full h-full text-xs [&>button]:w-full [&>button]:h-full [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:text-xs [&>button]:bg-card [&>button]:border-border [&>button]:text-foreground"
+                    className="w-full h-full max-w-full min-w-0 overflow-hidden text-xs [&>button]:w-full [&>button]:h-full [&>button]:max-w-full [&>button]:min-w-0 [&>button]:overflow-hidden [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:text-xs [&>button]:bg-card [&>button]:border-border [&>button]:text-foreground"
                   />
                 </div>
 
                 {/* 4. Botón de Acción alineado automáticamente en altura y posición */}
-                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0 max-w-full w-full overflow-hidden sm:col-span-1 lg:col-span-3">
                   <label
-                    className="text-xs font-bold uppercase tracking-wider select-none truncate invisible hidden sm:block"
+                    className="text-xs font-bold uppercase tracking-wider select-none block h-5 leading-5 truncate invisible hidden sm:block"
                     aria-hidden="true"
                   >
-                    Acción
+                    &nbsp;
                   </label>
                   <Button
                     type="submit"
                     size="lg"
                     disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                    className="w-full h-full min-h-11 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                    className="w-full h-full min-h-11 max-w-full min-w-0 overflow-hidden rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs truncate"
                   >
                     {loading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                     ) : (
-                      <FileCheck2 className="w-4 h-4" />
+                      <FileCheck2 className="w-4 h-4 shrink-0" />
                     )}
-                    Generar Parte Mensual
+                    <span className="truncate">Generar Parte Mensual</span>
                   </Button>
                 </div>
               </div>
