@@ -185,19 +185,19 @@ export default function PartesMensualesPage() {
           {/* Formulario de Filtros y Generación */}
           <header className="rounded-2xl border border-border bg-card p-3.5 shadow-xs shrink-0 w-full min-w-0 max-w-full">
             <form onSubmit={handleBuscar}>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full items-end">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full">
                 {/* 1. Alcance (Dinámico: facultad) */}
-                <div className="space-y-1.5 flex flex-col min-w-0">
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
                   <label
                     htmlFor="alcance-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
                   >
                     Alcance
                   </label>
                   <Select value={alcance} onValueChange={setAlcance}>
                     <SelectTrigger
                       id="alcance-select"
-                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground w-full"
+                      className="w-full h-full min-h-11 text-xs rounded-xl bg-card border-border text-foreground"
                     >
                       <SelectValue placeholder="Seleccione Alcance" />
                     </SelectTrigger>
@@ -208,17 +208,17 @@ export default function PartesMensualesPage() {
                 </div>
 
                 {/* 2. Facultad (Se lista si el alcance es facultad) */}
-                <div className="space-y-1.5 flex flex-col min-w-0">
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
                   <label
                     htmlFor="facultad-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
                   >
                     Facultad Objetivo
                   </label>
                   <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
                     <SelectTrigger
                       id="facultad-select"
-                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground w-full"
+                      className="w-full h-full min-h-11 text-xs rounded-xl bg-card border-border text-foreground"
                     >
                       <SelectValue placeholder="Seleccione una facultad" />
                     </SelectTrigger>
@@ -235,28 +235,36 @@ export default function PartesMensualesPage() {
                   </Select>
                 </div>
 
-                {/* 3. Rango de Fechas (Alineado exactamente en 40px con los selects y botón) */}
-                <div className="min-w-0 flex flex-col">
+                {/* 3. Rango de Fechas (Período) */}
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                  <label
+                    htmlFor="filtro-rango-fechas"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block truncate"
+                  >
+                    Rango de Fechas (Período)
+                  </label>
                   <DateRangePicker
                     id="filtro-rango-fechas"
-                    label="Rango de Fechas (Período)"
                     value={dateRange}
                     onValueChange={setDateRange}
                     placeholder="Seleccione Rango de Fechas"
-                    className="w-full text-xs [&_button]:!h-10 [&_button]:!min-h-10 [&_button]:!py-0 [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
+                    className="w-full h-full text-xs [&>button]:w-full [&>button]:h-full [&>button]:min-h-11 [&>button]:rounded-xl [&>button]:text-xs [&>button]:bg-card [&>button]:border-border [&>button]:text-foreground"
                   />
                 </div>
 
-                {/* 4. Botón de Acción integrado en el grid con exactos 40px (h-10) */}
-                <div className="space-y-1.5 flex flex-col min-w-0">
-                  <label className="text-xs font-bold uppercase tracking-wider text-transparent select-none hidden lg:block">
+                {/* 4. Botón de Acción alineado automáticamente en altura y posición */}
+                <div className="grid grid-rows-[auto_1fr] gap-1.5 min-w-0">
+                  <label
+                    className="text-xs font-bold uppercase tracking-wider select-none truncate invisible hidden sm:block"
+                    aria-hidden="true"
+                  >
                     Acción
                   </label>
                   <Button
                     type="submit"
                     size="lg"
                     disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                    className="w-full !h-10 !min-h-10 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                    className="w-full h-full min-h-11 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
