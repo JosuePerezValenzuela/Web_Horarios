@@ -184,11 +184,8 @@ export default function PartesMensualesPage() {
 
           {/* Formulario de Filtros y Generación */}
           <header className="rounded-2xl border border-border bg-card p-3.5 shadow-xs shrink-0 w-full min-w-0 max-w-full">
-            <form
-              onSubmit={handleBuscar}
-              className="flex flex-col gap-3.5 lg:flex-row lg:items-end justify-between"
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 flex-1 min-w-0">
+            <form onSubmit={handleBuscar}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full items-end">
                 {/* 1. Alcance (Dinámico: facultad) */}
                 <div className="space-y-1.5 flex flex-col min-w-0">
                   <label
@@ -200,7 +197,7 @@ export default function PartesMensualesPage() {
                   <Select value={alcance} onValueChange={setAlcance}>
                     <SelectTrigger
                       id="alcance-select"
-                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground"
+                      className="text-xs rounded-xl bg-card border-border text-foreground w-full"
                     >
                       <SelectValue placeholder="Seleccione Alcance" />
                     </SelectTrigger>
@@ -221,7 +218,7 @@ export default function PartesMensualesPage() {
                   <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
                     <SelectTrigger
                       id="facultad-select"
-                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground"
+                      className="text-xs rounded-xl bg-card border-border text-foreground w-full"
                     >
                       <SelectValue placeholder="Seleccione una facultad" />
                     </SelectTrigger>
@@ -238,33 +235,36 @@ export default function PartesMensualesPage() {
                   </Select>
                 </div>
 
-                {/* 3. Rango de Fechas alineado exactamente en altura h-10 con los selects */}
-                <div className="min-w-0">
+                {/* 3. Rango de Fechas (Alineado automáticamente en el grid) */}
+                <div className="min-w-0 flex flex-col">
                   <DateRangePicker
                     id="filtro-rango-fechas"
                     label="Rango de Fechas (Período)"
                     value={dateRange}
                     onValueChange={setDateRange}
                     placeholder="Seleccione Rango de Fechas"
-                    className="w-full text-xs [&_button]:h-10 [&_button]:min-h-10 [&_button]:py-0 [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
+                    className="w-full text-xs [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
                   />
                 </div>
-              </div>
 
-              {/* Botón de Acción alineado a la misma altura h-10 */}
-              <div className="flex items-center gap-2 flex-wrap shrink-0 justify-end">
-                <Button
-                  type="submit"
-                  disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                  className="h-10 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs px-4"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <FileCheck2 className="w-4 h-4" />
-                  )}
-                  Generar Parte Mensual
-                </Button>
+                {/* 4. Botón de Acción integrado como 4to elemento del grid alineado */}
+                <div className="space-y-1.5 flex flex-col min-w-0">
+                  <label className="text-xs font-bold uppercase tracking-wider text-transparent select-none hidden lg:block">
+                    Acción
+                  </label>
+                  <Button
+                    type="submit"
+                    disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
+                    className="w-full rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    {loading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <FileCheck2 className="w-4 h-4" />
+                    )}
+                    Generar Parte Mensual
+                  </Button>
+                </div>
               </div>
             </form>
           </header>
