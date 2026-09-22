@@ -388,15 +388,15 @@ export function SolapamientosPage() {
                               </div>
 
                               <div className="space-y-2 text-xs">
-                                <div className="border-l-2 border-primary/40 pl-2 space-y-0.5">
-                                  <p className="font-semibold text-foreground truncate">
+                                <div className="border-l-2 border-primary/40 pl-2 space-y-0.5 min-w-0">
+                                  <p className="font-semibold text-foreground break-words leading-snug">
                                     {conflict.horarioA.label}
                                   </p>
                                   {conflict.horarioA.carreras &&
                                     conflict.horarioA.carreras.length > 0 && (
                                       <div className="text-[9.5px] font-medium text-primary/80 dark:text-blue-400/80 mt-0.5 space-y-0.5">
                                         {conflict.horarioA.carreras.map((car, idx) => (
-                                          <p key={idx} className="truncate" title={car}>
+                                          <p key={idx} className="break-words" title={car}>
                                             {car}
                                           </p>
                                         ))}
@@ -410,15 +410,15 @@ export function SolapamientosPage() {
                                   </p>
                                 </div>
 
-                                <div className="border-l-2 border-destructive/40 pl-2 space-y-0.5">
-                                  <p className="font-semibold text-foreground truncate">
+                                <div className="border-l-2 border-destructive/40 pl-2 space-y-0.5 min-w-0">
+                                  <p className="font-semibold text-foreground break-words leading-snug">
                                     {conflict.horarioB.label}
                                   </p>
                                   {conflict.horarioB.carreras &&
                                     conflict.horarioB.carreras.length > 0 && (
                                       <div className="text-[9.5px] font-medium text-destructive/80 dark:text-red-400/80 mt-0.5 space-y-0.5">
                                         {conflict.horarioB.carreras.map((car, idx) => (
-                                          <p key={idx} className="truncate" title={car}>
+                                          <p key={idx} className="break-words" title={car}>
                                             {car}
                                           </p>
                                         ))}
