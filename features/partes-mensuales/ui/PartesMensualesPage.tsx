@@ -170,7 +170,7 @@ export default function PartesMensualesPage() {
           {/* Cabecera Principal */}
           <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-border pb-3 shrink-0 gap-3">
             <div className="flex items-center gap-2.5">
-              <CalendarRange className="w-6 h-6 text-primary" />
+              <CalendarRange className="w-6 h-6 text-[#003770] dark:text-blue-400" />
               <div>
                 <h1 className="text-lg md:text-xl font-roboto font-black text-[#001B47] dark:text-white uppercase tracking-wide">
                   Control de Partes Mensuales
@@ -193,12 +193,15 @@ export default function PartesMensualesPage() {
                 <div className="space-y-1.5 flex flex-col min-w-0">
                   <label
                     htmlFor="alcance-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block"
                   >
                     Alcance
                   </label>
                   <Select value={alcance} onValueChange={setAlcance}>
-                    <SelectTrigger id="alcance-select" className="h-9 text-xs rounded-xl">
+                    <SelectTrigger
+                      id="alcance-select"
+                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground"
+                    >
                       <SelectValue placeholder="Seleccione Alcance" />
                     </SelectTrigger>
                     <SearchableSelectContent>
@@ -211,12 +214,15 @@ export default function PartesMensualesPage() {
                 <div className="space-y-1.5 flex flex-col min-w-0">
                   <label
                     htmlFor="facultad-select"
-                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none"
+                    className="text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block"
                   >
                     Facultad Objetivo
                   </label>
                   <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
-                    <SelectTrigger id="facultad-select" className="h-9 text-xs rounded-xl">
+                    <SelectTrigger
+                      id="facultad-select"
+                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground"
+                    >
                       <SelectValue placeholder="Seleccione una facultad" />
                     </SelectTrigger>
                     <SearchableSelectContent
@@ -232,7 +238,7 @@ export default function PartesMensualesPage() {
                   </Select>
                 </div>
 
-                {/* 3. Rango de Fechas utilizando DateRangePicker oficial */}
+                {/* 3. Rango de Fechas alineado exactamente en altura h-10 con los selects */}
                 <div className="min-w-0">
                   <DateRangePicker
                     id="filtro-rango-fechas"
@@ -240,17 +246,17 @@ export default function PartesMensualesPage() {
                     value={dateRange}
                     onValueChange={setDateRange}
                     placeholder="Seleccione Rango de Fechas"
-                    className="w-full text-xs"
+                    className="w-full text-xs [&_button]:h-10 [&_button]:min-h-10 [&_button]:py-0 [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
                   />
                 </div>
               </div>
 
-              {/* Botones de Acción */}
+              {/* Botón de Acción alineado a la misma altura h-10 */}
               <div className="flex items-center gap-2 flex-wrap shrink-0 justify-end">
                 <Button
                   type="submit"
                   disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                  className="h-9 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs px-4"
+                  className="h-10 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs px-4"
                 >
                   {loading ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -269,8 +275,8 @@ export default function PartesMensualesPage() {
               {/* 1. Resumen Informativo de lo Solicitado y Estadísticas */}
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
                 <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-row items-center justify-between gap-2">
-                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-neutral-100 flex items-center gap-1.5">
-                    <UserCheck className="w-4 h-4 text-primary" />
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-[#003770] dark:text-blue-400" />
                     Resumen del Reporte Solicitado
                   </div>
                   <Button
@@ -289,108 +295,108 @@ export default function PartesMensualesPage() {
                   </Button>
                 </div>
                 <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-                  <div className="p-2 bg-muted/20 border border-border/50 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground dark:text-neutral-400 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
                       Alcance
                     </span>
-                    <span className="text-xs font-bold text-foreground dark:text-neutral-100 capitalize">
+                    <span className="text-xs font-bold text-foreground capitalize">
                       {reporte.alcance}
                     </span>
                   </div>
 
-                  <div className="p-2 bg-muted/20 border border-border/50 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground dark:text-neutral-400 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
                       Facultad
                     </span>
                     <span
-                      className="text-xs font-bold text-foreground dark:text-neutral-100 line-clamp-1"
+                      className="text-xs font-bold text-foreground line-clamp-1"
                       title={facultadNombreSeleccionada}
                     >
                       {facultadNombreSeleccionada}
                     </span>
                   </div>
 
-                  <div className="p-2 bg-muted/20 border border-border/50 rounded-xl">
-                    <span className="text-[10px] text-muted-foreground dark:text-neutral-400 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
                       Rango de Fechas
                     </span>
-                    <span className="text-xs font-mono font-semibold text-foreground dark:text-neutral-100">
+                    <span className="text-xs font-mono font-semibold text-foreground">
                       {reporte.fecha_desde} / {reporte.fecha_hasta}
                     </span>
                   </div>
 
-                  <div className="p-2 bg-amber-500/10 dark:bg-amber-950/20 border border-amber-500/30 rounded-xl">
-                    <span className="text-[10px] text-amber-800 dark:text-amber-300 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-amber-700 dark:text-amber-400 uppercase font-bold tracking-wider block">
                       Alertas Retrasos (&gt; 3)
                     </span>
-                    <span className="text-xs font-bold text-amber-900 dark:text-amber-200">
+                    <span className="text-xs font-bold text-amber-700 dark:text-amber-400">
                       {reporte.alertas?.mas_3_retrasos?.length ?? 0} docentes
                     </span>
                   </div>
 
-                  <div className="p-2 bg-red-500/10 dark:bg-red-950/20 border border-red-500/30 rounded-xl">
-                    <span className="text-[10px] text-red-800 dark:text-red-300 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-red-700 dark:text-red-400 uppercase font-bold tracking-wider block">
                       Alertas Faltas (≥ 3)
                     </span>
-                    <span className="text-xs font-bold text-red-900 dark:text-red-200">
+                    <span className="text-xs font-bold text-red-700 dark:text-red-400">
                       {reporte.alertas?.["3_faltas_mas"]?.length ?? 0} docentes
                     </span>
                   </div>
 
-                  <div className="p-2 bg-rose-500/10 dark:bg-rose-950/20 border border-rose-500/30 rounded-xl">
-                    <span className="text-[10px] text-rose-800 dark:text-rose-300 uppercase font-bold tracking-wider block">
+                  <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                    <span className="text-[10px] text-rose-700 dark:text-rose-400 uppercase font-bold tracking-wider block">
                       Inasist. Consecutivas
                     </span>
-                    <span className="text-xs font-bold text-rose-900 dark:text-rose-200">
+                    <span className="text-xs font-bold text-rose-700 dark:text-rose-400">
                       {reporte.alertas?.inasistencias_consecutivas?.length ?? 0} docentes
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* 2. Sección de Alertas - Retrasos Recurrentes (> 3) — SIN GAPS */}
+              {/* 2. Sección de Alertas - Retrasos Recurrentes (> 3) */}
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
-                <div className="bg-amber-500/10 dark:bg-amber-950/30 px-4 py-2.5 border-b border-amber-300/80 dark:border-amber-800/60 flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200 flex items-center gap-2">
+                <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
                     <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                     1. Alertas: Retrasos Recurrentes (&gt; 3 retrasos)
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-900 dark:text-amber-100">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                     {reporte.alertas?.mas_3_retrasos?.length ?? 0} docentes
                   </span>
                 </div>
                 <div className="overflow-x-auto w-full min-w-0 max-w-full">
-                  <Table className="min-w-[950px] w-full">
-                    <TableHeader className="bg-amber-50/40 dark:bg-amber-950/20 border-b-2 border-slate-400 dark:border-slate-500">
-                      <TableRow className="border-b-2 border-slate-400 dark:border-slate-500">
-                        <TableHead className="w-24 text-center border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                  <Table className="min-w-[950px] w-full border-collapse">
+                    <TableHeader className="bg-muted/30 border-b border-border">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="w-24 text-center border-r border-border font-bold text-xs text-foreground">
                           Código
                         </TableHead>
-                        <TableHead className="w-48 border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="w-48 border-r border-border font-bold text-xs text-foreground">
                           Docente
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Fecha
                         </TableHead>
-                        <TableHead className="min-w-[180px] font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="min-w-[180px] font-bold text-xs text-foreground border-r border-border">
                           Materia y Grupo
                         </TableHead>
-                        <TableHead className="w-28 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-28 text-center font-bold text-xs text-foreground border-r border-border">
                           Horario Clase
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Tickeo Ingreso
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Tickeo Salida
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-amber-700 dark:text-amber-400 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-amber-700 dark:text-amber-400 border-r border-border">
                           Retraso
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-emerald-700 dark:text-emerald-400 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-emerald-700 dark:text-emerald-400 border-r border-border">
                           Anticipado
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground">
                           Aula
                         </TableHead>
                       </TableRow>
@@ -413,12 +419,12 @@ export default function PartesMensualesPage() {
                             return (
                               <TableRow
                                 key={item.persona_codigo}
-                                className="border-b-2 border-slate-400 dark:border-slate-500"
+                                className="border-b-2 border-border"
                               >
-                                <TableCell className="text-center font-mono text-xs border-r-2 border-slate-300 dark:border-slate-600 font-semibold">
+                                <TableCell className="text-center font-mono text-xs border-r-2 border-border font-semibold">
                                   {item.persona_codigo}
                                 </TableCell>
-                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-slate-300 dark:border-slate-600">
+                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-border">
                                   {item.persona_nombres}
                                 </TableCell>
                                 <TableCell
@@ -440,98 +446,52 @@ export default function PartesMensualesPage() {
                             <>
                               <TableRow
                                 key={`${item.persona_codigo}-first`}
-                                className="hover:bg-amber-500/5 transition-colors"
+                                className={`${
+                                  isSingle ? "border-b-2 border-border" : "border-b border-border"
+                                } hover:bg-muted/10 transition-colors`}
                               >
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   {item.persona_codigo}
                                 </TableCell>
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   <div>{item.persona_nombres}</div>
                                   <div className="text-[10px] font-normal text-amber-700 dark:text-amber-400 mt-0.5">
                                     {item.count ?? rowspan} retrasos
                                   </div>
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.fecha}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-xs font-medium border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-xs font-medium border-r border-border">
                                   {first.asignatura_nombre || first.asignatura_codigo || "—"} (
                                   {first.asignatura_codigo || "—"}) - G: {first.grupo_nombre || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_inicio} - {first.hora_fin}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_ingreso_tickeo || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_salida_tickeo || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-border">
                                   {first.minutos_retraso && first.minutos_retraso > 0
                                     ? `${first.minutos_retraso} min`
                                     : "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono text-emerald-700 dark:text-emerald-400 border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono text-emerald-700 dark:text-emerald-400 border-r border-border">
                                   {first.minutos_anticipados && first.minutos_anticipados > 0
                                     ? `${first.minutos_anticipados} min`
                                     : "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono">
                                   {first.aula_codigo || "—"}
                                 </TableCell>
                               </TableRow>
@@ -540,83 +500,37 @@ export default function PartesMensualesPage() {
                                 return (
                                   <TableRow
                                     key={`${item.persona_codigo}-rem-${rIdx}`}
-                                    className="hover:bg-amber-500/5 transition-colors"
+                                    className={`${
+                                      isLast ? "border-b-2 border-border" : "border-b border-border"
+                                    } hover:bg-muted/10 transition-colors`}
                                   >
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.fecha}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-xs font-medium border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-xs font-medium border-r border-border">
                                       {ev.asignatura_nombre || ev.asignatura_codigo || "—"} (
                                       {ev.asignatura_codigo || "—"}) - G: {ev.grupo_nombre || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_inicio} - {ev.hora_fin}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_ingreso_tickeo || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_salida_tickeo || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono font-bold text-amber-700 dark:text-amber-400 border-r border-border">
                                       {ev.minutos_retraso && ev.minutos_retraso > 0
                                         ? `${ev.minutos_retraso} min`
                                         : "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono text-emerald-700 dark:text-emerald-400 border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono text-emerald-700 dark:text-emerald-400 border-r border-border">
                                       {ev.minutos_anticipados && ev.minutos_anticipados > 0
                                         ? `${ev.minutos_anticipados} min`
                                         : "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono">
                                       {ev.aula_codigo || "—"}
                                     </TableCell>
                                   </TableRow>
@@ -631,46 +545,46 @@ export default function PartesMensualesPage() {
                 </div>
               </div>
 
-              {/* 3. Sección de Alertas - Faltas Acumuladas (3 o más) — SIN GAPS */}
+              {/* 3. Sección de Alertas - Faltas Acumuladas (3 o más) */}
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
-                <div className="bg-red-500/10 dark:bg-red-950/30 px-4 py-2.5 border-b border-red-300/80 dark:border-red-800/60 flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-wider text-red-900 dark:text-red-200 flex items-center gap-2">
+                <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
                     2. Alertas: Faltas Acumuladas (3 faltas o más)
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-red-500/20 text-red-900 dark:text-red-100">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                     {reporte.alertas?.["3_faltas_mas"]?.length ?? 0} docentes
                   </span>
                 </div>
                 <div className="overflow-x-auto w-full min-w-0 max-w-full">
-                  <Table className="min-w-[950px] w-full">
-                    <TableHeader className="bg-red-50/40 dark:bg-red-950/20 border-b-2 border-slate-400 dark:border-slate-500">
-                      <TableRow className="border-b-2 border-slate-400 dark:border-slate-500">
-                        <TableHead className="w-24 text-center border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                  <Table className="min-w-[950px] w-full border-collapse">
+                    <TableHeader className="bg-muted/30 border-b border-border">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="w-24 text-center border-r border-border font-bold text-xs text-foreground">
                           Código
                         </TableHead>
-                        <TableHead className="w-48 border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="w-48 border-r border-border font-bold text-xs text-foreground">
                           Docente
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Fecha
                         </TableHead>
-                        <TableHead className="min-w-[180px] font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="min-w-[180px] font-bold text-xs text-foreground border-r border-border">
                           Materia y Grupo
                         </TableHead>
-                        <TableHead className="w-28 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-28 text-center font-bold text-xs text-foreground border-r border-border">
                           Horario Clase
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Tickeo Ingreso
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground border-r border-border">
                           Tickeo Salida
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-red-600 dark:text-red-400 border-r border-border/60">
+                        <TableHead className="w-24 text-center font-bold text-xs text-red-600 dark:text-red-400 border-r border-border">
                           Estado
                         </TableHead>
-                        <TableHead className="w-24 text-center font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="w-24 text-center font-bold text-xs text-foreground">
                           Aula
                         </TableHead>
                       </TableRow>
@@ -693,12 +607,12 @@ export default function PartesMensualesPage() {
                             return (
                               <TableRow
                                 key={item.persona_codigo}
-                                className="border-b-2 border-slate-400 dark:border-slate-500"
+                                className="border-b-2 border-border"
                               >
-                                <TableCell className="text-center font-mono text-xs border-r-2 border-slate-300 dark:border-slate-600 font-semibold">
+                                <TableCell className="text-center font-mono text-xs border-r-2 border-border font-semibold">
                                   {item.persona_codigo}
                                 </TableCell>
-                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-slate-300 dark:border-slate-600">
+                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-border">
                                   {item.persona_nombres}
                                 </TableCell>
                                 <TableCell
@@ -720,85 +634,45 @@ export default function PartesMensualesPage() {
                             <>
                               <TableRow
                                 key={`${item.persona_codigo}-first-fal`}
-                                className="hover:bg-red-500/5 transition-colors"
+                                className={`${
+                                  isSingle ? "border-b-2 border-border" : "border-b border-border"
+                                } hover:bg-muted/10 transition-colors`}
                               >
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   {item.persona_codigo}
                                 </TableCell>
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   <div>{item.persona_nombres}</div>
                                   <div className="text-[10px] font-normal text-red-700 dark:text-red-400 mt-0.5">
                                     {item.count ?? rowspan} faltas
                                   </div>
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.fecha}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-xs font-medium border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-xs font-medium border-r border-border">
                                   {first.asignatura_nombre || first.asignatura_codigo || "—"} (
                                   {first.asignatura_codigo || "—"}) - G: {first.grupo_nombre || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_inicio} - {first.hora_fin}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_ingreso_tickeo || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono border-r border-border">
                                   {first.hora_salida_tickeo || "—"}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-bold text-red-600 dark:text-red-400 uppercase border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-bold text-red-600 dark:text-red-400 uppercase border-r border-border">
                                   FALTA
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-mono ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-mono">
                                   {first.aula_codigo || "—"}
                                 </TableCell>
                               </TableRow>
@@ -807,70 +681,30 @@ export default function PartesMensualesPage() {
                                 return (
                                   <TableRow
                                     key={`${item.persona_codigo}-rem-fal-${rIdx}`}
-                                    className="hover:bg-red-500/5 transition-colors"
+                                    className={`${
+                                      isLast ? "border-b-2 border-border" : "border-b border-border"
+                                    } hover:bg-muted/10 transition-colors`}
                                   >
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.fecha}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-xs font-medium border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-xs font-medium border-r border-border">
                                       {ev.asignatura_nombre || ev.asignatura_codigo || "—"} (
                                       {ev.asignatura_codigo || "—"}) - G: {ev.grupo_nombre || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_inicio} - {ev.hora_fin}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_ingreso_tickeo || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono border-r border-border">
                                       {ev.hora_salida_tickeo || "—"}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-bold text-red-600 dark:text-red-400 uppercase border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-bold text-red-600 dark:text-red-400 uppercase border-r border-border">
                                       FALTA
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center text-xs font-mono ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-mono">
                                       {ev.aula_codigo || "—"}
                                     </TableCell>
                                   </TableRow>
@@ -885,34 +719,34 @@ export default function PartesMensualesPage() {
                 </div>
               </div>
 
-              {/* 4. Sección de Alertas - Inasistencias Consecutivas (6 o más días) — SIN GAPS */}
+              {/* 4. Sección de Alertas - Inasistencias Consecutivas (6 o más días) */}
               <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
-                <div className="bg-rose-500/10 dark:bg-rose-950/30 px-4 py-2.5 border-b border-rose-300/80 dark:border-rose-800/60 flex items-center justify-between">
-                  <div className="text-xs font-bold uppercase tracking-wider text-rose-900 dark:text-rose-200 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-rose-700 dark:text-rose-400" />
+                <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
                     3. Alertas: Inasistencias Consecutivas (Secuencia de 6 o más días)
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-500/20 text-rose-900 dark:text-rose-100">
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                     {reporte.alertas?.inasistencias_consecutivas?.length ?? 0} docentes
                   </span>
                 </div>
                 <div className="overflow-x-auto w-full min-w-0 max-w-full">
-                  <Table className="min-w-[950px] w-full">
-                    <TableHeader className="bg-rose-50/40 dark:bg-rose-950/20 border-b-2 border-slate-400 dark:border-slate-500">
-                      <TableRow className="border-b-2 border-slate-400 dark:border-slate-500">
-                        <TableHead className="w-24 text-center border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                  <Table className="min-w-[950px] w-full border-collapse">
+                    <TableHeader className="bg-muted/30 border-b border-border">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="w-24 text-center border-r border-border font-bold text-xs text-foreground">
                           Código
                         </TableHead>
-                        <TableHead className="w-48 border-r-2 border-slate-300 dark:border-slate-600 font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="w-48 border-r border-border font-bold text-xs text-foreground">
                           Docente
                         </TableHead>
-                        <TableHead className="w-44 text-center font-bold text-xs text-foreground dark:text-gray-200 border-r border-border/60">
+                        <TableHead className="w-44 text-center font-bold text-xs text-foreground border-r border-border">
                           Período Consecutivo
                         </TableHead>
-                        <TableHead className="w-28 text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border/60">
+                        <TableHead className="w-28 text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border">
                           Faltas Seguidas
                         </TableHead>
-                        <TableHead className="min-w-[300px] font-bold text-xs text-foreground dark:text-gray-200">
+                        <TableHead className="min-w-[300px] font-bold text-xs text-foreground">
                           Detalle de Clases Faltadas (Fecha - Horario - Materia - Aula)
                         </TableHead>
                       </TableRow>
@@ -960,12 +794,12 @@ export default function PartesMensualesPage() {
                             return (
                               <TableRow
                                 key={item.persona_codigo}
-                                className="border-b-2 border-slate-400 dark:border-slate-500"
+                                className="border-b-2 border-border"
                               >
-                                <TableCell className="text-center font-mono text-xs border-r-2 border-slate-300 dark:border-slate-600 font-semibold">
+                                <TableCell className="text-center font-mono text-xs border-r-2 border-border font-semibold">
                                   {item.persona_codigo}
                                 </TableCell>
-                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-slate-300 dark:border-slate-600">
+                                <TableCell className="font-semibold text-foreground text-xs border-r-2 border-border">
                                   {item.persona_nombres}
                                 </TableCell>
                                 <TableCell
@@ -987,48 +821,32 @@ export default function PartesMensualesPage() {
                             <>
                               <TableRow
                                 key={`${item.persona_codigo}-first-sec`}
-                                className="hover:bg-rose-500/5 transition-colors"
+                                className={`${
+                                  isSingle ? "border-b-2 border-border" : "border-b border-border"
+                                } hover:bg-muted/10 transition-colors`}
                               >
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="text-center font-mono text-xs font-semibold align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   {item.persona_codigo}
                                 </TableCell>
                                 <TableCell
                                   rowSpan={rowspan}
-                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-slate-300 dark:border-slate-600 border-b-2 border-slate-400 dark:border-slate-500"
+                                  className="font-bold text-foreground text-xs align-middle bg-card border-r-2 border-border border-b-2 border-border"
                                 >
                                   {item.persona_nombres}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center text-xs font-semibold text-foreground border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center text-xs font-semibold text-foreground border-r border-border">
                                   Desde: {firstSec.fecha_inicio} <br /> Hasta: {firstSec.fecha_fin}
                                 </TableCell>
-                                <TableCell
-                                  className={`text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border/60 ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border">
                                   {firstSec.cantidad_ocurrencias ??
                                     firstSec.evidencias?.length ??
                                     0}{" "}
                                   clases
                                 </TableCell>
-                                <TableCell
-                                  className={`py-2.5 text-xs ${
-                                    isSingle
-                                      ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                      : "border-b border-border/40"
-                                  }`}
-                                >
+                                <TableCell className="py-2.5 text-xs">
                                   <ul className="list-disc pl-4 text-muted-foreground space-y-1">
                                     {firstSec.evidencias?.map(
                                       (e: AlertaOcurrenciaDetalle, idx: number) => (
@@ -1053,34 +871,18 @@ export default function PartesMensualesPage() {
                                 return (
                                   <TableRow
                                     key={`${item.persona_codigo}-rem-sec-${sIdx}`}
-                                    className="hover:bg-rose-500/5 transition-colors"
+                                    className={`${
+                                      isLast ? "border-b-2 border-border" : "border-b border-border"
+                                    } hover:bg-muted/10 transition-colors`}
                                   >
-                                    <TableCell
-                                      className={`text-center text-xs font-semibold text-foreground border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center text-xs font-semibold text-foreground border-r border-border">
                                       Desde: {sec.fecha_inicio} <br /> Hasta: {sec.fecha_fin}
                                     </TableCell>
-                                    <TableCell
-                                      className={`text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border/60 ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="text-center font-bold text-xs text-rose-700 dark:text-rose-400 border-r border-border">
                                       {sec.cantidad_ocurrencias ?? sec.evidencias?.length ?? 0}{" "}
                                       clases
                                     </TableCell>
-                                    <TableCell
-                                      className={`py-2.5 text-xs ${
-                                        isLast
-                                          ? "border-b-2 border-slate-400 dark:border-slate-500"
-                                          : "border-b border-border/40"
-                                      }`}
-                                    >
+                                    <TableCell className="py-2.5 text-xs">
                                       <ul className="list-disc pl-4 text-muted-foreground space-y-1">
                                         {sec.evidencias?.map(
                                           (e: AlertaOcurrenciaDetalle, idx: number) => (
