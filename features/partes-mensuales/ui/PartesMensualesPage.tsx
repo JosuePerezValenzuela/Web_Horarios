@@ -197,7 +197,7 @@ export default function PartesMensualesPage() {
                   <Select value={alcance} onValueChange={setAlcance}>
                     <SelectTrigger
                       id="alcance-select"
-                      className="text-xs rounded-xl bg-card border-border text-foreground w-full"
+                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground w-full"
                     >
                       <SelectValue placeholder="Seleccione Alcance" />
                     </SelectTrigger>
@@ -218,7 +218,7 @@ export default function PartesMensualesPage() {
                   <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
                     <SelectTrigger
                       id="facultad-select"
-                      className="text-xs rounded-xl bg-card border-border text-foreground w-full"
+                      className="h-10 text-xs rounded-xl bg-card border-border text-foreground w-full"
                     >
                       <SelectValue placeholder="Seleccione una facultad" />
                     </SelectTrigger>
@@ -235,7 +235,7 @@ export default function PartesMensualesPage() {
                   </Select>
                 </div>
 
-                {/* 3. Rango de Fechas (Alineado automáticamente en el grid) */}
+                {/* 3. Rango de Fechas (Alineado exactamente en 40px con los selects y botón) */}
                 <div className="min-w-0 flex flex-col">
                   <DateRangePicker
                     id="filtro-rango-fechas"
@@ -243,19 +243,20 @@ export default function PartesMensualesPage() {
                     value={dateRange}
                     onValueChange={setDateRange}
                     placeholder="Seleccione Rango de Fechas"
-                    className="w-full text-xs [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
+                    className="w-full text-xs [&_button]:!h-10 [&_button]:!min-h-10 [&_button]:!py-0 [&_button]:text-xs [&_button]:rounded-xl [&_button]:bg-card [&_button]:border-border [&_button]:text-foreground"
                   />
                 </div>
 
-                {/* 4. Botón de Acción integrado como 4to elemento del grid alineado */}
+                {/* 4. Botón de Acción integrado en el grid con exactos 40px (h-10) */}
                 <div className="space-y-1.5 flex flex-col min-w-0">
                   <label className="text-xs font-bold uppercase tracking-wider text-transparent select-none hidden lg:block">
                     Acción
                   </label>
                   <Button
                     type="submit"
+                    size="lg"
                     disabled={loading || !selectedFacultadId || !dateRange?.from || !dateRange?.to}
-                    className="w-full rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
+                    className="w-full !h-10 !min-h-10 rounded-xl font-bold bg-[#002855] hover:bg-[#001b3a] dark:bg-[#003770] dark:hover:bg-[#002855] text-white flex items-center justify-center gap-1.5 cursor-pointer text-xs"
                   >
                     {loading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
