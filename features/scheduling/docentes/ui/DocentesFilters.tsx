@@ -91,7 +91,7 @@ export function DocentesFilters() {
       <div className="min-w-0 sm:col-span-2 lg:col-span-4">
         <label
           htmlFor="search-input"
-          className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-1 block"
+          className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 block"
         >
           Buscar Docente
         </label>

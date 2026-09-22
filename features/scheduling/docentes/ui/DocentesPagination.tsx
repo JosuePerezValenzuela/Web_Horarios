@@ -174,8 +174,8 @@ export function DocentesPagination() {
                   disabled={loadingDocentes}
                   className={`rounded-lg cursor-pointer transition-all size-8 ${
                     page === currentPage
-                      ? "bg-[#002855] text-white hover:bg-[#001b3a] font-bold border-transparent"
-                      : "border-border text-gray-700 dark:text-gray-300"
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 font-bold border-transparent"
+                      : "border-border text-foreground hover:bg-muted"
                   }`}
                 >
                   {page}

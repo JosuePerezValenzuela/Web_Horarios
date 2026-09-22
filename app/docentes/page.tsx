@@ -28,10 +28,10 @@ export default function DocentesPage() {
           {/* Page Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-border pb-3">
             <div className="flex flex-col gap-0.5">
-              <h2 className="umss-title-h1 text-2xl md:text-3xl uppercase tracking-wide">
+              <h1 className="font-roboto text-xl md:text-2xl font-bold tracking-tight text-foreground uppercase tracking-wide">
                 Docentes
-              </h2>
-              <p className="text-xs text-gray-550 dark:text-gray-450 font-medium">
+              </h1>
+              <p className="text-xs text-muted-foreground font-medium">
                 Busca docentes y accede a la gestión de su carga horaria.
               </p>
             </div>
@@ -39,7 +39,7 @@ export default function DocentesPage() {
 
           {/* Filters Section (Fondo de tarjeta unificado) */}
           <div className="bg-card border border-border rounded-2xl p-4 shadow-sm w-full min-w-0 max-w-full">
-            <h3 className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">
               Filtros de Búsqueda
             </h3>
             <DocentesFilters />
