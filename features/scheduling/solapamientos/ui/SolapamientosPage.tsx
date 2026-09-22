@@ -11,6 +11,7 @@ import { Button, Input, Badge, ScrollArea } from "@umss/estilos-base/components"
 import { Label } from "@/components/ui/label"
 import { Select, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SearchableSelectContent } from "@/components/ui/searchable-select-content"
+import { cn } from "@/lib/utils"
 import {
   ChevronLeft,
   ChevronRight,
@@ -121,8 +122,12 @@ export function SolapamientosPage() {
 
   return (
     <ProtectedRoute>
-      <AppLayout breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Detectar Solapamientos" }]}>
-        <div className="flex flex-col gap-4 lg:gap-5 w-full lg:h-[calc(100vh-8rem)] lg:max-h-[calc(100vh-8rem)] lg:overflow-hidden">
+      <AppLayout
+        breadcrumbs={[{ name: "Inicio", href: "/" }, { name: "Detectar Solapamientos" }]}
+        disablePageScroll
+        className="p-3 sm:p-4 md:p-6 lg:p-8"
+      >
+        <div className="flex flex-col gap-4 lg:gap-5 w-full flex-1 h-full min-h-0 overflow-hidden">
           {/* Header & Controls Panel */}
           <header className="rounded-3xl border border-border bg-card p-4 shadow-sm shrink-0">
             <div className="flex flex-col gap-4 md:flex-row md:items-end justify-between">
@@ -207,12 +212,27 @@ export function SolapamientosPage() {
                   />
                 </div>
               </div>
+
+              {/* Right Side: Refresh / Reload Action */}
+              <div className="shrink-0 flex items-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchSolapamientos()}
+                  disabled={loading}
+                  className="rounded-xl h-9 px-3.5 text-xs font-semibold"
+                  title="Actualizar solapamientos"
+                >
+                  <RefreshCw className={cn("size-3.5 mr-1.5", loading && "animate-spin")} />
+                  Actualizar
+                </Button>
+              </div>
             </div>
           </header>
 
           {/* Error and Forbidden Screen Handling */}
           {isForbiddenError ? (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-destructive/20 bg-destructive/5 p-8 text-center lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+            <div className="flex flex-col items-center justify-center rounded-3xl border border-destructive/20 bg-destructive/5 p-8 text-center flex-1 min-h-0 overflow-hidden">
               <ShieldAlert className="size-16 text-destructive mb-4" />
               <h3 className="text-lg font-bold text-foreground">Acceso Denegado</h3>
               <p className="mt-2 text-sm text-muted-foreground max-w-md">
@@ -222,19 +242,8 @@ export function SolapamientosPage() {
                 administrador.
               </p>
             </div>
-          ) : error ? (
-            <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-6 shrink-0">
-              <p className="font-medium text-destructive">
-                No se pudieron cargar los solapamientos de horarios.
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">{error}</p>
-              <Button variant="outline" className="mt-4 rounded-xl" onClick={fetchSolapamientos}>
-                <RefreshCw className="mr-2 size-4" />
-                Reintentar
-              </Button>
-            </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 lg:gap-5 items-start lg:items-stretch lg:flex-1 lg:min-h-0 lg:overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-4 lg:gap-5 items-start lg:items-stretch flex-1 min-h-0 overflow-hidden">
               {/* Left Column: Teacher Navigation & Conflict Details */}
               <aside className="flex flex-col rounded-3xl border border-border bg-card p-4 shadow-sm w-full lg:h-full lg:max-h-full lg:overflow-hidden shrink-0">
                 {/* Docente Navigation Control */}
@@ -438,9 +447,15 @@ export function SolapamientosPage() {
                           </p>
                         </div>
                       ) : (
-                        <p className="text-xs text-muted-foreground text-center py-4">
-                          Aplique filtros para buscar docentes
-                        </p>
+                        <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10 my-auto">
+                          <Info className="size-8 text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground font-semibold">
+                            Sin docentes seleccionados
+                          </p>
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            Aplique filtros para buscar docentes con solapamientos.
+                          </p>
+                        </div>
                       )}
                     </div>
                   </ScrollArea>
@@ -448,21 +463,22 @@ export function SolapamientosPage() {
               </aside>
 
               {/* Right Column: Weekly Schedule Grid */}
-              <main className="flex min-w-0 flex-1 flex-col w-full lg:h-full lg:max-h-full lg:overflow-hidden">
+              <main className="flex min-w-0 flex-1 flex-col w-full h-full max-h-full min-h-[420px] lg:min-h-0 overflow-hidden">
                 {loading ? (
-                  <div className="h-96 animate-pulse rounded-3xl border border-border bg-muted/30 lg:h-full lg:min-h-0" />
+                  <div className="h-96 animate-pulse rounded-3xl border border-border bg-muted/30 h-full w-full min-h-0" />
                 ) : hasDocentes ? (
-                  <ScrollArea className="flex-1 lg:min-h-0" data-slot="main-schedule-scroll">
+                  <div className="flex flex-1 min-h-0 w-full max-w-full min-w-0 overflow-hidden flex-col h-full">
                     <WeeklyScheduleGrid
                       schedules={schedules}
                       rows={rows}
                       timeRange={timeRange}
                       adminSchedules={adminSchedules}
                       isCompactMode={false}
+                      className="h-full"
                     />
-                  </ScrollArea>
+                  </div>
                 ) : (
-                  <section className="flex flex-col items-center justify-center rounded-3xl border border-border bg-muted/10 p-8 text-center shadow-xs lg:h-full lg:min-h-0">
+                  <section className="flex flex-1 flex-col items-center justify-center rounded-3xl border border-border bg-card p-8 text-center shadow-sm w-full h-full min-h-0">
                     <Calendar className="size-12 text-muted-foreground/30 mb-3" />
                     <h3 className="text-base font-bold text-foreground">
                       Búsqueda sin solapamientos
