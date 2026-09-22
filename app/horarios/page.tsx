@@ -532,13 +532,13 @@ export default function HorariosListPage() {
           sidebarCollapsed ? "ml-16" : "ml-64"
         )}
       >
-        <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden p-2 lg:gap-5 lg:p-4">
+        <div className="flex h-full min-h-0 flex-col gap-2.5 overflow-hidden p-2 lg:gap-3 lg:p-3">
           {/* Header Superior */}
-          <header className="rounded-3xl border border-border bg-card p-3 md:p-3 shadow-sm">
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2.5">
-                  <h1 className="font-roboto text-xl font-bold tracking-tight text-umss-dark-blue md:text-2xl">
+          <header className="rounded-2xl border border-border bg-card px-3.5 py-2 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h1 className="font-roboto text-lg md:text-xl font-bold tracking-tight text-foreground">
                     Horarios de Clases
                   </h1>
                   <Badge
@@ -550,7 +550,7 @@ export default function HorariosListPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 {/* Campo para modificar el valor del período */}
                 <div className="flex items-center gap-1.5">
                   <Label
@@ -568,7 +568,7 @@ export default function HorariosListPage() {
                       const val = e.target.value === "" ? "" : Number(e.target.value)
                       setCustomPeriod(val)
                     }}
-                    className="h-9 w-18 text-xs text-center font-medium bg-background no-spinner"
+                    className="h-8 w-16 text-xs text-center font-medium bg-background no-spinner"
                     aria-label="Periodo de segmentacion en minutos"
                   />
                 </div>
@@ -577,42 +577,25 @@ export default function HorariosListPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowFilters(!showFilters)}
-                  className="h-9 px-3 text-xs"
+                  className="h-8 px-2.5 text-xs"
                 >
-                  <Filter className="mr-1.5 size-4" />
+                  <Filter className="mr-1.5 size-3.5" />
                   {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
-                </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => {
-                    if (isMandatoryFiltersSet) {
-                      fetchHorarios()
-                    } else {
-                      toast.error("Complete los filtros obligatorios primero")
-                    }
-                  }}
-                  className="size-9 rounded-lg"
-                  disabled={loading || !isMandatoryFiltersSet}
-                  title="Refrescar Listado"
-                >
-                  <RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
                 </Button>
               </div>
             </div>
           </header>
 
           {/* Área de Filtros y Contenido Principal */}
-          <div className="flex min-h-0 flex-1 gap-4 overflow-hidden items-stretch relative">
+          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden items-stretch relative">
             {showFilters && (
-              <aside className="w-80 shrink-0 flex flex-col gap-4 h-full min-h-0">
+              <aside className="w-80 shrink-0 flex flex-col gap-2.5 h-full min-h-0">
                 {/* Tarjeta 1: Filtros Académicos */}
                 <div
-                  className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "6 1 0%" }}
+                  className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                  style={{ flex: "1 1 0%" }}
                 >
-                  <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
+                  <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <Filter className="size-3.5" />
                       Filtros Académicos
@@ -621,13 +604,13 @@ export default function HorariosListPage() {
                       variant="ghost"
                       size="xs"
                       onClick={handleClearAcademicFilters}
-                      className="text-[10px] h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground"
+                      className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
                     >
                       Limpiar
                     </Button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
+                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
                     {/* Sección: Filtros Obligatorios */}
                     <div className="space-y-3">
                       <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
@@ -826,10 +809,10 @@ export default function HorariosListPage() {
 
                 {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
                 <div
-                  className="flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "4 1 0%" }}
+                  className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                  style={{ flex: "1 1 0%" }}
                 >
-                  <div className="flex items-center justify-between border-b border-border p-4 pb-2.5">
+                  <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
                     <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                       <MapPin className="size-3.5" />
                       Espacios Físicos
@@ -838,13 +821,13 @@ export default function HorariosListPage() {
                       variant="ghost"
                       size="xs"
                       onClick={handleClearInfraFilters}
-                      className="text-[10px] h-6 px-2 hover:bg-muted text-muted-foreground hover:text-foreground"
+                      className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
                     >
                       Limpiar
                     </Button>
                   </div>
 
-                  <div className="flex-1 overflow-y-auto p-4 pt-1.5 space-y-4 min-h-0">
+                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
                     <div className="space-y-3 pb-2">
                       {/* Campus */}
                       <div className="space-y-1.5">
