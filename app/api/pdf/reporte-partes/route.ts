@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import puppeteer, { Browser } from "puppeteer"
 import fs from "fs"
 import path from "path"
+import { formatReportEmissionDate } from "@/shared/config/constants"
 
 interface ReporteDetalle {
   hora_inicio: string
@@ -176,11 +177,7 @@ export async function POST(request: NextRequest) {
       console.error("No se pudo leer el logo para el PDF:", err)
     }
 
-    const todayStr = new Date().toLocaleDateString("es-BO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    })
+    const todayStr = formatReportEmissionDate()
 
     const groupedRows = groupSchedules(data.detalles)
 
@@ -319,7 +316,7 @@ export async function POST(request: NextRequest) {
                           PARTE DIARIO DE ASISTENCIA
                         </h2>
                         <div class="font-mono text-gray-400 text-[8px] mt-1 text-right">
-                          Generado por: ${userName}<br />
+                          Generado por: ${displayUserName}<br />
                           Emisión: ${todayStr}
                         </div>
                       </div>

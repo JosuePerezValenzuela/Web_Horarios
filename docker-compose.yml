@@ -9,6 +9,8 @@ services:
     working_dir: ${PWD:?PWD must point to the main repository root}
     environment:
       NODE_ENV: development
+      TZ: America/La_Paz
+      NEXT_PUBLIC_TIMEZONE: America/La_Paz
     volumes:
       # Mount the current checkout at its original WSL absolute path.
       - type: bind

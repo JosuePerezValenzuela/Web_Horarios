@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import puppeteer, { Browser } from "puppeteer"
 import fs from "fs"
 import path from "path"
+import { formatReportEmissionDate } from "@/shared/config/constants"
 import type {
   ReporteMensualResponse,
   ReporteMensualPersona,
@@ -48,13 +49,7 @@ export async function POST(request: NextRequest) {
       console.error("No se pudo leer el logo para el PDF:", err)
     }
 
-    const todayStr = new Date().toLocaleDateString("es-BO", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
+    const todayStr = formatReportEmissionDate()
 
     // Helper to get evidence list from an alert item
     const getEvidencias = (

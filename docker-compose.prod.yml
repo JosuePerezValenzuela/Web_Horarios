@@ -11,6 +11,8 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=8000
+      - TZ=America/La_Paz
+      - NEXT_PUBLIC_TIMEZONE=America/La_Paz
     ports:
       - "8000:8000"
     restart: always

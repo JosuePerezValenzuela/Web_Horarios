@@ -14,6 +14,8 @@ RUN mkdir -p "$COREPACK_HOME" \
 ENV COREPACK_ENABLE_NETWORK=0
 ENV PUPPETEER_SKIP_DOWNLOAD=true
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV TZ="America/La_Paz"
+ENV NEXT_PUBLIC_TIMEZONE="America/La_Paz"
 
 # Normalize the working directory.
 WORKDIR /app
@@ -23,7 +25,7 @@ FROM base AS development
 
 # Install Git for attached VS Code Source Control, plus Chromium and its
 # runtime fonts/libraries.
-RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont
+RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont tzdata
 
 # Run as the non-root node user.
 USER node
@@ -73,6 +75,7 @@ RUN apk add --no-cache \
     harfbuzz \
     ca-certificates \
     ttf-freefont \
+    tzdata \
     tini
 
 # Configure production runtime variables.
