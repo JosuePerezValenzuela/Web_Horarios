@@ -127,14 +127,16 @@ export interface TipoAmbienteInfra {
 
 export const infraService = {
   getCampus: async () => {
-    return infraApiClient.get<{ success: boolean; data: Campus[] }>(
-      "/campus?page=1&limit=1000&orderBy=nombre&orderDir=asc&activo=true"
-    )
+    return infraApiClient.get<{
+      success?: boolean
+      data?: Campus[]
+      items?: Campus[]
+    }>("/campus?page=1&limit=1000&orderBy=nombre&orderDir=asc&activo=true")
   },
 
   getFacultades: async () => {
     return infraApiClient.get<{
-      success: boolean
+      success?: boolean
       data?: FacultadInfra[]
       items?: FacultadInfra[]
     }>("/facultades?page=1&limit=200&orderBy=nombre&orderDir=asc&activo=true")
@@ -142,7 +144,7 @@ export const infraService = {
 
   getTiposAmbiente: async () => {
     return infraApiClient.get<{
-      success: boolean
+      success?: boolean
       data?: TipoAmbienteInfra[]
       items?: TipoAmbienteInfra[]
     }>("/tipo_ambientes?page=1&limit=1000&activo=true&orderDir=asc&orderBy=nombre")
@@ -158,7 +160,11 @@ export const infraService = {
     })
     if (facultadId) params.append("facultadId", facultadId)
     if (campusId) params.append("campusId", campusId)
-    return infraApiClient.get<{ success: boolean; data: Bloque[] }>(`/bloques?${params.toString()}`)
+    return infraApiClient.get<{
+      success?: boolean
+      data?: Bloque[]
+      items?: Bloque[]
+    }>(`/bloques?${params.toString()}`)
   },
 
   getAmbientes: async (bloqueId?: string, facultadId?: string, campusId?: string) => {
@@ -173,8 +179,10 @@ export const infraService = {
     if (bloqueId) params.append("bloqueId", bloqueId)
     if (facultadId) params.append("facultadId", facultadId)
     if (campusId) params.append("campusId", campusId)
-    return infraApiClient.get<{ success: boolean; data: Ambiente[] }>(
-      `/ambientes?${params.toString()}`
-    )
+    return infraApiClient.get<{
+      success?: boolean
+      data?: Ambiente[]
+      items?: Ambiente[]
+    }>(`/ambientes?${params.toString()}`)
   },
 }

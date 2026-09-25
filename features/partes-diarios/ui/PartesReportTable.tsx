@@ -1,5 +1,5 @@
 import { memo, useState } from "react"
-import { toast, Button, Badge } from "@umss/estilos-base/components"
+import { toast, Badge } from "@umss/estilos-base/components"
 import {
   Table,
   TableBody,
@@ -88,7 +88,7 @@ const PartesTableRow = memo(function PartesTableRow({
 }: {
   row: GroupedRow
   tiposTickeo: TipoTickeo[]
-  onRowChange: (key: string, field: keyof GroupedRow, value: any) => void
+  onRowChange: (key: string, field: keyof GroupedRow, value: string) => void
   isClosed: boolean
 }) {
   const isOverlap = row.detalles.length > 1
@@ -283,7 +283,7 @@ export function PartesReportTable({
 }: {
   rows: GroupedRow[]
   tiposTickeo: TipoTickeo[]
-  onRowChange: (key: string, field: keyof GroupedRow, value: any) => void
+  onRowChange: (key: string, field: keyof GroupedRow, value: string) => void
   isClosed: boolean
   loading?: boolean
 }) {

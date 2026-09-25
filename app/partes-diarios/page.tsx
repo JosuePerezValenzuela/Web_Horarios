@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
@@ -42,6 +41,22 @@ import {
 } from "lucide-react"
 
 const ALL_FILTER_VALUE = "__all__"
+
+function parseResponseData<T>(response: unknown): T[] {
+  if (Array.isArray(response)) {
+    return response as T[]
+  }
+  if (response && typeof response === "object") {
+    const obj = response as Record<string, unknown>
+    if (Array.isArray(obj.items)) {
+      return obj.items as T[]
+    }
+    if (Array.isArray(obj.data)) {
+      return obj.data as T[]
+    }
+  }
+  return []
+}
 
 interface ReferenciaOrigen {
   horario: {
@@ -248,7 +263,6 @@ export default function PartesDiariosPage() {
 
   // Filtros
   const [selectedFacultadId, setSelectedFacultadId] = useState<string>("")
-  const [facultadSearch, setFacultadSearch] = useState<string>("")
   const [fecha, setFecha] = useState<string>(() => new Date().toISOString().split("T")[0])
   const [horaInicio, setHoraInicio] = useState<string>("")
   const [horaFin, setHoraFin] = useState<string>("")
@@ -299,6 +313,8 @@ export default function PartesDiariosPage() {
     const match = facultadesInfraList.find(
       (fi) =>
         (fi.codigo && fi.codigo.toUpperCase() === selectedFacultad.codigo.toUpperCase()) ||
+        (fi.nombre_corto &&
+          fi.nombre_corto.toUpperCase() === selectedFacultad.codigo.toUpperCase()) ||
         fi.nombre.toLowerCase().includes(selectedFacultad.nombre.toLowerCase()) ||
         selectedFacultad.nombre.toLowerCase().includes(fi.nombre.toLowerCase())
     )
@@ -318,21 +334,8 @@ export default function PartesDiariosPage() {
           infraService.getFacultades(),
         ])
 
-        if (cRes) {
-          if (Array.isArray(cRes)) {
-            setCampusList(cRes)
-          } else if (cRes.data && Array.isArray(cRes.data)) {
-            setCampusList(cRes.data)
-          }
-        }
-
-        if (fRes) {
-          if (Array.isArray(fRes)) {
-            setFacultadesInfraList(fRes)
-          } else if (fRes.data && Array.isArray(fRes.data)) {
-            setFacultadesInfraList(fRes.data)
-          }
-        }
+        setCampusList(parseResponseData<Campus>(cRes))
+        setFacultadesInfraList(parseResponseData<FacultadInfra>(fRes))
       } catch (err) {
         console.error("Error al cargar catálogos de infraestructura:", err)
       }
@@ -342,31 +345,15 @@ export default function PartesDiariosPage() {
 
   // Cargar bloques dependientes del Campus seleccionado y la facultad de infraestructura resuelta
   useEffect(() => {
-    if (!selectedCampusId) {
-      setBloquesList([])
-      setSelectedBloqueId("")
-      setAmbientesList([])
-      setSelectedAulaId("")
-      return
-    }
+    if (!selectedCampusId) return
 
     let active = true
-    setLoadingBloques(true)
-    setSelectedBloqueId("")
-    setAmbientesList([])
-    setSelectedAulaId("")
 
     infraService
       .getBloques(infraFacultadId, selectedCampusId)
       .then((res) => {
         if (!active) return
-        let data: Bloque[] = []
-        if (Array.isArray(res)) {
-          data = res
-        } else if (res?.data && Array.isArray(res.data)) {
-          data = res.data
-        }
-        setBloquesList(data)
+        setBloquesList(parseResponseData<Bloque>(res))
       })
       .catch((err) => {
         console.error("Error al cargar bloques:", err)
@@ -383,27 +370,15 @@ export default function PartesDiariosPage() {
 
   // Cargar ambientes dependientes del Bloque seleccionado
   useEffect(() => {
-    if (!selectedBloqueId) {
-      setAmbientesList([])
-      setSelectedAulaId("")
-      return
-    }
+    if (!selectedBloqueId) return
 
     let active = true
-    setLoadingAmbientes(true)
-    setSelectedAulaId("")
 
     infraService
       .getAmbientes(selectedBloqueId, infraFacultadId, selectedCampusId)
       .then((res) => {
         if (!active) return
-        let data: Ambiente[] = []
-        if (Array.isArray(res)) {
-          data = res
-        } else if (res?.data && Array.isArray(res.data)) {
-          data = res.data
-        }
-        setAmbientesList(data)
+        setAmbientesList(parseResponseData<Ambiente>(res))
       })
       .catch((err) => {
         console.error("Error al cargar ambientes:", err)
@@ -746,7 +721,7 @@ export default function PartesDiariosPage() {
     () =>
       ambientesList.map((a) => ({
         value: String(a.id),
-        label: a.codigo ? `${a.codigo} - ${a.nombre}` : a.nombre,
+        label: a.codigo || a.nombre,
       })),
     [ambientesList]
   )
@@ -1009,9 +984,13 @@ export default function PartesDiariosPage() {
                           options={campusOptions}
                           value={selectedCampusId || ALL_FILTER_VALUE}
                           onValueChange={(value) => {
-                            setSelectedCampusId(value === ALL_FILTER_VALUE ? "" : value)
+                            const val = value === ALL_FILTER_VALUE ? "" : value
+                            setSelectedCampusId(val)
                             setSelectedBloqueId("")
                             setSelectedAulaId("")
+                            setBloquesList([])
+                            setAmbientesList([])
+                            if (val) setLoadingBloques(true)
                           }}
                           disabled={isOptionalDisabled}
                           height="sm"
@@ -1035,8 +1014,11 @@ export default function PartesDiariosPage() {
                           options={bloquesOptions}
                           value={selectedBloqueId || ALL_FILTER_VALUE}
                           onValueChange={(value) => {
-                            setSelectedBloqueId(value === ALL_FILTER_VALUE ? "" : value)
+                            const val = value === ALL_FILTER_VALUE ? "" : value
+                            setSelectedBloqueId(val)
                             setSelectedAulaId("")
+                            setAmbientesList([])
+                            if (val) setLoadingAmbientes(true)
                           }}
                           disabled={isOptionalDisabled || !selectedCampusId || loadingBloques}
                           height="sm"
@@ -1044,7 +1026,7 @@ export default function PartesDiariosPage() {
                         />
                       </div>
 
-                      {/* Aula / Ambiente */}
+                      {/* Ambiente */}
                       <div className="space-y-1.5 min-w-[150px] sm:w-52">
                         <label
                           className={`text-xs font-bold uppercase tracking-wider text-umss-dark-blue dark:text-neutral-200 select-none block ${
@@ -1053,17 +1035,19 @@ export default function PartesDiariosPage() {
                               : ""
                           }`}
                         >
-                          Aula / Ambiente
+                          Ambiente
                         </label>
                         <SearchableSelect
-                          placeholder={loadingAmbientes ? "Cargando aulas..." : "Todas las aulas"}
-                          searchPlaceholder="Buscar aula o ambiente..."
+                          placeholder={
+                            loadingAmbientes ? "Cargando ambientes..." : "Todos los ambientes"
+                          }
+                          searchPlaceholder="Buscar ambiente..."
                           options={ambientesOptions}
                           value={selectedAulaId}
                           onValueChange={setSelectedAulaId}
                           disabled={isOptionalDisabled || !selectedBloqueId || loadingAmbientes}
                           allOption={true}
-                          allLabel="Todas las aulas"
+                          allLabel="Todos los ambientes"
                           height="sm"
                           className="w-full"
                         />

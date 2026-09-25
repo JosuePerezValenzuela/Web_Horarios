@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { AlertCircle, Loader2, Check } from "lucide-react"
+import { AlertCircle, Loader2 } from "lucide-react"
 import { toast, UmssModal, Button } from "@umss/estilos-base/components"
 import { partesApiClient, PartesApiError } from "@/shared/services/api/partesClient"
 
