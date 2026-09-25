@@ -4,7 +4,6 @@ import * as React from "react"
 import { SearchIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { CheckIcon, ChevronDownIcon } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 export interface MultiSelectOption {

@@ -14,7 +14,7 @@ const eslintConfig = defineConfig([
       "prettier/prettier": "error",
     },
   },
-  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts"]),
+  globalIgnores([".next/**", "out/**", "build/**", "next-env.d.ts", ".pnpm-store/**", ".atl/**"]),
 ])
 
 export default eslintConfig

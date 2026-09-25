@@ -141,7 +141,7 @@ export default function ReglasAsistenciaPage() {
       setToleranciaSalidaPost("")
       setToleranciaSalidaAnt("")
       setValidFrom(undefined)
-    } catch (err: unknown) {
+    } catch {
       // El cliente API muestra automáticamente el toast de error del servidor
     }
   }
@@ -149,7 +149,7 @@ export default function ReglasAsistenciaPage() {
     if (!editingConfig || editingConfig.id === undefined) return
 
     // Construct updates payload with date validations
-    const updates: any = {}
+    const updates: Partial<{ valid_from: string; valid_to: string | null }> = {}
     if (editValidFrom) {
       const offset = editValidFrom.getTimezoneOffset()
       const localDate = new Date(editValidFrom.getTime() - offset * 60 * 1000)
@@ -170,7 +170,7 @@ export default function ReglasAsistenciaPage() {
       setEditValidFrom(undefined)
       setEditValidTo(undefined)
       await fetchConfigs()
-    } catch (err: unknown) {
+    } catch {
       // El cliente API muestra automáticamente el toast de error del servidor
     }
   }
@@ -182,7 +182,7 @@ export default function ReglasAsistenciaPage() {
       toast.success("Regla de asistencia eliminada con éxito")
       setDeletingConfigId(null)
       await fetchConfigs()
-    } catch (err: unknown) {
+    } catch {
       // El cliente API muestra automáticamente el toast de error del servidor
     }
   }
