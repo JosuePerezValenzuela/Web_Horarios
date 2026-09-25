@@ -175,7 +175,7 @@ Sub-agents and workflows should reference `.atl/skill-registry.md` for available
   - `useAdminCatalogosStore`: Obtiene y cachea catálogos administrativos (horarios tipo, asignaciones administrativas y tipos de cargo).
 - **Stores de Estado Global de la Aplicación**:
   - `authStore` (`features/auth/application/authStore.ts`): Estado de sesión, usuario autenticado y verificación de token.
-  - `useUIStore` (`shared/stores/uiStore.ts`): Estado de UI compartido (sidebar colapsado, copilot abierto, modales).
+  - `useUIStore` (`shared/stores/uiStore.ts`): Estado de UI compartido (sidebar colapsado, modales).
 - **Stores de Características (Feature Stores)**:
   - `useHorariosListStore` (`features/scheduling/horarios-consulta/application/useHorariosListStore.ts`): Consulta y filtros para la grilla semanal global de horarios.
   - `useDocentesStore`: Listado paginado y filtros de búsqueda de docentes.

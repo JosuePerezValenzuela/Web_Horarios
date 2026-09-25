@@ -85,10 +85,7 @@ class ApiClient {
           const { useAuthStore } = await import("@/features/auth/application/authStore")
           useAuthStore.getState().logout()
 
-          if (
-            window.location.pathname !== "/" &&
-            !window.location.pathname.startsWith("/reservas")
-          ) {
+          if (window.location.pathname !== "/") {
             window.location.href = "/"
           }
         }

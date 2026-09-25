@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Users,
   Calendar,
-  MapPin,
   AlertCircle,
   ClipboardList,
   Settings2,
@@ -15,9 +14,7 @@ import {
 } from "lucide-react"
 import { Layout, ScrollArea } from "@umss/estilos-base/components"
 import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
-import { useUIStore } from "@/shared/stores/uiStore"
 import { cn } from "@/lib/utils"
-import { CustomCopilotSidebar } from "./CustomCopilotSidebar"
 
 const defaultSidebarItems = [
   {
@@ -34,11 +31,6 @@ const defaultSidebarItems = [
     title: "Horarios",
     href: "/horarios",
     icon: Calendar,
-  },
-  {
-    title: "Reservas",
-    href: "/reservas",
-    icon: MapPin,
   },
   {
     title: "Solapamientos",
@@ -75,7 +67,6 @@ interface AppLayoutProps {
 export function AppLayout({ children, className, disablePageScroll = false }: AppLayoutProps) {
   const pathname = usePathname()
   const { isAuthenticated, isLoading, user, logout } = useAppAuth()
-  const { copilotSidebarOpen, toggleCopilotSidebar } = useUIStore()
 
   const useAuthAdapter = () => {
     return {
@@ -118,23 +109,6 @@ export function AppLayout({ children, className, disablePageScroll = false }: Ap
           <ScrollArea className="flex-1 h-full w-full" data-slot="layout-scroll-area">
             <div className={cn("p-4 md:p-6 lg:p-8", className)}>{children}</div>
           </ScrollArea>
-        )}
-
-        {/* Custom Sidebar Panel that is absolute on mobile, relative (pushing) on desktop */}
-        {copilotSidebarOpen && (
-          <div className="absolute inset-y-0 right-0 w-full sm:w-[400px] lg:relative lg:inset-auto lg:w-[380px] lg:sm:w-[400px] border-l border-border h-full bg-white dark:bg-[#1a1a1a] flex flex-col shrink-0 animate-in slide-in-from-right duration-300 z-40 shadow-2xl lg:shadow-none">
-            {/* Floating Close Button for Mobile/Tablet */}
-            <button
-              onClick={toggleCopilotSidebar}
-              className="lg:hidden absolute top-3.5 left-4 z-50 p-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-gray-500 cursor-pointer shadow-sm text-xs font-bold uppercase transition-all"
-              title="Cerrar Asistente"
-            >
-              Cerrar Chat
-            </button>
-            <div className="flex-1 h-full pt-12 lg:pt-0 flex flex-col">
-              <CustomCopilotSidebar />
-            </div>
-          </div>
         )}
       </div>
     </Layout>
