@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
 
 import { toast } from "@umss/estilos-base/components"
 import { format } from "date-fns"
@@ -39,11 +39,8 @@ import { useAdminCatalogosStore } from "@/shared/stores/catalogos/useAdminCatalo
 import type {
   AdminScheduleRaw,
   DocenteScheduleMeta,
-  HorarioCatalogoItem,
   CrearAsignacionHorarioRequest,
   PatchAsignacionHorarioRequest,
-  TipoAsignacionAdministrativo,
-  TipoCargo,
 } from "../domain/types"
 import {
   crearAsignacionHorario,
@@ -163,11 +160,20 @@ export function AdminSchedulesModal({
   }, [cargoList, cargoSearch])
 
   const [localSchedules, setLocalSchedules] = useState<AdminScheduleRaw[]>(schedules)
-  const [isLoadingSchedules, setIsLoadingSchedules] = useState(false)
+  const [loadedDocenteCodigo, setLoadedDocenteCodigo] = useState<string | null>(null)
+  const [isManualReloading, setIsManualReloading] = useState(false)
 
-  const reloadAdminSchedules = async () => {
+  const isLoadingSchedules = Boolean(
+    isManualReloading ||
+    (isOpen &&
+      docente?.codigo &&
+      docente.codigo !== "Sin dato" &&
+      loadedDocenteCodigo !== docente.codigo)
+  )
+
+  const reloadAdminSchedules = useCallback(async () => {
     if (!docente?.codigo || docente.codigo === "Sin dato") return
-    setIsLoadingSchedules(true)
+    setIsManualReloading(true)
     try {
       const res = await fetchDocenteAdminHorarios(docente.codigo)
       if (res.data?.horarios) {
@@ -176,17 +182,33 @@ export function AdminSchedulesModal({
     } catch (err) {
       console.error("Error al recargar horarios administrativos:", err)
     } finally {
-      setIsLoadingSchedules(false)
+      setIsManualReloading(false)
+      setLoadedDocenteCodigo(docente.codigo)
     }
-  }
+  }, [docente])
 
   useEffect(() => {
-    if (isOpen) {
-      if (docente?.codigo && docente.codigo !== "Sin dato") {
-        void reloadAdminSchedules()
-      } else if (schedules && schedules.length > 0) {
-        setLocalSchedules(schedules)
-      }
+    if (!isOpen || !docente?.codigo || docente.codigo === "Sin dato") return
+
+    let active = true
+    fetchDocenteAdminHorarios(docente.codigo)
+      .then((res) => {
+        if (active) {
+          if (res.data?.horarios) {
+            setLocalSchedules(res.data.horarios)
+          }
+          setLoadedDocenteCodigo(docente.codigo)
+        }
+      })
+      .catch((err) => {
+        console.error("Error al recargar horarios administrativos:", err)
+        if (active) {
+          setLoadedDocenteCodigo(docente.codigo)
+        }
+      })
+
+    return () => {
+      active = false
     }
   }, [isOpen, docente?.codigo])
 
@@ -220,7 +242,7 @@ export function AdminSchedulesModal({
       // Como último criterio, ordenar por fecha de inicio descendente
       return b.fecha_inicio.localeCompare(a.fecha_inicio)
     })
-  }, [schedules, todayStr])
+  }, [localSchedules, todayStr])
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   // Get dynamic workload based on selected hours catalog match
@@ -360,15 +382,15 @@ export function AdminSchedulesModal({
     setIsEditMode(false)
   }
 
+  const handleModalClose = () => {
+    setIsFormOpen(false)
+    setIsEditMode(false)
+    resetForm()
+    onClose()
+  }
+
   // ── Effects ──────────────────────────────────────────────────────────────────
-  // Reset states when modal closes or opens
-  useEffect(() => {
-    if (!isOpen) {
-      setIsFormOpen(false)
-      setIsEditMode(false)
-      resetForm()
-    }
-  }, [isOpen])
+  // Load catalogs when form opens or edit mode enters
 
   // Load catalogs when form opens or edit mode enters
   useEffect(() => {
@@ -586,7 +608,7 @@ export function AdminSchedulesModal({
   return (
     <UmssModal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleModalClose}
       title="Horario Academico Administrativo"
       size="2xl"
       className="max-w-[95vw] xl:max-w-7xl"
@@ -621,7 +643,7 @@ export function AdminSchedulesModal({
                 <Pencil className="size-3.5" />
                 Editar Horarios Vigentes
               </Button>
-              <Button variant="outline" onClick={onClose} className="rounded-2xl">
+              <Button variant="outline" onClick={handleModalClose} className="rounded-2xl">
                 Cerrar
               </Button>
             </>

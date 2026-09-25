@@ -70,7 +70,6 @@ export function BulkAssignmentModal({ mode, onAssigned, schedules }: BulkAssignm
   const isOpen = mode === "create" ? bulk.isOpen : edit.isOpen
   const selectedGroup = mode === "create" ? bulk.selectedGroup : edit.selectedGroup
   const entries = mode === "create" ? bulk.entries : edit.entries
-  const initialLoadError = mode === "create" ? bulk.initialLoadError : edit.initialLoadError
   const submitting = mode === "create" ? bulk.submitting : edit.submitting
   const dateRange = mode === "create" ? bulk.dateRange : edit.dateRange
 

@@ -322,7 +322,7 @@ export const useEditScheduleStore = create<EditScheduleState>()((set, get) => ({
         ambienteCache: { ...s.ambienteCache, [cacheKey]: ambientes },
         loadingAmbientesForEntry: null,
       }))
-    } catch (error) {
+    } catch {
       set({ loadingAmbientesForEntry: null })
     }
   },

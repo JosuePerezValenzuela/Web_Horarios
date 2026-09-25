@@ -28,7 +28,7 @@ export interface SolapamientoHorarioAdministrativo {
   fecha_inicio: string
   fecha_fin: string | null
   horario_descripcion: string
-  carreras: any[]
+  carreras: SolapamientoCarrera[]
 }
 
 export interface SolapamientoDocente {

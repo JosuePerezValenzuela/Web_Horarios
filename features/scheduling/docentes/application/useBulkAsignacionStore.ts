@@ -266,7 +266,7 @@ export const useBulkAsignacionStore = create<BulkAsignacionState>()((set, get) =
         ambienteCache: { ...s.ambienteCache, [cacheKey]: ambientes },
         loadingAmbientesForEntry: null,
       }))
-    } catch (error) {
+    } catch {
       set({ loadingAmbientesForEntry: null })
     }
   },
