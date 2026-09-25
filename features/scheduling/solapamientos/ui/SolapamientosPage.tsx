@@ -1,7 +1,12 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { useSolapamientosStore } from "../application/useSolapamientosStore"
+import {
+  useSolapamientosStore,
+  DAY_LABELS,
+  formatTime,
+  formatDate,
+} from "../application/useSolapamientosStore"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useUIStore } from "@/shared/stores/uiStore"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -46,6 +51,7 @@ export function SolapamientosPage() {
     schedules,
     adminSchedules,
     conflicts,
+    horariosSinSolapamiento,
     timeRange,
     rows,
     nextDocente,
@@ -369,12 +375,19 @@ export function SolapamientosPage() {
                                     >
                                       Clase-Clase
                                     </Badge>
+                                  ) : conflict.tipo === "admin-clase" ? (
+                                    <Badge
+                                      variant="warning"
+                                      className="text-[9px] font-bold px-1.5 py-0"
+                                    >
+                                      Admin-Clase
+                                    </Badge>
                                   ) : (
                                     <Badge
                                       variant="warning"
                                       className="text-[9px] font-bold px-1.5 py-0"
                                     >
-                                      Clase-Admin
+                                      Admin-Admin
                                     </Badge>
                                   )}
                                   <Badge
@@ -439,11 +452,10 @@ export function SolapamientosPage() {
                         <div className="flex flex-col items-center justify-center p-6 text-center border border-dashed border-border/80 rounded-2xl bg-muted/10">
                           <Info className="size-8 text-muted-foreground/40 mb-2" />
                           <p className="text-xs text-muted-foreground font-semibold">
-                            Sin solapamientos locales significativos
+                            Sin solapamientos registrados
                           </p>
                           <p className="text-[10px] text-muted-foreground mt-1">
-                            Los solapamientos no superan la tolerancia de{" "}
-                            {filters.tolerancia_minutos} min o no hay horarios coincidentes.
+                            El docente no tiene solapamientos activos bajo los filtros actuales.
                           </p>
                         </div>
                       ) : (
@@ -455,6 +467,54 @@ export function SolapamientosPage() {
                           <p className="text-[10px] text-muted-foreground mt-1">
                             Aplique filtros para buscar docentes con solapamientos.
                           </p>
+                        </div>
+                      )}
+
+                      {/* Horarios sin solapamiento */}
+                      {activeDocente && horariosSinSolapamiento.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-border">
+                          <h4 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                            <Calendar className="size-3 text-emerald-600 dark:text-emerald-400" />
+                            Horarios Sin Solapamiento ({horariosSinSolapamiento.length})
+                          </h4>
+                          <div className="space-y-1.5">
+                            {horariosSinSolapamiento.map((h) => {
+                              const diaLabel = DAY_LABELS[h.dia || 1] || `Día ${h.dia}`
+                              const title =
+                                h.tipo === "clase"
+                                  ? `${h.asignatura_nombre} (G: ${h.grupo})`
+                                  : h.horario_descripcion || "Horario Administrativo"
+                              const rangoFechas = h.fecha_fin
+                                ? `${formatDate(h.fecha_inicio)} a ${formatDate(h.fecha_fin)}`
+                                : `Desde ${formatDate(h.fecha_inicio)}`
+
+                              return (
+                                <div
+                                  key={`${h.tipo}-${h.id}`}
+                                  className="p-2.5 rounded-xl border border-border/70 bg-card/60 text-xs flex flex-col gap-1 hover:border-border transition-colors"
+                                >
+                                  <div className="flex items-center justify-between text-[10px]">
+                                    <span className="font-bold uppercase tracking-wider text-muted-foreground">
+                                      {diaLabel}
+                                    </span>
+                                    <Badge
+                                      variant="neutral"
+                                      className="text-[9px] font-semibold px-1.5 py-0 uppercase bg-muted text-muted-foreground"
+                                    >
+                                      {h.tipo === "clase" ? "Clase" : "Admin"}
+                                    </Badge>
+                                  </div>
+                                  <p className="font-semibold text-foreground line-clamp-1">
+                                    {title}
+                                  </p>
+                                  <p className="text-[11px] text-muted-foreground">
+                                    {formatTime(h.hora_inicio)} - {formatTime(h.hora_fin)} ·{" "}
+                                    <span className="text-[10px] opacity-80">{rangoFechas}</span>
+                                  </p>
+                                </div>
+                              )
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
