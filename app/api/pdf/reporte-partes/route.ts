@@ -13,6 +13,9 @@ interface ReporteDetalle {
   aula_codigo: string
   persona_codigo?: string
   virtual?: boolean
+  tiene_justificacion?: boolean
+  tipo_justificacion_nombre?: string | null
+  estado_justificacion?: string | null
 }
 
 interface ParteDiarioReporte {
@@ -35,7 +38,14 @@ interface GroupedRow {
     asignatura_nombre: string
     grupo_nombre: string
     aula_codigo: string
+    tiene_justificacion?: boolean
+    tipo_justificacion_nombre?: string | null
+    estado_justificacion?: string | null
   }[]
+  tiene_justificacion?: boolean
+  tipo_justificacion_nombre?: string | null
+  estado_justificacion?: string | null
+  isJustificacionAprobada?: boolean
 }
 
 function parseTimeToMinutes(timeStr: string): number {
@@ -116,6 +126,15 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
 
       const first = group[0]
 
+      const hasJustificacion = group.some((item) => Boolean(item.tiene_justificacion))
+      const tipoJustificacionNombre =
+        group.find((item) => item.tipo_justificacion_nombre)?.tipo_justificacion_nombre || null
+      const estadoJustificacion =
+        group.find((item) => item.estado_justificacion)?.estado_justificacion || null
+
+      const isJustificacionAprobada =
+        hasJustificacion && (estadoJustificacion?.toLowerCase().startsWith("aprob") ?? false)
+
       groupedRows.push({
         key: `${teacherKey}-${minStart}-${maxEnd}-${indices[0]}`,
         indices,
@@ -127,7 +146,14 @@ function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
           asignatura_nombre: item.asignatura_nombre,
           grupo_nombre: item.grupo_nombre,
           aula_codigo: item.aula_codigo,
+          tiene_justificacion: Boolean(item.tiene_justificacion),
+          tipo_justificacion_nombre: item.tipo_justificacion_nombre ?? null,
+          estado_justificacion: item.estado_justificacion ?? null,
         })),
+        tiene_justificacion: hasJustificacion,
+        tipo_justificacion_nombre: tipoJustificacionNombre,
+        estado_justificacion: estadoJustificacion,
+        isJustificacionAprobada,
       })
     })
   })
@@ -232,14 +258,22 @@ export async function POST(request: NextRequest) {
             ${
               showEntrada
                 ? `<td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
-              <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
+              ${
+                row.isJustificacionAprobada
+                  ? `<span style="font-weight: 700; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; background-color: #dcfce7; padding: 2px 5px; border-radius: 3px; border: 1px solid #86efac; display: inline-block;">Licencia</span>`
+                  : `<div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>`
+              }
             </td>`
                 : ""
             }
             ${
               showSalida
                 ? `<td style="text-align: center; position: relative; height: ${heightPx}px; width: 85px; vertical-align: middle;">
-              <div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>
+              ${
+                row.isJustificacionAprobada
+                  ? `<span style="font-weight: 700; font-size: 8px; text-transform: uppercase; letter-spacing: 0.05em; color: #166534; background-color: #dcfce7; padding: 2px 5px; border-radius: 3px; border: 1px solid #86efac; display: inline-block;">Licencia</span>`
+                  : `<div style="border-bottom: 1px dotted #9ca3af; position: absolute; left: 4px; right: 4px; bottom: 4px;"></div>`
+              }
             </td>`
                 : ""
             }
