@@ -775,12 +775,7 @@ export default function PartesDiariosPage() {
       await fetchReporteData()
     } catch (error) {
       console.error("Error al registrar asistencia:", error)
-      const apiErr = error as ApiError
-      const msg =
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : apiErr.message || "Error al registrar asistencia"
-      toast.error(msg, { id: toastId })
+      toast.dismiss(toastId)
     } finally {
       setSaving(false)
     }
@@ -808,12 +803,7 @@ export default function PartesDiariosPage() {
       await fetchReporteData()
     } catch (error) {
       console.error("Error al confirmar el parte diario:", error)
-      const apiErr = error as ApiError
-      const msg =
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : apiErr.message || "Error al confirmar el parte diario"
-      toast.error(msg, { id: toastId })
+      toast.dismiss(toastId)
     } finally {
       setClosingParte(false)
     }
@@ -849,12 +839,7 @@ export default function PartesDiariosPage() {
       await fetchReporteData()
     } catch (error) {
       console.error("Error al anular el parte diario:", error)
-      const apiErr = error as ApiError
-      const msg =
-        apiErr.body && typeof apiErr.body === "object" && "message" in apiErr.body
-          ? String(apiErr.body.message)
-          : apiErr.message || "Error al anular el parte diario"
-      toast.error(msg, { id: toastId })
+      toast.dismiss(toastId)
     } finally {
       setAnulandoParte(false)
     }

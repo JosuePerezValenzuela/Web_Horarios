@@ -1,7 +1,7 @@
 import { useState } from "react"
 import { AlertCircle } from "lucide-react"
 import { toast, UmssModal, Button } from "@umss/estilos-base/components"
-import { partesDiariosApi, ApiError } from "@/shared/services/api/client"
+import { partesDiariosApi } from "@/shared/services/api/client"
 
 interface GenerarParteDialogProps {
   open: boolean
@@ -43,13 +43,8 @@ export function GenerarParteDialog({
       toast.success("Parte diario generado correctamente", { id: toastId })
       onOpenChange(false)
       await onGenerated()
-    } catch (requestError) {
-      const apiError = requestError as ApiError
-      const message =
-        apiError.body && typeof apiError.body === "object" && "message" in apiError.body
-          ? String(apiError.body.message)
-          : apiError.message || "Error al generar el parte diario"
-      toast.error(message, { id: toastId })
+    } catch {
+      toast.dismiss(toastId)
     } finally {
       setGenerating(false)
     }
