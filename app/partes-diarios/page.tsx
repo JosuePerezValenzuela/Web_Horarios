@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import { useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -537,65 +537,114 @@ export default function PartesDiariosPage() {
     }
   }, [selectedBloqueId, infraFacultadId, selectedCampusId])
 
-  const fetchReporteData = async () => {
-    if (!effectiveFacultadId) {
-      toast.error("Por favor, seleccione una facultad")
-      return
-    }
-    if (!fecha) {
-      toast.error("Por favor, seleccione una fecha")
-      return
-    }
-    if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
-      toast.error("Para filtrar por hora, debe ingresar tanto la hora de inicio como la de fin")
-      return
-    }
+  const fetchReporteData = useCallback(
+    async (targetFacId?: string, targetFecha?: string) => {
+      const activeFacId = targetFacId || effectiveFacultadId
+      const activeFecha = targetFecha || fecha
 
-    const facultad = facultades.find((f) => String(f.id) === effectiveFacultadId)
-    if (!facultad) return
-
-    setLoading(true)
-    setHasSearched(true)
-    setLastSearchedFilters(currentFiltersKey)
-    setReporteData(null)
-    setGroupedRows([])
-
-    try {
-      const response = await partesDiariosApi.consultarReporte({
-        fecha,
-        facultadCodigo: facultad.codigo,
-        ...(horaInicio && horaFin ? { hora_inicio: horaInicio, hora_fin: horaFin } : {}),
-        ...(grupoTipo ? { grupo_tipo: grupoTipo } : {}),
-        ...(tipoDesignacion ? { tipo_designacion: tipoDesignacion } : {}),
-        ...(asignaturaTipo ? { asignatura_tipo: asignaturaTipo } : {}),
-        ...(virtualFilter ? { virtual: virtualFilter } : {}),
-        ...(selectedCampusId && Number(selectedCampusId) > 0
-          ? { campus_id_geografico: Number(selectedCampusId) }
-          : {}),
-        ...(selectedBloqueId && Number(selectedBloqueId) > 0
-          ? { bloque_id_geografico: Number(selectedBloqueId) }
-          : {}),
-        ...(selectedAulaId && Number(selectedAulaId) > 0
-          ? { aula_id: Number(selectedAulaId) }
-          : {}),
-      })
-      setReporteData(response)
-
-      // Agrupar filas
-      const grouped = groupSchedules(response.detalles)
-      setGroupedRows(grouped)
-    } catch (error) {
-      console.error("Error al cargar reporte:", error)
-      const apiErr = error as ApiError
-      if (apiErr.status === 404) {
-        setShowGenerateModal(true)
-      } else if (apiErr.status === 502) {
-        setInfraUnavailable(true)
+      if (!activeFacId) {
+        toast.error("Por favor, seleccione una facultad")
+        return
       }
-    } finally {
-      setLoading(false)
-    }
-  }
+      if (!activeFecha) {
+        toast.error("Por favor, seleccione una fecha")
+        return
+      }
+      if ((horaInicio && !horaFin) || (!horaInicio && horaFin)) {
+        toast.error("Para filtrar por hora, debe ingresar tanto la hora de inicio como la de fin")
+        return
+      }
+
+      const facultad = facultades.find((f) => String(f.id) === activeFacId)
+      if (!facultad) return
+
+      setLoading(true)
+      setHasSearched(true)
+      setLastSearchedFilters(
+        JSON.stringify({
+          facultad: activeFacId,
+          fecha: activeFecha,
+          horaInicio,
+          horaFin,
+          grupoTipo,
+          tipoDesignacion,
+          asignaturaTipo,
+          virtualFilter,
+          campus: selectedCampusId,
+          bloque: selectedBloqueId,
+          aula: selectedAulaId,
+        })
+      )
+      setReporteData(null)
+      setGroupedRows([])
+
+      try {
+        const response = await partesDiariosApi.consultarReporte({
+          fecha: activeFecha,
+          facultadCodigo: facultad.codigo,
+          ...(horaInicio && horaFin ? { hora_inicio: horaInicio, hora_fin: horaFin } : {}),
+          ...(grupoTipo ? { grupo_tipo: grupoTipo } : {}),
+          ...(tipoDesignacion ? { tipo_designacion: tipoDesignacion } : {}),
+          ...(asignaturaTipo ? { asignatura_tipo: asignaturaTipo } : {}),
+          ...(virtualFilter ? { virtual: virtualFilter } : {}),
+          ...(selectedCampusId && Number(selectedCampusId) > 0
+            ? { campus_id_geografico: Number(selectedCampusId) }
+            : {}),
+          ...(selectedBloqueId && Number(selectedBloqueId) > 0
+            ? { bloque_id_geografico: Number(selectedBloqueId) }
+            : {}),
+          ...(selectedAulaId && Number(selectedAulaId) > 0
+            ? { aula_id: Number(selectedAulaId) }
+            : {}),
+        })
+        setReporteData(response)
+
+        // Agrupar filas
+        const grouped = groupSchedules(response.detalles)
+        setGroupedRows(grouped)
+      } catch (error) {
+        console.error("Error al cargar reporte:", error)
+        const apiErr = error as ApiError
+        if (apiErr.status === 404) {
+          setShowGenerateModal(true)
+        } else if (apiErr.status === 502) {
+          setInfraUnavailable(true)
+        }
+      } finally {
+        setLoading(false)
+      }
+    },
+    [
+      effectiveFacultadId,
+      fecha,
+      horaInicio,
+      horaFin,
+      facultades,
+      grupoTipo,
+      tipoDesignacion,
+      asignaturaTipo,
+      virtualFilter,
+      selectedCampusId,
+      selectedBloqueId,
+      selectedAulaId,
+    ]
+  )
+
+  // Ejecución automática de búsqueda cuando se recibe facultad y fecha por query params
+  const hasAutoSearchedRef = useRef<boolean>(false)
+  useEffect(() => {
+    if (hasAutoSearchedRef.current) return
+    const hasParamFacultad =
+      Boolean(searchParams?.get("facultad_codigo")) || Boolean(searchParams?.get("facultad_id"))
+    if (!hasParamFacultad) return
+    if (!facultades || facultades.length === 0) return
+    if (!queryFacultadId || !fecha) return
+
+    hasAutoSearchedRef.current = true
+    Promise.resolve().then(() => {
+      void fetchReporteData(queryFacultadId, fecha)
+    })
+  }, [facultades, queryFacultadId, fecha, searchParams, fetchReporteData])
 
   const handleBuscar = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -1396,7 +1445,7 @@ export default function PartesDiariosPage() {
                   {/* Botón Buscar: Siempre al extremo derecho */}
                   <Button
                     type="submit"
-                    disabled={loading || !selectedFacultadId || !fecha}
+                    disabled={loading || !effectiveFacultadId || !fecha}
                     className="rounded-lg px-4 h-9 text-xs font-semibold gap-1.5 text-white bg-[#002855] hover:bg-[#001b3a] shadow-xs cursor-pointer disabled:opacity-50 shrink-0"
                   >
                     {loading ? (
