@@ -54,8 +54,8 @@ export function TimePicker({
     if (isEditing) return
 
     const p = parseTime(value)
-    setHour(p.hour)
-    setMinute(p.minute)
+    setHour((prev) => (prev !== p.hour ? p.hour : prev))
+    setMinute((prev) => (prev !== p.minute ? p.minute : prev))
   }, [value])
 
   const notifyChange = (h: string, m: string, force = false) => {
@@ -242,88 +242,90 @@ export function TimePicker({
             <Clock className="size-3.5 text-muted-foreground hover:text-foreground" />
           </button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-2 rounded-2xl flex flex-col gap-2" align="end">
-          <div className="flex font-medium text-xs text-muted-foreground px-2">
-            <div className="flex-1 text-center">Hora</div>
-            <div className="flex-1 text-center">Min.</div>
-          </div>
-          <div className="flex h-48 gap-1.5">
-            {/* Hours Column (00 - 23) */}
-            <div
-              className="w-14 overflow-y-auto overscroll-contain rounded-xl bg-muted/30 p-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-              onWheelCapture={(e) => e.stopPropagation()}
-              onTouchMoveCapture={(e) => e.stopPropagation()}
-            >
-              {hoursList.map((h) => (
-                <button
-                  key={h}
-                  ref={h === hour ? activeHourRef : null}
-                  type="button"
-                  onClick={() => {
-                    setHour(h)
-                    notifyChange(h, minute)
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer",
-                    h === hour
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {h}
-                </button>
-              ))}
+        {open && (
+          <PopoverContent className="w-auto p-2 rounded-2xl flex flex-col gap-2" align="end">
+            <div className="flex font-medium text-xs text-muted-foreground px-2">
+              <div className="flex-1 text-center">Hora</div>
+              <div className="flex-1 text-center">Min.</div>
             </div>
+            <div className="flex h-48 gap-1.5">
+              {/* Hours Column (00 - 23) */}
+              <div
+                className="w-14 overflow-y-auto overscroll-contain rounded-xl bg-muted/30 p-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+                onWheelCapture={(e) => e.stopPropagation()}
+                onTouchMoveCapture={(e) => e.stopPropagation()}
+              >
+                {hoursList.map((h) => (
+                  <button
+                    key={h}
+                    ref={h === hour ? activeHourRef : null}
+                    type="button"
+                    onClick={() => {
+                      setHour(h)
+                      notifyChange(h, minute)
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer",
+                      h === hour
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-semibold"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {h}
+                  </button>
+                ))}
+              </div>
 
-            {/* Minutes Column (00 - 59) */}
-            <div
-              className="w-14 overflow-y-auto overscroll-contain rounded-xl bg-muted/30 p-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
-              onWheelCapture={(e) => e.stopPropagation()}
-              onTouchMoveCapture={(e) => e.stopPropagation()}
-            >
-              {minutesList.map((m) => (
-                <button
-                  key={m}
-                  ref={m === minute ? activeMinuteRef : null}
-                  type="button"
-                  onClick={() => {
-                    setMinute(m)
-                    notifyChange(hour, m)
-                  }}
-                  className={cn(
-                    "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer",
-                    m === minute
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-semibold"
-                      : "text-muted-foreground"
-                  )}
-                >
-                  {m}
-                </button>
-              ))}
+              {/* Minutes Column (00 - 59) */}
+              <div
+                className="w-14 overflow-y-auto overscroll-contain rounded-xl bg-muted/30 p-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border"
+                onWheelCapture={(e) => e.stopPropagation()}
+                onTouchMoveCapture={(e) => e.stopPropagation()}
+              >
+                {minutesList.map((m) => (
+                  <button
+                    key={m}
+                    ref={m === minute ? activeMinuteRef : null}
+                    type="button"
+                    onClick={() => {
+                      setMinute(m)
+                      notifyChange(hour, m)
+                    }}
+                    className={cn(
+                      "flex w-full items-center justify-center rounded-lg py-1.5 text-sm transition-colors hover:bg-accent hover:text-foreground cursor-pointer",
+                      m === minute
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground font-semibold"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center justify-between border-t border-border/60 pt-2 px-1 gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                setHour("")
-                setMinute("")
-                onChange?.("")
-                setOpen(false)
-              }}
-              className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              Limpiar hora
-            </button>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-            >
-              Listo
-            </button>
-          </div>
-        </PopoverContent>
+            <div className="flex items-center justify-between border-t border-border/60 pt-2 px-1 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setHour("")
+                  setMinute("")
+                  onChange?.("")
+                  setOpen(false)
+                }}
+                className="text-xs font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                Limpiar hora
+              </button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+              >
+                Listo
+              </button>
+            </div>
+          </PopoverContent>
+        )}
       </Popover>
     </div>
   )

@@ -26,11 +26,7 @@ export const useAttendanceConfigStore = create<AttendanceConfigState>()((set, ge
     set({ loading: true, error: null })
     try {
       const data = await attendanceConfigApi.list()
-      // Order by valid_from descending so the latest/current is at the top
-      const sorted = [...data].sort((a, b) => {
-        return new Date(b.valid_from).getTime() - new Date(a.valid_from).getTime()
-      })
-      set({ configs: sorted, loading: false })
+      set({ configs: data, loading: false })
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : "Error al obtener configuraciones",
@@ -45,7 +41,9 @@ export const useAttendanceConfigStore = create<AttendanceConfigState>()((set, ge
       const newConfig = await attendanceConfigApi.create(config)
       set((state) => {
         const updated = [newConfig, ...state.configs].sort((a, b) => {
-          return new Date(b.valid_from).getTime() - new Date(a.valid_from).getTime()
+          const dateB = b.fecha_inicio || b.valid_from || ""
+          const dateA = a.fecha_inicio || a.valid_from || ""
+          return dateB.localeCompare(dateA)
         })
         return { configs: updated, loading: false }
       })
@@ -75,7 +73,9 @@ export const useAttendanceConfigStore = create<AttendanceConfigState>()((set, ge
         const updated = state.configs
           .map((c) => (c.id === id ? updatedConfig : c))
           .sort((a, b) => {
-            return new Date(b.valid_from).getTime() - new Date(a.valid_from).getTime()
+            const dateB = b.fecha_inicio || b.valid_from || ""
+            const dateA = a.fecha_inicio || a.valid_from || ""
+            return dateB.localeCompare(dateA)
           })
         return { configs: updated, loading: false }
       })
