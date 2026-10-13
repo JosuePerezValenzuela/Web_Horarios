@@ -154,6 +154,11 @@ function CrearJustificacionParteForm({
       return
     }
 
+    if (descripcion.trim().length > 64) {
+      setErrorMsg("La descripción o motivo no puede superar los 64 caracteres.")
+      return
+    }
+
     try {
       setLoadingSubmit(true)
 
@@ -349,12 +354,25 @@ function CrearJustificacionParteForm({
 
           {/* Motivo / Descripción */}
           <div className="sm:col-span-2 space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1">
-              Motivo / Descripción <span className="text-destructive">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1">
+                Motivo / Descripción <span className="text-destructive">*</span>
+              </label>
+              <span
+                className={cn(
+                  "text-[10px]",
+                  descripcion.length >= 64
+                    ? "text-amber-600 dark:text-amber-400 font-semibold"
+                    : "text-muted-foreground"
+                )}
+              >
+                {descripcion.length}/64
+              </span>
+            </div>
             <textarea
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
+              maxLength={64}
               rows={2}
               placeholder="Ej. Permiso médico, comisión docente o licencia justificada..."
               disabled={loadingSubmit}
