@@ -5,7 +5,6 @@ import { Sonner } from "@umss/estilos-base/components"
 import "./theme.css"
 import { cn } from "@/lib/utils"
 import { ThemeProvider } from "@/core/providers/ThemeProvider"
-import { AuthInitializer } from "@/features/auth/ui/AuthInitializer"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -54,7 +53,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <AuthInitializer>{children}</AuthInitializer>
+          {children}
           <Sonner richColors position="top-right" closeButton />
         </ThemeProvider>
       </body>

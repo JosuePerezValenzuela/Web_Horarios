@@ -4,7 +4,6 @@ import { useMemo, useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 
 import { AppLayout } from "@/components/organisms/AppLayout"
-import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { useDocenteHorariosStore } from "@/features/scheduling/docentes/application/docenteHorariosStore"
 import { useBulkAsignacionStore } from "@/features/scheduling/docentes/application/useBulkAsignacionStore"
 import { useEditScheduleStore } from "@/features/scheduling/docentes/application/useEditScheduleStore"
@@ -188,102 +187,98 @@ export default function DocenteHorariosRoutePage() {
   }
 
   return (
-    <ProtectedRoute>
-      <AppLayout
-        breadcrumbs={[{ name: "Docentes", href: "/docentes" }, { name: "Horario docente" }]}
-        disablePageScroll
-        className="p-3 sm:p-4 md:p-6 lg:p-8"
+    <AppLayout
+      breadcrumbs={[{ name: "Docentes", href: "/docentes" }, { name: "Horario docente" }]}
+      disablePageScroll
+      className="p-3 sm:p-4 md:p-6 lg:p-8"
+    >
+      <div className="flex flex-col gap-4 lg:gap-5 w-full max-w-full min-w-0">
+        <TeacherSchedulePage
+          docente={docente}
+          groups={groups}
+          schedules={schedules}
+          period={period}
+          rows={rows}
+          timeRange={timeRange}
+          loading={loading}
+          error={error}
+          onRetry={() => fetchByDocenteId(docenteId)}
+          onBack={() => router.push("/docentes")}
+          onPeriodChange={setPeriod}
+          docenteId={docenteId}
+          onAddClick={handleAddClick}
+          onEditClick={handleEditClick}
+          onDeleteClick={handleDeleteClick}
+          onEditSchedule={handleEditSchedule}
+          onAssigned={() => fetchByDocenteId(docenteId, true)}
+          adminSchedules={adminSchedules}
+          rawAdminSchedules={rawAdminSchedules}
+        />
+      </div>
+
+      <AlertDialog
+        open={pendingDeleteGroup !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingGroup) {
+            setPendingDeleteGroup(null)
+          }
+        }}
       >
-        <div className="flex flex-col gap-4 lg:gap-5 w-full max-w-full min-w-0">
-          <TeacherSchedulePage
-            docente={docente}
-            groups={groups}
-            schedules={schedules}
-            period={period}
-            rows={rows}
-            timeRange={timeRange}
-            loading={loading}
-            error={error}
-            onRetry={() => fetchByDocenteId(docenteId)}
-            onBack={() => router.push("/docentes")}
-            onPeriodChange={setPeriod}
-            docenteId={docenteId}
-            onAddClick={handleAddClick}
-            onEditClick={handleEditClick}
-            onDeleteClick={handleDeleteClick}
-            onEditSchedule={handleEditSchedule}
-            onAssigned={() => fetchByDocenteId(docenteId, true)}
-            adminSchedules={adminSchedules}
-            rawAdminSchedules={rawAdminSchedules}
-          />
-        </div>
+        <AlertDialogContent className="max-w-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar horarios del grupo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará {pendingDeleteIds.length} horario
+              {pendingDeleteIds.length !== 1 ? "s" : ""} de este grupo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
 
-        <AlertDialog
-          open={pendingDeleteGroup !== null}
-          onOpenChange={(open) => {
-            if (!open && !deletingGroup) {
-              setPendingDeleteGroup(null)
-            }
-          }}
-        >
-          <AlertDialogContent className="max-w-2xl">
-            <AlertDialogHeader>
-              <AlertDialogTitle>Eliminar horarios del grupo</AlertDialogTitle>
-              <AlertDialogDescription>
-                Esta acción eliminará {pendingDeleteIds.length} horario
-                {pendingDeleteIds.length !== 1 ? "s" : ""} de este grupo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-
-            <div className="max-h-56 overflow-auto rounded-xl border border-border/60">
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-muted">
-                  <tr className="border-b border-border/60">
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Día</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Inicio</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Fin</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Ambiente</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold">Modalidad</th>
+          <div className="max-h-56 overflow-auto rounded-xl border border-border/60">
+            <table className="w-full text-sm">
+              <thead className="sticky top-0 bg-muted">
+                <tr className="border-b border-border/60">
+                  <th className="px-3 py-2 text-left text-xs font-semibold">Día</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold">Inicio</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold">Fin</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold">Ambiente</th>
+                  <th className="px-3 py-2 text-left text-xs font-semibold">Modalidad</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingGroupSchedules.map((schedule) => (
+                  <tr key={schedule.scheduleId} className="border-b border-border/30">
+                    <td className="px-3 py-2 text-xs">
+                      {DAY_LABELS[schedule.day] ?? schedule.day}
+                    </td>
+                    <td className="px-3 py-2 text-xs">{formatMinutesAsTime(schedule.startMin)}</td>
+                    <td className="px-3 py-2 text-xs">{formatMinutesAsTime(schedule.endMin)}</td>
+                    <td className="px-3 py-2 text-xs">
+                      {schedule.ambienteLabel || "Sin ambiente"}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {schedule.virtual ? "Virtual" : "Presencial"}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {pendingGroupSchedules.map((schedule) => (
-                    <tr key={schedule.scheduleId} className="border-b border-border/30">
-                      <td className="px-3 py-2 text-xs">
-                        {DAY_LABELS[schedule.day] ?? schedule.day}
-                      </td>
-                      <td className="px-3 py-2 text-xs">
-                        {formatMinutesAsTime(schedule.startMin)}
-                      </td>
-                      <td className="px-3 py-2 text-xs">{formatMinutesAsTime(schedule.endMin)}</td>
-                      <td className="px-3 py-2 text-xs">
-                        {schedule.ambienteLabel || "Sin ambiente"}
-                      </td>
-                      <td className="px-3 py-2 text-xs">
-                        {schedule.virtual ? "Virtual" : "Presencial"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={deletingGroup}>Cancelar</AlertDialogCancel>
-              <AlertDialogAction
-                variant="danger"
-                disabled={deletingGroup}
-                onClick={(event) => {
-                  event.preventDefault()
-                  void handleDeleteConfirm()
-                }}
-              >
-                {deletingGroup ? "Eliminando..." : "Eliminar horarios"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </AppLayout>
-    </ProtectedRoute>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingGroup}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="danger"
+              disabled={deletingGroup}
+              onClick={(event) => {
+                event.preventDefault()
+                void handleDeleteConfirm()
+              }}
+            >
+              {deletingGroup ? "Eliminando..." : "Eliminar horarios"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </AppLayout>
   )
 }

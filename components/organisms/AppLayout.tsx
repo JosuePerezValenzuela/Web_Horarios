@@ -11,9 +11,9 @@ import {
   ClipboardList,
   Settings2,
   CalendarDays,
+  ShieldCheck,
 } from "lucide-react"
 import { Layout, ScrollArea } from "@umss/estilos-base/components"
-import { useAuth as useAppAuth } from "@/features/auth/application/useAuth"
 import { cn } from "@/lib/utils"
 
 const defaultSidebarItems = [
@@ -52,6 +52,11 @@ const defaultSidebarItems = [
     href: "/configuracion-reglas-asistencia",
     icon: Settings2,
   },
+  {
+    title: "Justificaciones",
+    href: "/justificaciones",
+    icon: ShieldCheck,
+  },
 ]
 
 interface AppLayoutProps {
@@ -66,17 +71,14 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, className, disablePageScroll = false }: AppLayoutProps) {
   const pathname = usePathname()
-  const { isAuthenticated, isLoading, user, logout } = useAppAuth()
 
   const useAuthAdapter = () => {
     return {
-      hasToken: isAuthenticated,
-      cargando: isLoading,
-      userData: user ? { name: user.name, email: user.email } : null,
-      cerrarSesion: async () => {
-        const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
-        logout()
-        window.location.href = `${backendUrl}/auth/logout`
+      hasToken: true,
+      cargando: false,
+      userData: null,
+      cerrarSesion: () => {
+        window.location.href = "/login"
       },
     }
   }

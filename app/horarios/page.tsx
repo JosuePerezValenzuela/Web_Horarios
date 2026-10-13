@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AppLayout } from "@/components/organisms/AppLayout"
-import { ProtectedRoute } from "@/features/auth/ui/ProtectedRoute"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import { Filter, RefreshCw, Calendar, AlertCircle, MapPin } from "lucide-react"
@@ -526,534 +525,530 @@ export default function HorariosListPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <AppLayout
-        className={cn(
-          "fixed top-16 bottom-0 right-0 left-0 overflow-hidden flex flex-col p-4 pt-4 px-4 lg:p-4 lg:pt-4 lg:px-4 xl:p-4 xl:pt-4 xl:px-4 transition-all duration-300",
-          sidebarCollapsed ? "ml-16" : "ml-64"
-        )}
-      >
-        <div className="flex h-full min-h-0 flex-col gap-2.5 overflow-hidden p-2 lg:gap-3 lg:p-3">
-          {/* Header Superior */}
-          <header className="rounded-2xl border border-border bg-card px-3.5 py-2 shadow-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div className="space-y-0.5">
-                <div className="flex items-center gap-2">
-                  <h1 className="font-roboto text-lg md:text-xl font-bold tracking-tight text-foreground">
-                    Horarios de Clases
-                  </h1>
-                  <Badge
-                    variant="outline"
-                    className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border-border"
-                  >
-                    {horarios.length} registros
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2.5">
-                {/* Campo para modificar el valor del período */}
-                <div className="flex items-center gap-1.5">
-                  <Label
-                    htmlFor="periodo-global"
-                    className="text-xs font-semibold text-foreground/80 whitespace-nowrap"
-                  >
-                    Período (min):
-                  </Label>
-                  <Input
-                    id="periodo-global"
-                    type="number"
-                    min={1}
-                    value={customPeriod !== "" ? customPeriod : activePeriod}
-                    onChange={(e) => {
-                      const val = e.target.value === "" ? "" : Number(e.target.value)
-                      setCustomPeriod(val)
-                    }}
-                    className="h-8 w-16 text-xs text-center font-medium bg-background no-spinner"
-                    aria-label="Periodo de segmentacion en minutos"
-                  />
-                </div>
-
-                <Button
+    <AppLayout
+      className={cn(
+        "fixed top-16 bottom-0 right-0 left-0 overflow-hidden flex flex-col p-4 pt-4 px-4 lg:p-4 lg:pt-4 lg:px-4 xl:p-4 xl:pt-4 xl:px-4 transition-all duration-300",
+        sidebarCollapsed ? "ml-16" : "ml-64"
+      )}
+    >
+      <div className="flex h-full min-h-0 flex-col gap-2.5 overflow-hidden p-2 lg:gap-3 lg:p-3">
+        {/* Header Superior */}
+        <header className="rounded-2xl border border-border bg-card px-3.5 py-2 shadow-sm">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <h1 className="font-roboto text-lg md:text-xl font-bold tracking-tight text-foreground">
+                  Horarios de Clases
+                </h1>
+                <Badge
                   variant="outline"
-                  size="sm"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="h-8 px-2.5 text-xs"
+                  className="px-2 py-0.5 text-xs font-medium bg-muted text-muted-foreground border-border"
                 >
-                  <Filter className="mr-1.5 size-3.5" />
-                  {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
-                </Button>
+                  {horarios.length} registros
+                </Badge>
               </div>
             </div>
-          </header>
 
-          {/* Área de Filtros y Contenido Principal */}
-          <div className="flex min-h-0 flex-1 gap-3 overflow-hidden items-stretch relative">
-            {showFilters && (
-              <aside className="w-80 shrink-0 flex flex-col gap-2.5 h-full min-h-0">
-                {/* Tarjeta 1: Filtros Académicos */}
-                <div
-                  className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "1 1 0%" }}
+            <div className="flex items-center gap-2.5">
+              {/* Campo para modificar el valor del período */}
+              <div className="flex items-center gap-1.5">
+                <Label
+                  htmlFor="periodo-global"
+                  className="text-xs font-semibold text-foreground/80 whitespace-nowrap"
                 >
-                  <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Filter className="size-3.5" />
-                      Filtros Académicos
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleClearAcademicFilters}
-                      className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
-                    >
-                      Limpiar
-                    </Button>
-                  </div>
+                  Período (min):
+                </Label>
+                <Input
+                  id="periodo-global"
+                  type="number"
+                  min={1}
+                  value={customPeriod !== "" ? customPeriod : activePeriod}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? "" : Number(e.target.value)
+                    setCustomPeriod(val)
+                  }}
+                  className="h-8 w-16 text-xs text-center font-medium bg-background no-spinner"
+                  aria-label="Periodo de segmentacion en minutos"
+                />
+              </div>
 
-                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
-                    {/* Sección: Filtros Obligatorios */}
-                    <div className="space-y-3">
-                      <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
-                        Filtros Obligatorios
-                      </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFilters(!showFilters)}
+                className="h-8 px-2.5 text-xs"
+              >
+                <Filter className="mr-1.5 size-3.5" />
+                {showFilters ? "Ocultar Filtros" : "Mostrar Filtros"}
+              </Button>
+            </div>
+          </div>
+        </header>
 
-                      {/* Facultad */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">
-                          Facultad <span className="text-destructive">*</span>
-                        </Label>
-                        <Select
-                          value={filters.facultad_codigo || "none"}
-                          onValueChange={handleFacultadChange}
-                          disabled={loadingFacultades}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                loadingFacultades ? "Cargando..." : "Seleccione Facultad"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setFacultadSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Facultad</SelectItem>
-                            {filteredFacultades.map((f) => (
-                              <SelectItem key={f.id} value={f.codigo}>
-                                {f.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
+        {/* Área de Filtros y Contenido Principal */}
+        <div className="flex min-h-0 flex-1 gap-3 overflow-hidden items-stretch relative">
+          {showFilters && (
+            <aside className="w-80 shrink-0 flex flex-col gap-2.5 h-full min-h-0">
+              {/* Tarjeta 1: Filtros Académicos */}
+              <div
+                className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                style={{ flex: "1 1 0%" }}
+              >
+                <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Filter className="size-3.5" />
+                    Filtros Académicos
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleClearAcademicFilters}
+                    className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar
+                  </Button>
+                </div>
 
-                      {/* Gestión y Periodo */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground">
-                            Gestión <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            type="number"
-                            placeholder="Año"
-                            value={filters.gestion || ""}
-                            onChange={(e) => {
-                              const val = e.target.value ? Number(e.target.value) : undefined
-                              setFilter("gestion", val)
-                              triggerFetchIfValid()
-                            }}
-                            className="h-9 text-xs"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs font-semibold text-foreground">
-                            Periodo <span className="text-destructive">*</span>
-                          </Label>
-                          <Input
-                            type="number"
-                            placeholder="Periodo"
-                            value={filters.periodo !== undefined ? filters.periodo : ""}
-                            onChange={(e) => {
-                              const val = e.target.value ? Number(e.target.value) : undefined
-                              setFilter("periodo", val)
-                              triggerFetchIfValid()
-                            }}
-                            className="h-9 text-xs no-spinner"
-                          />
-                        </div>
-                      </div>
+                <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
+                  {/* Sección: Filtros Obligatorios */}
+                  <div className="space-y-3">
+                    <div className="text-xs font-bold text-primary uppercase tracking-wider border-b border-border/40 pb-1">
+                      Filtros Obligatorios
                     </div>
 
-                    {/* Sección: Filtros Opcionales */}
-                    <div className="space-y-3 pt-2">
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-1">
-                        Filtros Opcionales
-                      </div>
+                    {/* Facultad */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">
+                        Facultad <span className="text-destructive">*</span>
+                      </Label>
+                      <Select
+                        value={filters.facultad_codigo || "none"}
+                        onValueChange={handleFacultadChange}
+                        disabled={loadingFacultades}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={loadingFacultades ? "Cargando..." : "Seleccione Facultad"}
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setFacultadSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Facultad</SelectItem>
+                          {filteredFacultades.map((f) => (
+                            <SelectItem key={f.id} value={f.codigo}>
+                              {f.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
 
-                      {/* Plan de Estudio / Carrera */}
+                    {/* Gestión y Periodo */}
+                    <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1.5">
                         <Label className="text-xs font-semibold text-foreground">
-                          Plan de Estudio
+                          Gestión <span className="text-destructive">*</span>
                         </Label>
-                        <Select
-                          value={filters.plan_estudio_codigo || "none"}
-                          onValueChange={handleCarreraChange}
-                          disabled={loadingCarreras || !filters.facultad_codigo}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setCarreraSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
-                            {filteredCarreras.map((c) => (
-                              <SelectItem key={c.id} value={c.codigo}>
-                                {c.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Asignatura */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
-                        <Select
-                          value={filters.asignatura_codigo || "none"}
-                          onValueChange={(val) => {
-                            setFilter("asignatura_codigo", val === "none" ? undefined : val)
+                        <Input
+                          type="number"
+                          placeholder="Año"
+                          value={filters.gestion || ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined
+                            setFilter("gestion", val)
                             triggerFetchIfValid()
                           }}
-                          disabled={loadingAsignaturas || !isMandatoryFiltersSet}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                loadingAsignaturas ? "Cargando..." : "Seleccione Asignatura"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setAsignaturaSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Asignatura</SelectItem>
-                            {filteredAsignaturas.map((a) => (
-                              <SelectItem key={a.id} value={a.codigo}>
-                                {a.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
+                          className="h-9 text-xs"
+                        />
                       </div>
-
-                      {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs font-semibold text-foreground">Grupo</Label>
-                          {!filters.asignatura_codigo && (
-                            <span className="text-[10px] text-muted-foreground font-normal">
-                              Requiere asignatura
-                            </span>
-                          )}
-                        </div>
-                        <Select
-                          value={filters.grupo || "none"}
-                          onValueChange={(val) => {
-                            setFilter("grupo", val === "none" ? undefined : val)
+                        <Label className="text-xs font-semibold text-foreground">
+                          Periodo <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Periodo"
+                          value={filters.periodo !== undefined ? filters.periodo : ""}
+                          onChange={(e) => {
+                            const val = e.target.value ? Number(e.target.value) : undefined
+                            setFilter("periodo", val)
                             triggerFetchIfValid()
                           }}
-                          disabled={!filters.asignatura_codigo}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Seleccione Grupo" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">Todos los grupos</SelectItem>
-                            {groupOptions.map((g) => (
-                              <SelectItem key={g} value={g}>
-                                Grupo {g}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Filtro Rango de Fechas */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Fechas</Label>
-                        <DateRangePicker
-                          value={dateRangeValue}
-                          onValueChange={handleDateRangeChange}
-                          disabled={!isMandatoryFiltersSet}
-                          className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
-                          placeholder="Seleccionar rango"
+                          className="h-9 text-xs no-spinner"
                         />
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
-                <div
-                  className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
-                  style={{ flex: "1 1 0%" }}
-                >
-                  <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <MapPin className="size-3.5" />
-                      Espacios Físicos
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="xs"
-                      onClick={handleClearInfraFilters}
-                      className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
-                    >
-                      Limpiar
-                    </Button>
-                  </div>
-
-                  <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
-                    <div className="space-y-3 pb-2">
-                      {/* Campus */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Campus</Label>
-                        <Select
-                          value={filters.infraCampusId ? filters.infraCampusId.toString() : "none"}
-                          onValueChange={handleCampusChange}
-                          disabled={loadingInfra || !!errorInfra}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                errorInfra
-                                  ? "Servicio no disponible"
-                                  : loadingInfra
-                                    ? "Cargando..."
-                                    : "Seleccione Campus"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setCampusSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Campus</SelectItem>
-                            {filteredCampus.map((c) => (
-                              <SelectItem key={c.id} value={c.id.toString()}>
-                                {c.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Facultad de Infraestructura */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Facultad</Label>
-                        <Select
-                          value={
-                            filters.infraFacultadId ? filters.infraFacultadId.toString() : "none"
-                          }
-                          onValueChange={handleFacultadInfraChange}
-                          disabled={loadingInfra || !!errorInfra || !filters.infraCampusId}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                errorInfra
-                                  ? "Servicio no disponible"
-                                  : loadingInfra
-                                    ? "Cargando..."
-                                    : !filters.infraCampusId
-                                      ? "Seleccione Campus primero"
-                                      : "Seleccione Facultad"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setFacultadInfraSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Facultad</SelectItem>
-                            {filteredFacultadesInfra.map((f) => (
-                              <SelectItem key={f.id} value={f.id.toString()}>
-                                {f.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Bloque */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Bloque</Label>
-                        <Select
-                          value={filters.infraBloqueId ? filters.infraBloqueId.toString() : "none"}
-                          onValueChange={handleBloqueChange}
-                          disabled={loadingInfra || !!errorInfra || !filters.infraFacultadId}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                errorInfra
-                                  ? "Servicio no disponible"
-                                  : loadingInfra
-                                    ? "Cargando..."
-                                    : !filters.infraFacultadId
-                                      ? "Seleccione Facultad primero"
-                                      : "Seleccione Bloque"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setBloqueSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Bloque</SelectItem>
-                            {filteredBloques.map((b) => (
-                              <SelectItem key={b.id} value={b.id.toString()}>
-                                {b.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Ambiente */}
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-semibold text-foreground">Ambiente</Label>
-                        <Select
-                          value={filters.infraAulaId ? filters.infraAulaId.toString() : "none"}
-                          onValueChange={handleAmbienteChange}
-                          disabled={loadingInfra || !!errorInfra || !filters.infraBloqueId}
-                        >
-                          <SelectTrigger className="h-9 text-xs">
-                            <SelectValue
-                              placeholder={
-                                errorInfra
-                                  ? "Servicio no disponible"
-                                  : loadingInfra
-                                    ? "Cargando..."
-                                    : !filters.infraBloqueId
-                                      ? "Seleccione Bloque primero"
-                                      : "Seleccione Ambiente"
-                              }
-                            />
-                          </SelectTrigger>
-                          <SearchableSelectContent
-                            onFilterChange={setAmbienteSearch}
-                            onKeyDownCapture={(e) => {
-                              if (e.key === "Escape") e.stopPropagation()
-                            }}
-                          >
-                            <SelectItem value="none">Seleccione Ambiente</SelectItem>
-                            {filteredAmbientes.map((a) => (
-                              <SelectItem key={a.id} value={a.id.toString()}>
-                                {a.codigo || a.nombre}
-                              </SelectItem>
-                            ))}
-                          </SearchableSelectContent>
-                        </Select>
-                      </div>
+                  {/* Sección: Filtros Opcionales */}
+                  <div className="space-y-3 pt-2">
+                    <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider border-b border-border/40 pb-1">
+                      Filtros Opcionales
                     </div>
-                  </div>
-                </div>
-              </aside>
-            )}
 
-            {/* Contenido de Visualización */}
-            <main className="flex-1 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-w-0">
-              {/* Avisos de Error */}
-              {listError && (
-                <div className="m-4">
-                  <Alert variant="destructive">
-                    <AlertCircle className="size-4" />
-                    <AlertTitle>Atención</AlertTitle>
-                    <AlertDescription>{formatErrorMessage(listError)}</AlertDescription>
-                  </Alert>
-                </div>
-              )}
-
-              {/* Loader */}
-              {loading ? (
-                <div className="flex flex-1 items-center justify-center">
-                  <div className="flex flex-col items-center gap-2">
-                    <RefreshCw className="size-8 animate-spin text-primary" />
-                    <span className="text-xs text-muted-foreground font-medium animate-pulse">
-                      Cargando horarios de clases...
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-                  {!isMandatoryFiltersSet ? (
-                    <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
-                      <Calendar className="size-12 text-muted-foreground/45 mb-3" />
-                      <h3 className="text-base font-bold text-foreground">
-                        Filtros obligatorios requeridos
-                      </h3>
-                      <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
-                        Por favor, establecé una Facultad, Gestión y Periodo en el panel lateral
-                        para poder visualizar los horarios correspondientes.
-                      </p>
-                    </div>
-                  ) : horarios.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
-                      <Calendar className="size-12 text-muted-foreground/40 mb-3" />
-                      <h3 className="text-base font-bold text-foreground">
-                        Sin resultados disponibles
-                      </h3>
-                      <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
-                        No se encontraron horarios cargados en el sistema que coincidan con los
-                        filtros aplicados.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mt-4 text-xs h-8"
-                        onClick={handleClearAllFilters}
+                    {/* Plan de Estudio / Carrera */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">
+                        Plan de Estudio
+                      </Label>
+                      <Select
+                        value={filters.plan_estudio_codigo || "none"}
+                        onValueChange={handleCarreraChange}
+                        disabled={loadingCarreras || !filters.facultad_codigo}
                       >
-                        Limpiar todos los filtros
-                      </Button>
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              loadingCarreras ? "Cargando..." : "Seleccione Plan de Estudio"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setCarreraSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Plan de Estudio</SelectItem>
+                          {filteredCarreras.map((c) => (
+                            <SelectItem key={c.id} value={c.codigo}>
+                              {c.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
                     </div>
-                  ) : (
-                    /* Vista Semanal (Grilla) - Única vista permitida */
-                    <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
-                      <GlobalWeeklyScheduleGrid
-                        items={scheduleItems}
-                        rows={rows}
-                        timeRange={timeRange}
+
+                    {/* Asignatura */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Asignatura</Label>
+                      <Select
+                        value={filters.asignatura_codigo || "none"}
+                        onValueChange={(val) => {
+                          setFilter("asignatura_codigo", val === "none" ? undefined : val)
+                          triggerFetchIfValid()
+                        }}
+                        disabled={loadingAsignaturas || !isMandatoryFiltersSet}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              loadingAsignaturas ? "Cargando..." : "Seleccione Asignatura"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setAsignaturaSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Asignatura</SelectItem>
+                          {filteredAsignaturas.map((a) => (
+                            <SelectItem key={a.id} value={a.codigo}>
+                              {a.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Grupo (Depende de asignatura y muestra dinámicamente sus grupos) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-foreground">Grupo</Label>
+                        {!filters.asignatura_codigo && (
+                          <span className="text-[10px] text-muted-foreground font-normal">
+                            Requiere asignatura
+                          </span>
+                        )}
+                      </div>
+                      <Select
+                        value={filters.grupo || "none"}
+                        onValueChange={(val) => {
+                          setFilter("grupo", val === "none" ? undefined : val)
+                          triggerFetchIfValid()
+                        }}
+                        disabled={!filters.asignatura_codigo}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue placeholder="Seleccione Grupo" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Todos los grupos</SelectItem>
+                          {groupOptions.map((g) => (
+                            <SelectItem key={g} value={g}>
+                              Grupo {g}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Filtro Rango de Fechas */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Fechas</Label>
+                      <DateRangePicker
+                        value={dateRangeValue}
+                        onValueChange={handleDateRangeChange}
+                        disabled={!isMandatoryFiltersSet}
+                        className="h-9 w-full justify-start text-left font-normal text-xs bg-background"
+                        placeholder="Seleccionar rango"
                       />
                     </div>
-                  )}
+                  </div>
                 </div>
-              )}
-            </main>
-          </div>
+              </div>
+
+              {/* Tarjeta 2: Filtros de Infraestructura / Espacios Físicos */}
+              <div
+                className="flex flex-col rounded-2xl border border-border bg-card shadow-sm overflow-hidden min-h-0"
+                style={{ flex: "1 1 0%" }}
+              >
+                <div className="flex items-center justify-between border-b border-border px-3.5 py-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <MapPin className="size-3.5" />
+                    Espacios Físicos
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    onClick={handleClearInfraFilters}
+                    className="text-[10px] h-5 px-1.5 hover:bg-muted text-muted-foreground hover:text-foreground"
+                  >
+                    Limpiar
+                  </Button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-3.5 py-2.5 space-y-3 min-h-0">
+                  <div className="space-y-3 pb-2">
+                    {/* Campus */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Campus</Label>
+                      <Select
+                        value={filters.infraCampusId ? filters.infraCampusId.toString() : "none"}
+                        onValueChange={handleCampusChange}
+                        disabled={loadingInfra || !!errorInfra}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              errorInfra
+                                ? "Servicio no disponible"
+                                : loadingInfra
+                                  ? "Cargando..."
+                                  : "Seleccione Campus"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setCampusSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Campus</SelectItem>
+                          {filteredCampus.map((c) => (
+                            <SelectItem key={c.id} value={c.id.toString()}>
+                              {c.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Facultad de Infraestructura */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Facultad</Label>
+                      <Select
+                        value={
+                          filters.infraFacultadId ? filters.infraFacultadId.toString() : "none"
+                        }
+                        onValueChange={handleFacultadInfraChange}
+                        disabled={loadingInfra || !!errorInfra || !filters.infraCampusId}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              errorInfra
+                                ? "Servicio no disponible"
+                                : loadingInfra
+                                  ? "Cargando..."
+                                  : !filters.infraCampusId
+                                    ? "Seleccione Campus primero"
+                                    : "Seleccione Facultad"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setFacultadInfraSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Facultad</SelectItem>
+                          {filteredFacultadesInfra.map((f) => (
+                            <SelectItem key={f.id} value={f.id.toString()}>
+                              {f.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Bloque */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Bloque</Label>
+                      <Select
+                        value={filters.infraBloqueId ? filters.infraBloqueId.toString() : "none"}
+                        onValueChange={handleBloqueChange}
+                        disabled={loadingInfra || !!errorInfra || !filters.infraFacultadId}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              errorInfra
+                                ? "Servicio no disponible"
+                                : loadingInfra
+                                  ? "Cargando..."
+                                  : !filters.infraFacultadId
+                                    ? "Seleccione Facultad primero"
+                                    : "Seleccione Bloque"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setBloqueSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Bloque</SelectItem>
+                          {filteredBloques.map((b) => (
+                            <SelectItem key={b.id} value={b.id.toString()}>
+                              {b.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Ambiente */}
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Ambiente</Label>
+                      <Select
+                        value={filters.infraAulaId ? filters.infraAulaId.toString() : "none"}
+                        onValueChange={handleAmbienteChange}
+                        disabled={loadingInfra || !!errorInfra || !filters.infraBloqueId}
+                      >
+                        <SelectTrigger className="h-9 text-xs">
+                          <SelectValue
+                            placeholder={
+                              errorInfra
+                                ? "Servicio no disponible"
+                                : loadingInfra
+                                  ? "Cargando..."
+                                  : !filters.infraBloqueId
+                                    ? "Seleccione Bloque primero"
+                                    : "Seleccione Ambiente"
+                            }
+                          />
+                        </SelectTrigger>
+                        <SearchableSelectContent
+                          onFilterChange={setAmbienteSearch}
+                          onKeyDownCapture={(e) => {
+                            if (e.key === "Escape") e.stopPropagation()
+                          }}
+                        >
+                          <SelectItem value="none">Seleccione Ambiente</SelectItem>
+                          {filteredAmbientes.map((a) => (
+                            <SelectItem key={a.id} value={a.id.toString()}>
+                              {a.codigo || a.nombre}
+                            </SelectItem>
+                          ))}
+                        </SearchableSelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+          )}
+
+          {/* Contenido de Visualización */}
+          <main className="flex-1 flex flex-col rounded-3xl border border-border bg-card shadow-sm overflow-hidden min-w-0">
+            {/* Avisos de Error */}
+            {listError && (
+              <div className="m-4">
+                <Alert variant="destructive">
+                  <AlertCircle className="size-4" />
+                  <AlertTitle>Atención</AlertTitle>
+                  <AlertDescription>{formatErrorMessage(listError)}</AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {/* Loader */}
+            {loading ? (
+              <div className="flex flex-1 items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <RefreshCw className="size-8 animate-spin text-primary" />
+                  <span className="text-xs text-muted-foreground font-medium animate-pulse">
+                    Cargando horarios de clases...
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                {!isMandatoryFiltersSet ? (
+                  <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
+                    <Calendar className="size-12 text-muted-foreground/45 mb-3" />
+                    <h3 className="text-base font-bold text-foreground">
+                      Filtros obligatorios requeridos
+                    </h3>
+                    <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
+                      Por favor, establecé una Facultad, Gestión y Periodo en el panel lateral para
+                      poder visualizar los horarios correspondientes.
+                    </p>
+                  </div>
+                ) : horarios.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center flex-1 p-8 text-center bg-muted/10">
+                    <Calendar className="size-12 text-muted-foreground/40 mb-3" />
+                    <h3 className="text-base font-bold text-foreground">
+                      Sin resultados disponibles
+                    </h3>
+                    <p className="mt-1.5 text-xs text-muted-foreground max-w-sm">
+                      No se encontraron horarios cargados en el sistema que coincidan con los
+                      filtros aplicados.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-4 text-xs h-8"
+                      onClick={handleClearAllFilters}
+                    >
+                      Limpiar todos los filtros
+                    </Button>
+                  </div>
+                ) : (
+                  /* Vista Semanal (Grilla) - Única vista permitida */
+                  <div className="flex-1 min-h-0 p-4 overflow-hidden flex flex-col">
+                    <GlobalWeeklyScheduleGrid
+                      items={scheduleItems}
+                      rows={rows}
+                      timeRange={timeRange}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
+          </main>
         </div>
-      </AppLayout>
-    </ProtectedRoute>
+      </div>
+    </AppLayout>
   )
 }
