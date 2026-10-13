@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
@@ -282,11 +283,17 @@ export function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
 }
 
 export default function PartesDiariosPage() {
+  const searchParams = useSearchParams()
   const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
 
   // Filtros
   const [selectedFacultadId, setSelectedFacultadId] = useState<string>("")
-  const [fecha, setFecha] = useState<string>(() => new Date().toISOString().split("T")[0])
+  const [fecha, setFecha] = useState<string>(() => {
+    const qFecha = searchParams?.get("fecha")
+    return qFecha && /^\d{4}-\d{2}-\d{2}$/.test(qFecha)
+      ? qFecha
+      : new Date().toISOString().split("T")[0]
+  })
   const [horaInicio, setHoraInicio] = useState<string>("")
   const [horaFin, setHoraFin] = useState<string>("")
   const [grupoTipo, setGrupoTipo] = useState<string>("")
@@ -364,15 +371,35 @@ export default function PartesDiariosPage() {
     [fecha]
   )
 
-  const selectedFacultad = facultades.find((f) => String(f.id) === selectedFacultadId)
+  // Precargar facultad si viene en query params (ej. desde el modal de partes mensuales)
+  const queryFacultadId = useMemo(() => {
+    if (!facultades || facultades.length === 0) return ""
+    const qFacultadCodigo = searchParams?.get("facultad_codigo")
+    const qFacultadId = searchParams?.get("facultad_id")
+
+    if (qFacultadCodigo) {
+      const target = facultades.find(
+        (f) => f.codigo.toUpperCase() === qFacultadCodigo.trim().toUpperCase()
+      )
+      if (target) return String(target.id)
+    } else if (qFacultadId) {
+      const target = facultades.find((f) => String(f.id) === qFacultadId.trim())
+      if (target) return String(target.id)
+    }
+    return ""
+  }, [facultades, searchParams])
+
+  const effectiveFacultadId = selectedFacultadId || queryFacultadId
+
+  const selectedFacultad = facultades.find((f) => String(f.id) === effectiveFacultadId)
   const isClosed = reporteData ? reporteData.estado !== "borrador" : false
-  const isOptionalDisabled = !selectedFacultadId || !fecha || loading
+  const isOptionalDisabled = !effectiveFacultadId || !fecha || loading
 
   // Serialización de filtros de búsqueda actuales para detectar modificaciones posteriores a una búsqueda
   const currentFiltersKey = useMemo(
     () =>
       JSON.stringify({
-        facultad: selectedFacultadId,
+        facultad: effectiveFacultadId,
         fecha,
         horaInicio,
         horaFin,
@@ -385,7 +412,7 @@ export default function PartesDiariosPage() {
         aula: selectedAulaId,
       }),
     [
-      selectedFacultadId,
+      effectiveFacultadId,
       fecha,
       horaInicio,
       horaFin,
@@ -511,7 +538,7 @@ export default function PartesDiariosPage() {
   }, [selectedBloqueId, infraFacultadId, selectedCampusId])
 
   const fetchReporteData = async () => {
-    if (!selectedFacultadId) {
+    if (!effectiveFacultadId) {
       toast.error("Por favor, seleccione una facultad")
       return
     }
@@ -524,7 +551,7 @@ export default function PartesDiariosPage() {
       return
     }
 
-    const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
+    const facultad = facultades.find((f) => String(f.id) === effectiveFacultadId)
     if (!facultad) return
 
     setLoading(true)
@@ -578,7 +605,7 @@ export default function PartesDiariosPage() {
   const handlePrint = async () => {
     if (!reporteData) return
 
-    const facultad = facultades.find((f) => String(f.id) === selectedFacultadId)
+    const facultad = facultades.find((f) => String(f.id) === effectiveFacultadId)
     if (!facultad) return
 
     setGeneratingPdf(true)
@@ -949,7 +976,7 @@ export default function PartesDiariosPage() {
                     placeholder="Seleccione una facultad"
                     searchPlaceholder="Buscar facultad..."
                     options={facultadOptions}
-                    value={selectedFacultadId}
+                    value={effectiveFacultadId}
                     onValueChange={(val) => {
                       setSelectedFacultadId(val)
                       setSelectedBloqueId("")
