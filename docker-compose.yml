@@ -21,6 +21,6 @@ services:
         source: ../Web_Horarios-worktrees
         target: ${PWD:?PWD must point to the main repository root}/../Web_Horarios-worktrees
     ports:
-      - "${DEV_PORT:-8000}:8002"
+      - "${DEV_PORT:-8002}:8002"
     init: true
     command: ["sleep", "infinity"]
