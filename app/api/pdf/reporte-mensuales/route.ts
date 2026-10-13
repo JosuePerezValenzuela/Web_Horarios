@@ -407,11 +407,14 @@ export async function POST(request: NextRequest) {
                     <div class="flex flex-col gap-1">
                       <div>
                         <span class="font-bold text-gray-950">Alcance: </span>
-                        <span class="uppercase font-semibold">${alcance === "plan_estudio" ? "PLAN DE ESTUDIO" : "FACULTAD"}</span>
+                        <span class="uppercase font-semibold">${alcance === "plan_estudio" ? "PLAN DE ESTUDIO" : alcance === "todas_facultades" ? "TODAS LAS FACULTADES" : "FACULTAD"}</span>
                       </div>
                       <div>
-                        <span class="font-bold text-gray-950">${alcance === "plan_estudio" ? "Plan de Estudio" : "Facultad"}: </span>
-                        <b>${objetivoNombre || facultadNombre || objetivo}</b> (${objetivo})
+                        ${
+                          alcance === "todas_facultades"
+                            ? `<span class="font-bold text-gray-950">Objetivo: </span><b>Todas las facultades</b>`
+                            : `<span class="font-bold text-gray-950">${alcance === "plan_estudio" ? "Plan de Estudio" : "Facultad"}: </span><b>${objetivoNombre || facultadNombre || objetivo}</b>`
+                        }
                       </div>
                     </div>
                     <div class="text-right self-center">
