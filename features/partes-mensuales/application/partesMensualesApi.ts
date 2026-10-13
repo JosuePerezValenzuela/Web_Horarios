@@ -1,13 +1,28 @@
 import { apiClient } from "@/shared/services/api/client"
 
-export interface PersonaFaltas {
+export interface CargaHorariaItem {
+  grupo_tipo: string
+  carga_horaria: number
+}
+
+export interface CargaFaltaItem {
+  grupo_tipo: string
   carga_faltas: number
+}
+
+export interface CargaJustificadaItem {
+  grupo_tipo: string
+  carga_justificada: number
+}
+
+export interface PersonaFaltas {
+  carga_faltas: number | CargaFaltaItem[]
   retrasos_min: number
   anticipados_min: number
 }
 
 export interface PersonaJustificaciones {
-  carga_justificada: number
+  carga_justificada: number | CargaJustificadaItem[]
   retrasos_min_justificados: number
   anticipado_min_justificados: number
 }
@@ -21,7 +36,7 @@ export interface PersonaConsolidado {
 export interface ReporteMensualPersona {
   persona_codigo: string
   persona_nombres: string
-  carga_horaria: number
+  carga_horaria: number | CargaHorariaItem[]
   faltas: PersonaFaltas
   justificaciones: PersonaJustificaciones
   consolidado: PersonaConsolidado

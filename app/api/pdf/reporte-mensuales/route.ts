@@ -10,6 +10,9 @@ import type {
   AlertaFaltaItem,
   AlertaInasistenciaConsecutivaItem,
   AlertaOcurrenciaDetalle,
+  CargaHorariaItem,
+  CargaFaltaItem,
+  CargaJustificadaItem,
 } from "@/features/partes-mensuales/application/partesMensualesApi"
 
 export async function POST(request: NextRequest) {
@@ -78,6 +81,55 @@ export async function POST(request: NextRequest) {
       return `${num}${suffix}`
     }
 
+    const formatCargaHorariaHtml = (
+      val: number | CargaHorariaItem[] | null | undefined
+    ): string => {
+      if (val === null || val === undefined) return "—"
+      if (typeof val === "number") return val > 0 ? `${val} hrs` : "—"
+      if (Array.isArray(val)) {
+        if (val.length === 0) return "—"
+        return val
+          .map(
+            (item) =>
+              `${item.carga_horaria} hrs${item.grupo_tipo ? ` <span style="font-size: 7.5px; color: #6b7280;">(${item.grupo_tipo})</span>` : ""}`
+          )
+          .join("<br/>")
+      }
+      return "—"
+    }
+
+    const formatCargaFaltasHtml = (val: number | CargaFaltaItem[] | null | undefined): string => {
+      if (val === null || val === undefined) return "—"
+      if (typeof val === "number") return val > 0 ? String(val) : "—"
+      if (Array.isArray(val)) {
+        if (val.length === 0) return "—"
+        return val
+          .map(
+            (item) =>
+              `${item.carga_faltas}${item.grupo_tipo ? ` <span style="font-size: 7.5px; opacity: 0.8;">(${item.grupo_tipo})</span>` : ""}`
+          )
+          .join("<br/>")
+      }
+      return "—"
+    }
+
+    const formatCargaJustificadaHtml = (
+      val: number | CargaJustificadaItem[] | null | undefined
+    ): string => {
+      if (val === null || val === undefined) return "—"
+      if (typeof val === "number") return val > 0 ? String(val) : "—"
+      if (Array.isArray(val)) {
+        if (val.length === 0) return "—"
+        return val
+          .map(
+            (item) =>
+              `${item.carga_justificada}${item.grupo_tipo ? ` <span style="font-size: 7.5px; opacity: 0.8;">(${item.grupo_tipo})</span>` : ""}`
+          )
+          .join("<br/>")
+      }
+      return "—"
+    }
+
     // ==========================================
     // 1. TABLA PRINCIPAL DE PERSONAL Y CARGAS HORARIAS
     // ==========================================
@@ -89,13 +141,13 @@ export async function POST(request: NextRequest) {
           <td style="text-align: center; font-family: monospace; font-weight: 500; color: #1f2937; width: 75px; vertical-align: middle;">${p.persona_codigo}</td>
           <td class="font-semibold text-gray-950" style="vertical-align: middle; text-align: left; padding: 6px 8px;">${p.persona_nombres}</td>
           <!-- 1. Carga Horaria Base -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 75px; background-color: #f8fafc;">${formatNumOrDash(p.carga_horaria, " hrs")}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 75px; background-color: #f8fafc;">${formatCargaHorariaHtml(p.carga_horaria)}</td>
           <!-- 2. Faltas -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #dc2626; font-weight: 500;">${formatNumOrDash(p.faltas?.carga_faltas)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #dc2626; font-weight: 500;">${formatCargaFaltasHtml(p.faltas?.carga_faltas)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #b45309;">${formatMinutesOrDash(p.faltas?.retrasos_min)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #047857;">${formatMinutesOrDash(p.faltas?.anticipados_min)}</td>
           <!-- 3. Justificaciones -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${formatNumOrDash(p.justificaciones?.carga_justificada)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${formatCargaJustificadaHtml(p.justificaciones?.carga_justificada)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(p.justificaciones?.retrasos_min_justificados)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(p.justificaciones?.anticipado_min_justificados)}</td>
           <!-- 4. Consolidado -->

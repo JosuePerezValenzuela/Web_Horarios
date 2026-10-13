@@ -14,6 +14,9 @@ import {
   type AlcanceReporteMensual,
   type GenerarReporteMensualRequest,
   type DraftPartItem,
+  type CargaHorariaItem,
+  type CargaFaltaItem,
+  type CargaJustificadaItem,
   calcularPeriodoMensual,
   MESES_OPTIONS,
 } from "../application/partesMensualesApi"
@@ -327,6 +330,69 @@ export default function PartesMensualesPage() {
         ? `${planObj.nombre} (${planObj.codigo || planObj.id})`
         : `Plan ID: ${reporte?.objetivo}`
       : facObj?.nombre || reporte?.objetivo || "—"
+
+  const formatCargaHoraria = (val?: number | CargaHorariaItem[]): React.ReactNode => {
+    if (val === null || val === undefined) return "—"
+    if (typeof val === "number") return val > 0 ? `${val} hrs` : "—"
+    if (Array.isArray(val)) {
+      if (val.length === 0) return "—"
+      return (
+        <div className="flex flex-col gap-0.5 items-center justify-center">
+          {val.map((item, idx) => (
+            <span key={idx} className="whitespace-nowrap">
+              {item.carga_horaria} hrs
+              {item.grupo_tipo ? (
+                <span className="text-[10px] text-muted-foreground ml-1">({item.grupo_tipo})</span>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      )
+    }
+    return "—"
+  }
+
+  const formatCargaFaltas = (val?: number | CargaFaltaItem[]): React.ReactNode => {
+    if (val === null || val === undefined) return "—"
+    if (typeof val === "number") return val > 0 ? val : "—"
+    if (Array.isArray(val)) {
+      if (val.length === 0) return "—"
+      return (
+        <div className="flex flex-col gap-0.5 items-center justify-center">
+          {val.map((item, idx) => (
+            <span key={idx} className="whitespace-nowrap">
+              {item.carga_faltas}
+              {item.grupo_tipo ? (
+                <span className="text-[10px] opacity-75 ml-1">({item.grupo_tipo})</span>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      )
+    }
+    return "—"
+  }
+
+  const formatCargaJustificada = (val?: number | CargaJustificadaItem[]): React.ReactNode => {
+    if (val === null || val === undefined) return "—"
+    if (typeof val === "number") return val > 0 ? val : "—"
+    if (Array.isArray(val)) {
+      if (val.length === 0) return "—"
+      return (
+        <div className="flex flex-col gap-0.5 items-center justify-center">
+          {val.map((item, idx) => (
+            <span key={idx} className="whitespace-nowrap">
+              {item.carga_justificada}
+              {item.grupo_tipo ? (
+                <span className="text-[10px] opacity-75 ml-1">({item.grupo_tipo})</span>
+              ) : null}
+            </span>
+          ))}
+        </div>
+      )
+    }
+    return "—"
+  }
 
   return (
     <AppLayout
@@ -1418,11 +1484,11 @@ export default function PartesMensualesPage() {
                               {p.persona_nombres}
                             </TableCell>
                             <TableCell className="text-center font-mono text-xs font-bold border-r border-border bg-muted/20">
-                              {p.carga_horaria ? `${p.carga_horaria} hrs` : "—"}
+                              {formatCargaHoraria(p.carga_horaria)}
                             </TableCell>
                             {/* Faltas */}
                             <TableCell className="text-center font-mono text-xs font-semibold text-red-600 dark:text-red-400 border-r border-border">
-                              {p.faltas?.carga_faltas || "—"}
+                              {formatCargaFaltas(p.faltas?.carga_faltas)}
                             </TableCell>
                             <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
                               {p.faltas?.retrasos_min ? `${p.faltas.retrasos_min} min` : "—"}
@@ -1432,7 +1498,7 @@ export default function PartesMensualesPage() {
                             </TableCell>
                             {/* Justificaciones */}
                             <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                              {p.justificaciones?.carga_justificada || "—"}
+                              {formatCargaJustificada(p.justificaciones?.carga_justificada)}
                             </TableCell>
                             <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
                               {p.justificaciones?.retrasos_min_justificados
