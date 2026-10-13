@@ -1,4 +1,4 @@
-import { partesApiClient } from "@/shared/services/api/partesClient"
+import { apiClient } from "@/shared/services/api/client"
 
 export interface PersonaFaltas {
   carga_faltas: number
@@ -180,6 +180,6 @@ export function calcularPeriodoMensual(
 
 export const partesMensualesApi = {
   generar: async (payload: GenerarReporteMensualRequest): Promise<ReporteMensualResponse> => {
-    return partesApiClient.post<ReporteMensualResponse>("/partes-mensuales", payload)
+    return apiClient.post<ReporteMensualResponse>("/partes-mensuales", payload)
   },
 }
