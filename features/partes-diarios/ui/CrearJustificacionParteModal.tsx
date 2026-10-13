@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { format } from "date-fns"
 import {
   Dialog,
   DialogContent,
@@ -79,8 +78,8 @@ function CrearJustificacionParteForm({
   // Form state inicializado directamente desde props
   const [selectedHorarioId, setSelectedHorarioId] = useState<number>(target.horarioId)
   const [tipoJustificacionId, setTipoJustificacionId] = useState<string>("")
-  const [fechaDesde, setFechaDesde] = useState<string>(target.fecha)
-  const [fechaHasta, setFechaHasta] = useState<string>(target.fecha)
+  const fechaDesde = target.fecha
+  const fechaHasta = target.fecha
   const [conGoceHaberes, setConGoceHaberes] = useState<boolean>(false)
   const [descripcion, setDescripcion] = useState<string>("")
 
@@ -288,41 +287,29 @@ function CrearJustificacionParteForm({
 
           {/* Fecha Desde */}
           <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               Fecha Desde <span className="text-destructive">*</span>
             </label>
             <DatePicker
               placeholder="Seleccione fecha inicio"
               value={getDateObj(fechaDesde)}
-              onValueChange={(date) => {
-                if (date) {
-                  const val = format(date, "yyyy-MM-dd")
-                  setFechaDesde(val)
-                  if (!fechaHasta || fechaHasta < val) {
-                    setFechaHasta(val)
-                  }
-                }
-              }}
+              disabled={true}
               dateFormat="dd-MM-yyyy"
-              className="w-full [&_button]:!min-h-9 [&_button]:!h-9 [&_button]:!py-1 [&_button]:!px-3 [&_button]:!text-xs rounded-xl"
+              className="w-full [&_button]:!min-h-9 [&_button]:!h-9 [&_button]:!py-1 [&_button]:!px-3 [&_button]:!text-xs rounded-xl opacity-80 cursor-not-allowed"
             />
           </div>
 
           {/* Fecha Hasta */}
           <div className="space-y-1">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
               Fecha Hasta <span className="text-destructive">*</span>
             </label>
             <DatePicker
               placeholder="Seleccione fecha fin"
               value={getDateObj(fechaHasta)}
-              onValueChange={(date) => {
-                if (date) {
-                  setFechaHasta(format(date, "yyyy-MM-dd"))
-                }
-              }}
+              disabled={true}
               dateFormat="dd-MM-yyyy"
-              className="w-full [&_button]:!min-h-9 [&_button]:!h-9 [&_button]:!py-1 [&_button]:!px-3 [&_button]:!text-xs rounded-xl"
+              className="w-full [&_button]:!min-h-9 [&_button]:!h-9 [&_button]:!py-1 [&_button]:!px-3 [&_button]:!text-xs rounded-xl opacity-80 cursor-not-allowed"
             />
           </div>
 
