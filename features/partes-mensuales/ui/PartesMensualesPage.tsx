@@ -28,6 +28,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { toast, Button, UmssModal } from "@umss/estilos-base/components"
+import { partesDiariosApi } from "@/shared/services/api/client"
 import {
   Printer,
   AlertTriangle,
@@ -40,6 +41,8 @@ import {
   Calendar,
   Users,
   AlertCircle,
+  CheckCircle2,
+  Eye,
 } from "lucide-react"
 
 export default function PartesMensualesPage() {
@@ -65,6 +68,7 @@ export default function PartesMensualesPage() {
   // Modal de partes diarios en borrador que impiden la generación
   const [showDraftPartsModal, setShowDraftPartsModal] = useState(false)
   const [draftParts, setDraftParts] = useState<DraftPartItem[]>([])
+  const [closingPartsMap, setClosingPartsMap] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     fetchFacultades()
@@ -201,6 +205,29 @@ export default function PartesMensualesPage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Cerrar / confirmar un parte diario directamente desde el modal
+  const handleConfirmParte = async (partId: number) => {
+    setClosingPartsMap((prev) => ({ ...prev, [partId]: true }))
+    try {
+      await partesDiariosApi.cambiarEstado(partId, {
+        estado: "confirmado",
+      })
+      toast.success(`Parte diario #${partId} confirmado exitosamente`)
+
+      setDraftParts((prev) => {
+        const remaining = prev.filter((p) => p.part_id !== partId)
+        if (remaining.length === 0) {
+          setShowDraftPartsModal(false)
+        }
+        return remaining
+      })
+    } catch {
+      // El cliente HTTP global ya maneja y muestra el toast de error
+    } finally {
+      setClosingPartsMap((prev) => ({ ...prev, [partId]: false }))
     }
   }
 
@@ -1489,7 +1516,7 @@ export default function PartesMensualesPage() {
             </span>
           </div>
 
-          <div className="max-h-60 overflow-y-auto rounded-xl border border-border">
+          <div className="max-h-72 overflow-y-auto rounded-xl border border-border">
             <Table className="w-full text-xs">
               <TableHeader className="bg-muted/40">
                 <TableRow>
@@ -1497,19 +1524,61 @@ export default function PartesMensualesPage() {
                   <TableHead className="w-28 text-center font-bold">Fecha</TableHead>
                   <TableHead className="w-28 text-center font-bold">Código Fac.</TableHead>
                   <TableHead className="font-bold">Facultad</TableHead>
+                  <TableHead className="w-44 text-center font-bold">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {draftParts.map((p) => (
-                  <TableRow key={p.part_id}>
-                    <TableCell className="text-center font-mono font-semibold">
-                      {p.part_id}
-                    </TableCell>
-                    <TableCell className="text-center font-mono">{p.date}</TableCell>
-                    <TableCell className="text-center font-mono">{p.faculty_code}</TableCell>
-                    <TableCell>{p.faculty_name}</TableCell>
-                  </TableRow>
-                ))}
+                {draftParts.map((p) => {
+                  const isClosing = Boolean(closingPartsMap[p.part_id])
+                  return (
+                    <TableRow key={p.part_id}>
+                      <TableCell className="text-center font-mono font-semibold">
+                        {p.part_id}
+                      </TableCell>
+                      <TableCell className="text-center font-mono">{p.date}</TableCell>
+                      <TableCell className="text-center font-mono">{p.faculty_code}</TableCell>
+                      <TableCell>{p.faculty_name}</TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2.5 text-[11px] rounded-lg gap-1"
+                            onClick={() => {
+                              window.open(
+                                `/partes-diarios?facultad_codigo=${encodeURIComponent(
+                                  p.faculty_code
+                                )}&fecha=${encodeURIComponent(p.date)}`,
+                                "_blank"
+                              )
+                            }}
+                            title="Ver y editar en partes diarios"
+                          >
+                            <Eye className="w-3 h-3 text-muted-foreground" />
+                            Ver
+                          </Button>
+
+                          <Button
+                            type="button"
+                            size="sm"
+                            disabled={isClosing}
+                            className="h-7 px-2.5 text-[11px] rounded-lg gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+                            onClick={() => handleConfirmParte(p.part_id)}
+                            title="Confirmar y cerrar parte diario"
+                          >
+                            {isClosing ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <CheckCircle2 className="w-3 h-3" />
+                            )}
+                            Cerrar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>
