@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { Fragment, useEffect, useMemo, useState } from "react"
 import { AppLayout } from "@/components/organisms/AppLayout"
 import { useFacultadesStore } from "@/shared/stores/catalogos/useFacultadesStore"
 import { useCarrerasStore } from "@/shared/stores/catalogos/useCarrerasStore"
@@ -824,7 +824,7 @@ export default function PartesMensualesPage() {
                         const isSingle = remaining.length === 0
 
                         return (
-                          <>
+                          <Fragment key={item.persona_codigo}>
                             <TableRow
                               key={`${item.persona_codigo}-first`}
                               className={`${
@@ -917,7 +917,7 @@ export default function PartesMensualesPage() {
                                 </TableRow>
                               )
                             })}
-                          </>
+                          </Fragment>
                         )
                       })
                     )}
@@ -1012,7 +1012,7 @@ export default function PartesMensualesPage() {
                         const isSingle = remaining.length === 0
 
                         return (
-                          <>
+                          <Fragment key={item.persona_codigo}>
                             <TableRow
                               key={`${item.persona_codigo}-first-fal`}
                               className={`${
@@ -1091,7 +1091,7 @@ export default function PartesMensualesPage() {
                                 </TableRow>
                               )
                             })}
-                          </>
+                          </Fragment>
                         )
                       })
                     )}
@@ -1198,7 +1198,7 @@ export default function PartesMensualesPage() {
                         const isSingle = remainingSec.length === 0
 
                         return (
-                          <>
+                          <Fragment key={item.persona_codigo}>
                             <TableRow
                               key={`${item.persona_codigo}-first-sec`}
                               className={`${
@@ -1282,7 +1282,7 @@ export default function PartesMensualesPage() {
                                 </TableRow>
                               )
                             })}
-                          </>
+                          </Fragment>
                         )
                       })
                     )}
