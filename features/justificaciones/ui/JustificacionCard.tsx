@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Badge, Button } from "@umss/estilos-base/components"
 import {
   Calendar,
@@ -16,7 +16,11 @@ import {
   Laptop,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { JustificacionListItem, TipoJustificacion } from "../domain/types"
+import type {
+  JustificacionListItem,
+  TipoJustificacion,
+  JustificacionOcurrencia,
+} from "../domain/types"
 
 interface JustificacionCardProps {
   justificacion: JustificacionListItem
@@ -51,6 +55,36 @@ export function JustificacionCard({
 
   const formatHora = (hora: string) => (hora ? hora.slice(0, 5) : "")
 
+  const docenteDisplayName =
+    justificacion.persona?.nombres?.trim() || `Docente #${justificacion.persona_id}`
+
+  // Aplanar y ordenar todas las ocurrencias cronológicamente: más antiguo y temprano adelante
+  const sortedOcurrencias = useMemo(() => {
+    const list: Array<
+      JustificacionOcurrencia & {
+        horario_id: number
+      }
+    > = []
+
+    ;(justificacion.horarios || []).forEach((h) => {
+      ;(h.ocurrencias || []).forEach((oc) => {
+        list.push({
+          ...oc,
+          horario_id: h.horario_id,
+        })
+      })
+    })
+
+    return list.sort((a, b) => {
+      // Comparar por fecha (YYYY-MM-DD)
+      if (a.fecha !== b.fecha) {
+        return a.fecha.localeCompare(b.fecha)
+      }
+      // Comparar por hora_inicio (HH:mm:ss)
+      return (a.hora_inicio || "").localeCompare(b.hora_inicio || "")
+    })
+  }, [justificacion.horarios])
+
   return (
     <div
       className={cn(
@@ -66,7 +100,7 @@ export function JustificacionCard({
           {/* Docente / Persona */}
           <div className="flex items-center gap-1.5 font-bold text-sm text-foreground">
             <User className="w-4 h-4 text-primary shrink-0" />
-            <span>Docente #{justificacion.persona_id}</span>
+            <span>{docenteDisplayName}</span>
           </div>
 
           <span className="text-muted-foreground/40 hidden sm:inline">•</span>
@@ -236,74 +270,60 @@ export function JustificacionCard({
             {expanded ? (
               <>
                 <ChevronUp className="w-4 h-4" />
-                Ocultar detalle de horarios y ocurrencias ({totalOcurrencias})
+                Ocultar detalle de ocurrencias ({totalOcurrencias})
               </>
             ) : (
               <>
                 <ChevronDown className="w-4 h-4" />
-                Ver detalle de horarios y ocurrencias ({totalOcurrencias})
+                Ver detalle de ocurrencias ({totalOcurrencias})
               </>
             )}
           </button>
 
-          {/* Lista Expandida de Horarios y sus Ocurrencias */}
+          {/* Grid Adaptable de Ocurrencias ordenadas cronológicamente sin envoltorio de Horario #id */}
           {expanded && (
-            <div className="mt-3 space-y-3 pt-3 border-t border-border/50 animate-in fade-in-50 duration-150">
-              {(justificacion.horarios || []).map((horarioItem) => (
-                <div
-                  key={`horario-${horarioItem.horario_id}`}
-                  className="p-3 rounded-xl border border-border bg-muted/20 space-y-2"
-                >
-                  <div className="flex items-center justify-between text-xs font-bold text-foreground">
-                    <span>Horario #{horarioItem.horario_id}</span>
-                    <span className="text-[11px] text-muted-foreground font-normal">
-                      {horarioItem.ocurrencias?.length || 0}{" "}
-                      {horarioItem.ocurrencias?.length === 1 ? "ocurrencia" : "ocurrencias"}
-                    </span>
-                  </div>
+            <div className="mt-3 pt-3 border-t border-border/50 animate-in fade-in-50 duration-150">
+              {sortedOcurrencias.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground italic p-3 rounded-xl border border-border bg-muted/20">
+                  Sin ocurrencias proyectadas en el rango de fechas.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5">
+                  {sortedOcurrencias.map((oc, oIdx) => (
+                    <div
+                      key={`oc-${oc.horario_id}-${oc.fecha}-${oc.hora_inicio}-${oIdx}`}
+                      className="p-2.5 rounded-xl bg-card border border-border/70 hover:border-border text-[11px] space-y-1.5 shadow-2xs transition-colors"
+                    >
+                      <div className="flex items-center justify-between font-semibold text-foreground">
+                        <span className="truncate">
+                          {DIAS_SEMANA[oc.dia] ?? "Día"} {oc.fecha}
+                        </span>
+                        {oc.virtual ? (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-medium shrink-0">
+                            <Laptop className="w-3 h-3" />
+                            Virtual
+                          </span>
+                        ) : null}
+                      </div>
 
-                  {(!horarioItem.ocurrencias || horarioItem.ocurrencias.length === 0) && (
-                    <p className="text-[11px] text-muted-foreground italic">
-                      Sin ocurrencias proyectadas en el rango de fechas.
-                    </p>
-                  )}
+                      <div className="flex items-center justify-between text-muted-foreground pt-0.5 border-t border-border/40">
+                        <span className="flex items-center gap-1 font-medium">
+                          <Clock className="w-3 h-3 text-primary shrink-0" />
+                          {formatHora(oc.hora_inicio)} - {formatHora(oc.hora_fin)}
+                        </span>
 
-                  {horarioItem.ocurrencias && horarioItem.ocurrencias.length > 0 && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                      {horarioItem.ocurrencias.map((oc, oIdx) => (
-                        <div
-                          key={`${horarioItem.horario_id}-${oc.fecha}-${oIdx}`}
-                          className="p-2 rounded-lg bg-card border border-border/60 text-[11px] space-y-1"
+                        <span
+                          className="flex items-center gap-0.5 truncate text-[10px]"
+                          title={oc.aula_codigo ? `Aula ${oc.aula_codigo}` : "Sin aula"}
                         >
-                          <div className="flex items-center justify-between font-semibold text-foreground">
-                            <span>
-                              {DIAS_SEMANA[oc.dia] ?? "Día"} {oc.fecha}
-                            </span>
-                            {oc.virtual && (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-primary">
-                                <Laptop className="w-3 h-3" />
-                                Virtual
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-primary shrink-0" />
-                              {formatHora(oc.hora_inicio)} - {formatHora(oc.hora_fin)}
-                            </span>
-
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3 h-3 shrink-0" />
-                              {oc.aula_codigo ? `Aula ${oc.aula_codigo}` : "Sin aula"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
+                          <MapPin className="w-3 h-3 shrink-0" />
+                          {oc.aula_codigo ? `Aula ${oc.aula_codigo}` : "Sin aula"}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
           )}
         </div>

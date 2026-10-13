@@ -18,6 +18,7 @@ import {
   Loader2,
   Banknote,
 } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ConfirmarJustificacionModalProps {
   isOpen: boolean
@@ -50,12 +51,17 @@ export function ConfirmarJustificacionModal({
   const [errorMsg, setErrorMsg] = useState("")
 
   const handleConfirm = async () => {
-    if (!descripcion.trim()) {
+    const trimmed = descripcion.trim()
+    if (!trimmed) {
       setErrorMsg("Debe ingresar la descripción o motivo de la justificación.")
       return
     }
+    if (trimmed.length > 64) {
+      setErrorMsg("La descripción o motivo no puede superar los 64 caracteres.")
+      return
+    }
     setErrorMsg("")
-    await onConfirm(descripcion.trim())
+    await onConfirm(trimmed)
   }
 
   const handleClose = () => {
@@ -121,15 +127,28 @@ export function ConfirmarJustificacionModal({
 
           {/* Campo Descripción */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold uppercase tracking-wider text-foreground select-none flex items-center gap-1">
-              Descripción / Motivo <span className="text-destructive">*</span>
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold uppercase tracking-wider text-foreground select-none flex items-center gap-1">
+                Descripción / Motivo <span className="text-destructive">*</span>
+              </label>
+              <span
+                className={cn(
+                  "text-[10px]",
+                  descripcion.length >= 64
+                    ? "text-amber-600 dark:text-amber-400 font-semibold"
+                    : "text-muted-foreground"
+                )}
+              >
+                {descripcion.length}/64
+              </span>
+            </div>
             <textarea
               value={descripcion}
               onChange={(e) => {
                 setDescripcion(e.target.value)
                 if (errorMsg) setErrorMsg("")
               }}
+              maxLength={64}
               rows={3}
               placeholder="Ej. Permiso médico otorgado por Seguro Universitario..."
               disabled={loading}

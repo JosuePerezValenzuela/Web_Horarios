@@ -21,9 +21,14 @@ export interface JustificacionHorarioItem {
   ocurrencias: JustificacionOcurrencia[]
 }
 
+export interface PersonaJustificacion {
+  nombres?: string | null
+}
+
 export interface JustificacionListItem {
   id: number
   persona_id: number
+  persona?: PersonaJustificacion | null
   horario_ids: number[]
   fecha_desde: string
   fecha_hasta: string
