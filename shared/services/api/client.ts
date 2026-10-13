@@ -2,7 +2,6 @@
  * API client using native fetch
  */
 
-import type { User } from "@/features/auth/domain/types"
 import type {
   EliminarHorariosBatchRequest,
   EliminarHorariosBatchResponse,
@@ -16,15 +15,27 @@ import type {
   TipoAsignacionAdministrativo,
   TipoCargosApiResponse,
 } from "@/features/scheduling/docentes/domain/types"
+import type {
+  GenerarParteDiarioRequest,
+  ParteDiarioReporte,
+  ConsultarReporteParams,
+  RegistrarAsistenciasRequest,
+  RegistrarAsistenciasResponse,
+  CambiarEstadoParteRequest,
+  CambiarEstadoParteResponse,
+} from "@/features/partes-diarios/domain/types"
 
 import { toast } from "@umss/estilos-base/components"
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000/api"
 
-interface ApiClientOptions {
+export interface ApiClientOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
   body?: unknown
   headers?: Record<string, string>
+  showErrorToast?: boolean
+  loadingMessage?: string
+  successMessage?: string
 }
 
 export interface ApiError extends Error {
@@ -40,7 +51,11 @@ class ApiClient {
     this.baseUrl = baseUrl
   }
 
-  private handleResponse<T>(response: Response): Promise<T> {
+  private handleResponse<T>(
+    response: Response,
+    options: ApiClientOptions = {},
+    toastId?: string | number
+  ): Promise<T> {
     if (!response.ok) {
       const error: ApiError = new Error(
         `HTTP ${response.status}: ${response.statusText}`
@@ -52,17 +67,42 @@ class ApiClient {
           error.body = body
           // Extract specific error messages if available from API client (ApiError)
           const apiMsg = body?.message || `Error del servidor (${response.status})`
-          toast.error(apiMsg, { id: apiMsg })
+          if (options.showErrorToast !== false) {
+            if (toastId) {
+              toast.error(apiMsg, { id: toastId })
+            } else {
+              toast.error(apiMsg, { id: apiMsg })
+            }
+          } else if (toastId) {
+            toast.dismiss(toastId)
+          }
           throw error
         })
         .catch((err) => {
           if (!err.status) {
             const msg = `Error de red: ${response.statusText}`
-            toast.error(msg, { id: msg })
+            if (options.showErrorToast !== false) {
+              toast.error(msg, { id: msg })
+            }
           }
           throw err
         })
     }
+
+    if (toastId) {
+      if (options.successMessage) {
+        toast.success(options.successMessage, { id: toastId })
+      } else {
+        toast.dismiss(toastId)
+      }
+    } else if (options.successMessage) {
+      toast.success(options.successMessage)
+    }
+
+    if (response.status === 204) {
+      return Promise.resolve(null as unknown as T)
+    }
+
     return response.json() as Promise<T>
   }
 
@@ -72,8 +112,17 @@ class ApiClient {
       ...(options.headers ?? {}),
     }
 
+    const toastId = options.loadingMessage ? toast.loading(options.loadingMessage) : undefined
+
+    let normalizedEndpoint = endpoint
+    if (this.baseUrl.endsWith("/api") && normalizedEndpoint.startsWith("/api/")) {
+      normalizedEndpoint = normalizedEndpoint.slice(4)
+    } else if (!this.baseUrl.endsWith("/api") && !normalizedEndpoint.startsWith("/api/")) {
+      normalizedEndpoint = `/api${normalizedEndpoint.startsWith("/") ? "" : "/"}${normalizedEndpoint}`
+    }
+
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${normalizedEndpoint}`, {
         method: options.method ?? "GET",
         headers,
         body: options.body ? JSON.stringify(options.body) : undefined,
@@ -81,20 +130,12 @@ class ApiClient {
       })
 
       if (response.status === 401) {
-        if (typeof window !== "undefined") {
-          const { useAuthStore } = await import("@/features/auth/application/authStore")
-          useAuthStore.getState().logout()
-
-          if (window.location.pathname !== "/") {
-            window.location.href = "/"
-          }
-        }
         const error: ApiError = new Error("Unauthorized") as ApiError
         error.status = 401
         throw error
       }
 
-      return await this.handleResponse<T>(response)
+      return await this.handleResponse<T>(response, options, toastId)
     } catch (error) {
       if (error && typeof error === "object" && "status" in error) {
         throw error
@@ -103,7 +144,9 @@ class ApiClient {
         "No se pudo conectar con el servidor principal. Verifique su conexión o intente más tarde."
       ) as ApiError
       networkError.status = 0
-      toast.error(networkError.message, { id: "main-network-error" })
+      if (options.showErrorToast !== false) {
+        toast.error(networkError.message, { id: "main-network-error" })
+      }
       throw networkError
     }
   }
@@ -122,11 +165,11 @@ class ApiClient {
     return promise
   }
 
-  async post<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
+  async post<T>(endpoint: string, body?: unknown, options: ApiClientOptions = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "POST", body })
   }
 
-  async patch<T>(endpoint: string, body: unknown, options: ApiClientOptions = {}): Promise<T> {
+  async patch<T>(endpoint: string, body?: unknown, options: ApiClientOptions = {}): Promise<T> {
     return this.request<T>(endpoint, { ...options, method: "PATCH", body })
   }
 
@@ -242,13 +285,6 @@ export interface AsignarHorariosBatchResponse {
   }>
 }
 
-// Auth-specific methods
-export const authApi = {
-  me: (): Promise<User> => {
-    return apiClient.get<User>("/auth/me")
-  },
-}
-
 // Horarios methods
 export const horariosApi = {
   buscarAmbientes: (payload: BuscarAmbienteRequest): Promise<BuscarAmbienteResponse> => {
@@ -319,3 +355,82 @@ export const horariosApi = {
     return apiClient.get<TipoCargosApiResponse>(`/tipo-cargos?page=${page}&pageSize=${pageSize}`)
   },
 }
+
+export const partesDiariosApi = {
+  generar: (payload: GenerarParteDiarioRequest): Promise<ParteDiarioReporte> => {
+    return apiClient.post<ParteDiarioReporte>("/partes-diarios", {
+      facultadCodigo: payload.facultadCodigo,
+      fecha: payload.fecha,
+    })
+  },
+
+  consultarReporte: (params: ConsultarReporteParams): Promise<ParteDiarioReporte> => {
+    const searchParams = new URLSearchParams()
+    searchParams.set("fecha", params.fecha)
+    searchParams.set("facultadCodigo", params.facultadCodigo)
+
+    if (params.hora_inicio) searchParams.set("hora_inicio", params.hora_inicio)
+    if (params.hora_fin) searchParams.set("hora_fin", params.hora_fin)
+    if (params.grupo_tipo) searchParams.set("grupo_tipo", params.grupo_tipo)
+    if (params.tipo_designacion) searchParams.set("tipo_designacion", params.tipo_designacion)
+    if (params.asignatura_tipo) searchParams.set("asignatura_tipo", params.asignatura_tipo)
+    if (params.virtual !== undefined && params.virtual !== null && params.virtual !== "") {
+      searchParams.set("virtual", String(params.virtual))
+    }
+    if (params.aula_id !== undefined && params.aula_id !== null && Number(params.aula_id) > 0) {
+      searchParams.set("aula_id", String(params.aula_id))
+    }
+    if (
+      params.campus_id_geografico !== undefined &&
+      params.campus_id_geografico !== null &&
+      Number(params.campus_id_geografico) > 0
+    ) {
+      searchParams.set("campus_id_geografico", String(params.campus_id_geografico))
+    }
+    if (
+      params.facultad_id_geografico !== undefined &&
+      params.facultad_id_geografico !== null &&
+      Number(params.facultad_id_geografico) > 0
+    ) {
+      searchParams.set("facultad_id_geografico", String(params.facultad_id_geografico))
+    }
+    if (
+      params.bloque_id_geografico !== undefined &&
+      params.bloque_id_geografico !== null &&
+      Number(params.bloque_id_geografico) > 0
+    ) {
+      searchParams.set("bloque_id_geografico", String(params.bloque_id_geografico))
+    }
+
+    const query = searchParams.toString()
+    return apiClient.get<ParteDiarioReporte>(`/partes-diarios/reporte${query ? `?${query}` : ""}`, {
+      showErrorToast: false, // 404 is handled specifically by page view to prompt generation dialog
+    })
+  },
+
+  registrarAsistencias: (
+    parteId: number,
+    payload: RegistrarAsistenciasRequest
+  ): Promise<RegistrarAsistenciasResponse> => {
+    return apiClient.patch<RegistrarAsistenciasResponse>(
+      `/partes-diarios/${parteId}/asistencias`,
+      payload
+    )
+  },
+
+  cambiarEstado: (
+    parteId: number,
+    payload: CambiarEstadoParteRequest
+  ): Promise<CambiarEstadoParteResponse> => {
+    return apiClient.patch<CambiarEstadoParteResponse>(`/partes-diarios/${parteId}/estado`, payload)
+  },
+}
+
+export {
+  fetchTiposJustificacion,
+  crearJustificacion,
+  listarJustificaciones,
+  cambiarEstadoJustificacion,
+  justificacionesApi,
+  justificacionesService,
+} from "@/features/justificaciones/application/api"

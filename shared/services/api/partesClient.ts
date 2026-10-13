@@ -1,6 +1,6 @@
 import { toast } from "@umss/estilos-base/components"
 
-const PARTES_BASE_URL = process.env.NEXT_PUBLIC_PARTES_URL ?? "http://localhost:3006"
+const PARTES_BASE_URL = process.env.NEXT_PUBLIC_PARTES_URL ?? "http://localhost:3006/api"
 
 export interface PartesApiClientOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE"
@@ -71,18 +71,29 @@ class PartesApiClient {
   }
 
   async request<T>(endpoint: string, options: PartesApiClientOptions = {}): Promise<T> {
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData
+
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
       ...(options.headers ?? {}),
     }
 
     const toastId = options.loadingMessage ? toast.loading(options.loadingMessage) : undefined
 
+    let normalizedEndpoint = endpoint
+    if (this.baseUrl.endsWith("/api") && normalizedEndpoint.startsWith("/api/")) {
+      normalizedEndpoint = normalizedEndpoint.slice(4)
+    }
+
     try {
-      const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      const response = await fetch(`${this.baseUrl}${normalizedEndpoint}`, {
         method: options.method ?? "GET",
         headers,
-        body: options.body ? JSON.stringify(options.body) : undefined,
+        body: isFormData
+          ? (options.body as FormData)
+          : options.body
+            ? JSON.stringify(options.body)
+            : undefined,
         credentials: "include",
       })
 
@@ -178,3 +189,14 @@ class PartesApiClient {
 }
 
 export const partesApiClient = new PartesApiClient()
+export { PartesApiClient }
+
+// Re-export justificaciones from main apiClient implementation
+export {
+  fetchTiposJustificacion,
+  crearJustificacion,
+  listarJustificaciones,
+  cambiarEstadoJustificacion,
+  justificacionesApi,
+  justificacionesService,
+} from "@/features/justificaciones/application/api"

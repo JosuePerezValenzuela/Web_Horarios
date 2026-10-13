@@ -11,7 +11,7 @@ import {
   TableRowEven,
   TableRowOdd,
 } from "@/components/ui/table"
-import { CalendarClock } from "lucide-react"
+import { CalendarClock, FileText } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 export function DocentesTable() {
@@ -49,7 +49,7 @@ export function DocentesTable() {
             <TableHead className="h-10 px-4 py-2.5 text-xs font-bold text-foreground">
               Nombre
             </TableHead>
-            <TableHead className="h-10 w-24 px-4 py-2.5 text-center text-xs font-bold text-foreground">
+            <TableHead className="h-10 w-28 px-4 py-2.5 text-center text-xs font-bold text-foreground">
               Acciones
             </TableHead>
           </TableRow>
@@ -91,17 +91,35 @@ export function DocentesTable() {
                     {docente.nombres}
                   </TableCell>
 
-                  {/* Acción Directa */}
+                  {/* Acciones Directas */}
                   <TableCell className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className="rounded-lg p-1.5 transition-all text-primary hover:bg-muted hover:text-foreground cursor-pointer"
-                      aria-label="Ver horario docente"
-                      disabled={!docente.id}
-                      onClick={() => handleRowClick(docente.id)}
-                    >
-                      <CalendarClock className="size-[18px]" />
-                    </button>
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 transition-all text-primary hover:bg-muted hover:text-foreground cursor-pointer"
+                        title="Ver horarios del docente"
+                        aria-label="Ver horarios del docente"
+                        disabled={!docente.id}
+                        onClick={() => handleRowClick(docente.id)}
+                      >
+                        <CalendarClock className="size-[18px]" />
+                      </button>
+
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 transition-all text-muted-foreground hover:bg-muted hover:text-primary cursor-pointer"
+                        title="Registrar justificación"
+                        aria-label="Registrar justificación"
+                        disabled={!docente.id}
+                        onClick={() => {
+                          if (docente.id) {
+                            router.push(`/docentes/${docente.id}/justificaciones/nueva`)
+                          }
+                        }}
+                      >
+                        <FileText className="size-[18px]" />
+                      </button>
+                    </div>
                   </TableCell>
                 </Row>
               )
