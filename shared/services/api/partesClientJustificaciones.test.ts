@@ -33,6 +33,26 @@ describe("Justificaciones API Service", () => {
       expect(res).toEqual({ id: 17, estado: "aprobada" })
     })
 
+    it("debe enviar estrictamente solo estado al cancelar (omitiendo motivo_rechazo)", async () => {
+      const patchSpy = vi.spyOn(apiClient, "patch").mockResolvedValue({
+        id: 17,
+        estado: "cancelada",
+        motivo_rechazo: null,
+      })
+
+      const res = await cambiarEstadoJustificacion(17, "cancelada", "Ignorado en cancelacion")
+
+      expect(patchSpy).toHaveBeenCalledWith(
+        "/justificaciones/17/estado",
+        { estado: "cancelada" },
+        expect.objectContaining({
+          loadingMessage: "Cancelando justificación...",
+          successMessage: "Justificación cancelada exitosamente",
+        })
+      )
+      expect(res).toEqual({ id: 17, estado: "cancelada", motivo_rechazo: null })
+    })
+
     it("debe recortar espacios (trim) y enviar motivo_rechazo para estado rechazada", async () => {
       const patchSpy = vi.spyOn(apiClient, "patch").mockResolvedValue({
         id: 17,

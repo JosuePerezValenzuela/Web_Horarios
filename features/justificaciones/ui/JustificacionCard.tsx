@@ -14,6 +14,7 @@ import {
   Banknote,
   MapPin,
   Laptop,
+  Ban,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type {
@@ -27,6 +28,7 @@ interface JustificacionCardProps {
   tipo?: TipoJustificacion
   onAprobar: (justificacion: JustificacionListItem) => void
   onRechazar: (justificacion: JustificacionListItem) => void
+  onCancelar: (justificacion: JustificacionListItem) => void
 }
 
 const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
@@ -36,12 +38,14 @@ export function JustificacionCard({
   tipo,
   onAprobar,
   onRechazar,
+  onCancelar,
 }: JustificacionCardProps) {
   const [expanded, setExpanded] = useState(false)
 
   const isPendiente = justificacion.estado === "pendiente"
   const isAprobada = justificacion.estado === "aprobada"
   const isRechazada = justificacion.estado === "rechazada"
+  const isCancelada = justificacion.estado === "cancelada"
 
   const tipoNombre =
     justificacion.tipo_justificacion?.nombre ||
@@ -151,6 +155,15 @@ export function JustificacionCard({
               </Badge>
             )}
 
+            {isCancelada && (
+              <Badge
+                variant="warning"
+                className="h-6 px-2.5 text-xs font-semibold inline-flex items-center gap-1 rounded-full uppercase tracking-wider bg-amber-600 text-white dark:bg-amber-700"
+              >
+                Cancelada
+              </Badge>
+            )}
+
             <Badge
               variant={justificacion.con_goce_haberes ? "primary" : "neutral"}
               className="h-6 px-2.5 text-xs font-semibold inline-flex items-center gap-1 rounded-full"
@@ -175,10 +188,21 @@ export function JustificacionCard({
         </div>
 
         {/* Acciones */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
-          {/* Si está pendiente: Aprobar o Rechazar */}
+        <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
+          {/* Si está pendiente: Aprobar, Rechazar o Cancelar */}
           {isPendiente && (
             <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onCancelar(justificacion)}
+                className="h-8 px-3 text-xs gap-1.5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 border-amber-500/30 rounded-xl"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                Cancelar
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -202,18 +226,31 @@ export function JustificacionCard({
             </>
           )}
 
-          {/* Si está aprobada: Se permite rechazar (transición aprobada -> rechazada) */}
+          {/* Si está aprobada: Se permite rechazar o cancelar */}
           {isAprobada && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onRechazar(justificacion)}
-              className="h-8 px-3 text-xs gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30 rounded-xl"
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              Rechazar
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onCancelar(justificacion)}
+                className="h-8 px-3 text-xs gap-1.5 text-amber-700 dark:text-amber-400 hover:bg-amber-500/10 border-amber-500/30 rounded-xl"
+              >
+                <Ban className="w-3.5 h-3.5" />
+                Cancelar
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onRechazar(justificacion)}
+                className="h-8 px-3 text-xs gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30 rounded-xl"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                Rechazar
+              </Button>
+            </>
           )}
         </div>
       </div>

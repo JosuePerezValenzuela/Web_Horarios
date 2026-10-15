@@ -75,16 +75,19 @@ export async function listarJustificaciones(
 }
 
 /**
- * Aprobar o rechazar una justificación (PATCH /api/justificaciones/:id/estado)
+ * Aprobar, rechazar o cancelar una justificación (PATCH /api/justificaciones/:id/estado)
  *
  * Contrato:
- * - motivo_rechazo solo se acepta al rechazar. Al aprobar DEBE omitirse.
+ * - motivo_rechazo solo se acepta al rechazar. Al aprobar o cancelar DEBE omitirse estrictamente.
  * - Rechazar puede incluir motivo_rechazo opcional (máx. 64 caracteres).
- * - Transiciones válidas: pendiente -> aprobada, pendiente -> rechazada, aprobada -> rechazada.
+ * - Transiciones válidas:
+ *   - pendiente -> aprobada, rechazada, cancelada
+ *   - aprobada -> rechazada, cancelada
+ *   - rechazada / cancelada -> ninguna (estados terminales)
  */
 export async function cambiarEstadoJustificacion(
   id: number,
-  estado: "aprobada" | "rechazada",
+  estado: "aprobada" | "rechazada" | "cancelada",
   motivo_rechazo?: string | null
 ): Promise<CambiarEstadoJustificacionResponse> {
   const payload: CambiarEstadoJustificacionRequest = {
@@ -103,13 +106,26 @@ export async function cambiarEstadoJustificacion(
     }
   }
 
+  const loadingMessage =
+    estado === "aprobada"
+      ? "Aprobando justificación..."
+      : estado === "rechazada"
+        ? "Rechazando justificación..."
+        : "Cancelando justificación..."
+
+  const successMessage =
+    estado === "aprobada"
+      ? "Justificación aprobada exitosamente"
+      : estado === "rechazada"
+        ? "Justificación rechazada exitosamente"
+        : "Justificación cancelada exitosamente"
+
   return apiClient.patch<CambiarEstadoJustificacionResponse>(
     `/justificaciones/${id}/estado`,
     payload,
     {
-      loadingMessage:
-        estado === "aprobada" ? "Aprobando justificación..." : "Rechazando justificación...",
-      successMessage: `Justificación ${estado === "aprobada" ? "aprobada" : "rechazada"} exitosamente`,
+      loadingMessage,
+      successMessage,
     }
   )
 }

@@ -9,7 +9,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { Button, Badge, Input } from "@umss/estilos-base/components"
-import { CheckCircle2, XCircle, AlertTriangle, Loader2 } from "lucide-react"
+import { CheckCircle2, XCircle, AlertTriangle, Loader2, Ban } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { JustificacionListItem } from "../domain/types"
 
@@ -18,7 +18,7 @@ interface ConfirmarCambioEstadoModalProps {
   onClose: () => void
   onConfirm: (motivo?: string) => Promise<void>
   justificacion: JustificacionListItem | null
-  nuevoEstado: "aprobada" | "rechazada" | null
+  nuevoEstado: "aprobada" | "rechazada" | "cancelada" | null
   loading: boolean
 }
 
@@ -36,6 +36,8 @@ export function ConfirmarCambioEstadoModal({
   if (!justificacion || !nuevoEstado) return null
 
   const isAprobar = nuevoEstado === "aprobada"
+  const isRechazar = nuevoEstado === "rechazada"
+  const isCancelar = nuevoEstado === "cancelada"
 
   const handleClose = () => {
     setMotivo("")
@@ -44,8 +46,8 @@ export function ConfirmarCambioEstadoModal({
   }
 
   const handleConfirm = () => {
-    if (isAprobar) {
-      // Al aprobar, el backend rechaza motivo_rechazo con 400. Se debe omitir estrictamente.
+    if (isAprobar || isCancelar) {
+      // Al aprobar o cancelar, el backend rechaza motivo_rechazo con 400. Se debe omitir estrictamente.
       onConfirm(undefined)
       return
     }
@@ -62,17 +64,21 @@ export function ConfirmarCambioEstadoModal({
   const tipoNombre =
     justificacion.tipo_justificacion?.nombre || `Tipo #${justificacion.tipo_justificacion_id}`
 
+  const getTitleText = () => {
+    if (isAprobar) return "Aprobar Justificación"
+    if (isRechazar) return "Rechazar Justificación"
+    return "Cancelar Justificación"
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !loading && handleClose()}>
       <DialogContent className="sm:max-w-md bg-card border border-border p-6 rounded-2xl shadow-xl">
         <DialogHeader className="space-y-1 pb-3 border-b border-border">
           <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
-            {isAprobar ? (
-              <CheckCircle2 className="w-5 h-5 text-primary" />
-            ) : (
-              <XCircle className="w-5 h-5 text-destructive" />
-            )}
-            {isAprobar ? "Aprobar Justificación" : "Rechazar Justificación"} #{justificacion.id}
+            {isAprobar && <CheckCircle2 className="w-5 h-5 text-primary" />}
+            {isRechazar && <XCircle className="w-5 h-5 text-destructive" />}
+            {isCancelar && <Ban className="w-5 h-5 text-amber-600 dark:text-amber-500" />}
+            {getTitleText()} #{justificacion.id}
           </DialogTitle>
         </DialogHeader>
 
@@ -106,7 +112,7 @@ export function ConfirmarCambioEstadoModal({
           </div>
 
           {/* Campo opcional de motivo de rechazo (SOLO cuando se rechaza) */}
-          {!isAprobar && (
+          {isRechazar && (
             <div className="space-y-1.5 pt-1">
               <div className="flex items-center justify-between">
                 <label
@@ -147,21 +153,34 @@ export function ConfirmarCambioEstadoModal({
           )}
 
           {/* Nota informativa según la transición */}
-          {isAprobar ? (
+          {isAprobar && (
             <div className="flex items-start gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5 text-foreground">
               <CheckCircle2 className="w-4 h-4 text-primary shrink-0 mt-0.5" />
               <p className="leading-relaxed">
                 Al <strong>aprobar</strong> esta justificación, se conservará activo el rango de
-                fechas para los horarios asociados. Posteriormente podrá ser rechazada si fuera
-                necesario.
+                fechas para los horarios asociados. Posteriormente podrá ser rechazada o cancelada
+                si fuera necesario.
               </p>
             </div>
-          ) : (
+          )}
+
+          {isRechazar && (
             <div className="flex items-start gap-2 p-3 rounded-xl border border-destructive/20 bg-destructive/10 text-destructive">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <p className="leading-relaxed">
                 <strong>Atención:</strong> El rechazo es definitivo (estado terminal). Al rechazar
                 la justificación se liberará el rango de fechas de los horarios asociados.
+              </p>
+            </div>
+          )}
+
+          {isCancelar && (
+            <div className="flex items-start gap-2 p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+              <Ban className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <p className="leading-relaxed">
+                <strong>Atención:</strong> La cancelación es definitiva (estado terminal). Al
+                cancelar la justificación se liberará el rango y no se proyectarán ocurrencias
+                futuras.
               </p>
             </div>
           )}
@@ -175,7 +194,7 @@ export function ConfirmarCambioEstadoModal({
             disabled={loading}
             className="w-full sm:w-auto h-9 min-w-[110px] px-4 text-xs font-semibold rounded-xl"
           >
-            Cancelar
+            Volver
           </Button>
 
           <Button
@@ -185,7 +204,9 @@ export function ConfirmarCambioEstadoModal({
             className={
               isAprobar
                 ? "w-full sm:w-auto h-9 min-w-[120px] px-5 text-xs font-semibold rounded-xl bg-primary text-primary-foreground hover:bg-primary/90"
-                : "w-full sm:w-auto h-9 min-w-[120px] px-5 text-xs font-semibold rounded-xl bg-destructive text-white hover:bg-destructive/90"
+                : isRechazar
+                  ? "w-full sm:w-auto h-9 min-w-[120px] px-5 text-xs font-semibold rounded-xl bg-destructive text-white hover:bg-destructive/90"
+                  : "w-full sm:w-auto h-9 min-w-[120px] px-5 text-xs font-semibold rounded-xl bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
             }
           >
             {loading ? (
@@ -195,8 +216,10 @@ export function ConfirmarCambioEstadoModal({
               </>
             ) : isAprobar ? (
               "Confirmar Aprobación"
-            ) : (
+            ) : isRechazar ? (
               "Confirmar Rechazo"
+            ) : (
+              "Confirmar Cancelación"
             )}
           </Button>
         </DialogFooter>

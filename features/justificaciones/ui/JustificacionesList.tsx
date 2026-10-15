@@ -50,7 +50,9 @@ export function JustificacionesList() {
   const [selectedJustificacion, setSelectedJustificacion] = useState<JustificacionListItem | null>(
     null
   )
-  const [targetEstado, setTargetEstado] = useState<"aprobada" | "rechazada" | null>(null)
+  const [targetEstado, setTargetEstado] = useState<"aprobada" | "rechazada" | "cancelada" | null>(
+    null
+  )
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -104,7 +106,7 @@ export function JustificacionesList() {
     }
   }, [filterEstado, filterTipoId, filterUuidDoc, page, pageSize, refreshKey])
 
-  // Handlers para modal de aprobación/rechazo
+  // Handlers para modal de aprobación/rechazo/cancelación
   const handleAprobarClick = (justificacion: JustificacionListItem) => {
     setSelectedJustificacion(justificacion)
     setTargetEstado("aprobada")
@@ -114,6 +116,12 @@ export function JustificacionesList() {
   const handleRechazarClick = (justificacion: JustificacionListItem) => {
     setSelectedJustificacion(justificacion)
     setTargetEstado("rechazada")
+    setIsModalOpen(true)
+  }
+
+  const handleCancelarClick = (justificacion: JustificacionListItem) => {
+    setSelectedJustificacion(justificacion)
+    setTargetEstado("cancelada")
     setIsModalOpen(true)
   }
 
@@ -159,6 +167,7 @@ export function JustificacionesList() {
               { id: "pendiente", label: "Pendientes" },
               { id: "aprobada", label: "Aprobadas" },
               { id: "rechazada", label: "Rechazadas" },
+              { id: "cancelada", label: "Canceladas" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -324,6 +333,7 @@ export function JustificacionesList() {
               tipo={tipos.find((t) => t.id === item.tipo_justificacion_id)}
               onAprobar={handleAprobarClick}
               onRechazar={handleRechazarClick}
+              onCancelar={handleCancelarClick}
             />
           ))}
         </div>

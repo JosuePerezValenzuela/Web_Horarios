@@ -4,7 +4,7 @@ export interface TipoJustificacion {
   nombre: string
 }
 
-export type EstadoJustificacion = "pendiente" | "aprobada" | "rechazada"
+export type EstadoJustificacion = "pendiente" | "aprobada" | "rechazada" | "cancelada"
 
 export interface JustificacionOcurrencia {
   fecha: string
@@ -68,13 +68,13 @@ export interface ListarJustificacionesResponse {
 }
 
 export interface CambiarEstadoJustificacionRequest {
-  estado: "aprobada" | "rechazada"
+  estado: "aprobada" | "rechazada" | "cancelada"
   motivo_rechazo?: string
 }
 
 export interface CambiarEstadoJustificacionResponse {
   id: number
-  estado: "aprobada" | "rechazada"
+  estado: "aprobada" | "rechazada" | "cancelada"
   motivo_rechazo?: string | null
 }
 
