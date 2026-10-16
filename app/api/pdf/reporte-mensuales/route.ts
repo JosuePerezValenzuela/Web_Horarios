@@ -76,11 +76,6 @@ export async function POST(request: NextRequest) {
       return `${min} min`
     }
 
-    const formatNumOrDash = (num: number | null | undefined, suffix = ""): string => {
-      if (num === null || num === undefined || num === 0) return "—"
-      return `${num}${suffix}`
-    }
-
     const formatCargaHorariaHtml = (
       val: number | CargaHorariaItem[] | null | undefined
     ): string => {
@@ -135,6 +130,9 @@ export async function POST(request: NextRequest) {
     // ==========================================
     const personasRowsHtml = personas
       .map((p: ReporteMensualPersona, idx: number) => {
+        const justConGoce = p.justificaciones_con_goce ?? p.justificaciones
+        const justSinGoce = p.justificaciones_sin_goce
+
         return `
         <tr class="hover:bg-gray-50/50">
           <td style="text-align: center; font-family: monospace; color: #6b7280; width: 30px; vertical-align: middle;">${idx + 1}</td>
@@ -146,14 +144,14 @@ export async function POST(request: NextRequest) {
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #dc2626; font-weight: 500;">${formatCargaFaltasHtml(p.faltas?.carga_faltas)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #b45309;">${formatMinutesOrDash(p.faltas?.retrasos_min)}</td>
           <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #047857;">${formatMinutesOrDash(p.faltas?.anticipados_min)}</td>
-          <!-- 3. Justificaciones -->
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${formatCargaJustificadaHtml(p.justificaciones?.carga_justificada)}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(p.justificaciones?.retrasos_min_justificados)}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(p.justificaciones?.anticipado_min_justificados)}</td>
-          <!-- 4. Consolidado -->
-          <td style="text-align: center; font-family: monospace; font-weight: bold; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${formatNumOrDash(p.consolidado?.carga_consolidada)}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${formatMinutesOrDash(p.consolidado?.minutos_retraso_consolidado)}</td>
-          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; background-color: #f0fdf4; color: #15803d;">${formatMinutesOrDash(p.consolidado?.minutos_anticipado_consolidado)}</td>
+          <!-- 3. Justificaciones Con Goce -->
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #2563eb;">${formatCargaJustificadaHtml(justConGoce?.carga_justificada)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(justConGoce?.retrasos_min_justificados)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(justConGoce?.anticipado_min_justificados)}</td>
+          <!-- 4. Justificaciones Sin Goce -->
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #7c3aed;">${formatCargaJustificadaHtml(justSinGoce?.carga_justificada)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(justSinGoce?.retrasos_min_justificados)}</td>
+          <td style="text-align: center; font-family: monospace; vertical-align: middle; width: 65px; color: #4b5563;">${formatMinutesOrDash(justSinGoce?.anticipado_min_justificados)}</td>
         </tr>
       `
       })
@@ -496,8 +494,8 @@ export async function POST(request: NextRequest) {
                           <th rowspan="2">Docente / Funcionario</th>
                           <th class="sec-header" style="background-color: #e2e8f0; color: #1e293b; width: 75px; text-align: center;">1. Carga Horaria</th>
                           <th colspan="3" class="sec-header" style="background-color: #fee2e2; color: #991b1b; text-align: center;">2. Faltas</th>
-                          <th colspan="3" class="sec-header" style="background-color: #dbeafe; color: #1e40af; text-align: center;">3. Justificaciones</th>
-                          <th colspan="3" class="sec-header" style="background-color: #dcfce7; color: #166534; text-align: center;">4. Consolidado</th>
+                          <th colspan="3" class="sec-header" style="background-color: #dbeafe; color: #1e40af; text-align: center;">3. Justif. Con Goce</th>
+                          <th colspan="3" class="sec-header" style="background-color: #f3e8ff; color: #6b21a8; text-align: center;">4. Justif. Sin Goce</th>
                         </tr>
                         <tr>
                           <!-- 1. Carga Horaria Base -->
@@ -506,12 +504,12 @@ export async function POST(request: NextRequest) {
                           <th style="width: 65px; text-align: center;">Carga Falt.</th>
                           <th style="width: 65px; text-align: center;">Retraso (m)</th>
                           <th style="width: 65px; text-align: center;">Anticip. (m)</th>
-                          <!-- 3. Justificaciones -->
+                          <!-- 3. Justificaciones Con Goce -->
                           <th style="width: 65px; text-align: center;">Carga Just.</th>
                           <th style="width: 65px; text-align: center;">Retraso (m)</th>
                           <th style="width: 65px; text-align: center;">Anticip. (m)</th>
-                          <!-- 4. Consolidado -->
-                          <th style="width: 65px; text-align: center;">Carga Cons.</th>
+                          <!-- 4. Justificaciones Sin Goce -->
+                          <th style="width: 65px; text-align: center;">Carga Just.</th>
                           <th style="width: 65px; text-align: center;">Retraso (m)</th>
                           <th style="width: 65px; text-align: center;">Anticip. (m)</th>
                         </tr>

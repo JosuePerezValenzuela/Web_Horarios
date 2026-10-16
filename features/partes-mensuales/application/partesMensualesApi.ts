@@ -38,8 +38,11 @@ export interface ReporteMensualPersona {
   persona_nombres: string
   carga_horaria: number | CargaHorariaItem[]
   faltas: PersonaFaltas
-  justificaciones: PersonaJustificaciones
-  consolidado: PersonaConsolidado
+  justificaciones_con_goce: PersonaJustificaciones
+  justificaciones_sin_goce: PersonaJustificaciones
+  // Campos opcionales para retrocompatibilidad
+  justificaciones?: PersonaJustificaciones
+  consolidado?: PersonaConsolidado
 }
 
 export interface AlertaOcurrenciaDetalle {

@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest"
-import {
-  calcularPeriodoMensual,
-  MESES_OPTIONS,
-} from "./partesMensualesApi"
+import { calcularPeriodoMensual, MESES_OPTIONS } from "./partesMensualesApi"
 
 describe("calcularPeriodoMensual", () => {
   it("debe calcular correctamente el período para Febrero 2026 (15 de enero al 15 de febrero)", () => {

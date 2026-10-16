@@ -1416,13 +1416,13 @@ export default function PartesMensualesPage() {
                           colSpan={3}
                           className="text-center border-r border-border font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-500/10"
                         >
-                          Justificaciones
+                          Justificaciones Con Goce
                         </TableHead>
                         <TableHead
                           colSpan={3}
-                          className="text-center font-bold text-xs text-emerald-700 dark:text-emerald-400 bg-emerald-500/10"
+                          className="text-center font-bold text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10"
                         >
-                          Consolidado
+                          Justificaciones Sin Goce
                         </TableHead>
                       </TableRow>
                       <TableRow className="border-b border-border hover:bg-transparent text-[11px]">
@@ -1436,7 +1436,7 @@ export default function PartesMensualesPage() {
                         <TableHead className="w-20 text-center border-r border-border font-bold text-emerald-700 dark:text-emerald-400">
                           Anticipados
                         </TableHead>
-                        {/* Justificaciones */}
+                        {/* Justificaciones Con Goce */}
                         <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
                           Carga
                         </TableHead>
@@ -1446,14 +1446,14 @@ export default function PartesMensualesPage() {
                         <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
                           Anticipados
                         </TableHead>
-                        {/* Consolidado */}
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-emerald-700 dark:text-emerald-400">
+                        {/* Justificaciones Sin Goce */}
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
                           Carga
                         </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-emerald-700 dark:text-emerald-400">
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
                           Retrasos
                         </TableHead>
-                        <TableHead className="w-20 text-center font-bold text-emerald-700 dark:text-emerald-400">
+                        <TableHead className="w-20 text-center font-bold text-amber-700 dark:text-amber-400">
                           Anticipados
                         </TableHead>
                       </TableRow>
@@ -1469,65 +1469,70 @@ export default function PartesMensualesPage() {
                           </TableCell>
                         </TableRow>
                       ) : (
-                        filteredPersonas.map((p, idx) => (
-                          <TableRow
-                            key={p.persona_codigo || idx}
-                            className="border-b border-border hover:bg-muted/10"
-                          >
-                            <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
-                              {idx + 1}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
-                              {p.persona_codigo}
-                            </TableCell>
-                            <TableCell className="font-semibold text-xs text-foreground border-r border-border">
-                              {p.persona_nombres}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs font-bold border-r border-border bg-muted/20">
-                              {formatCargaHoraria(p.carga_horaria)}
-                            </TableCell>
-                            {/* Faltas */}
-                            <TableCell className="text-center font-mono text-xs font-semibold text-red-600 dark:text-red-400 border-r border-border">
-                              {formatCargaFaltas(p.faltas?.carga_faltas)}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
-                              {p.faltas?.retrasos_min ? `${p.faltas.retrasos_min} min` : "—"}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-emerald-700 dark:text-emerald-400 border-r border-border">
-                              {p.faltas?.anticipados_min ? `${p.faltas.anticipados_min} min` : "—"}
-                            </TableCell>
-                            {/* Justificaciones */}
-                            <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                              {formatCargaJustificada(p.justificaciones?.carga_justificada)}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                              {p.justificaciones?.retrasos_min_justificados
-                                ? `${p.justificaciones.retrasos_min_justificados} min`
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                              {p.justificaciones?.anticipado_min_justificados
-                                ? `${p.justificaciones.anticipado_min_justificados} min`
-                                : "—"}
-                            </TableCell>
-                            {/* Consolidado */}
-                            <TableCell className="text-center font-mono text-xs font-bold text-emerald-600 dark:text-emerald-400 border-r border-border">
-                              {p.consolidado?.carga_consolidada
-                                ? `${p.consolidado.carga_consolidada} hrs`
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-emerald-600 dark:text-emerald-400 border-r border-border">
-                              {p.consolidado?.minutos_retraso_consolidado
-                                ? `${p.consolidado.minutos_retraso_consolidado} min`
-                                : "—"}
-                            </TableCell>
-                            <TableCell className="text-center font-mono text-xs text-emerald-600 dark:text-emerald-400">
-                              {p.consolidado?.minutos_anticipado_consolidado
-                                ? `${p.consolidado.minutos_anticipado_consolidado} min`
-                                : "—"}
-                            </TableCell>
-                          </TableRow>
-                        ))
+                        filteredPersonas.map((p, idx) => {
+                          const justConGoce = p.justificaciones_con_goce ?? p.justificaciones
+                          const justSinGoce = p.justificaciones_sin_goce
+
+                          return (
+                            <TableRow
+                              key={p.persona_codigo || idx}
+                              className="border-b border-border hover:bg-muted/10"
+                            >
+                              <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
+                                {p.persona_codigo}
+                              </TableCell>
+                              <TableCell className="font-semibold text-xs text-foreground border-r border-border">
+                                {p.persona_nombres}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs font-bold border-r border-border bg-muted/20">
+                                {formatCargaHoraria(p.carga_horaria)}
+                              </TableCell>
+                              {/* Faltas */}
+                              <TableCell className="text-center font-mono text-xs font-semibold text-red-600 dark:text-red-400 border-r border-border">
+                                {formatCargaFaltas(p.faltas?.carga_faltas)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {p.faltas?.retrasos_min ? `${p.faltas.retrasos_min} min` : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-emerald-700 dark:text-emerald-400 border-r border-border">
+                                {p.faltas?.anticipados_min
+                                  ? `${p.faltas.anticipados_min} min`
+                                  : "—"}
+                              </TableCell>
+                              {/* Justificaciones Con Goce */}
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {formatCargaJustificada(justConGoce?.carga_justificada)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {justConGoce?.retrasos_min_justificados
+                                  ? `${justConGoce.retrasos_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {justConGoce?.anticipado_min_justificados
+                                  ? `${justConGoce.anticipado_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              {/* Justificaciones Sin Goce */}
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {formatCargaJustificada(justSinGoce?.carga_justificada)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {justSinGoce?.retrasos_min_justificados
+                                  ? `${justSinGoce.retrasos_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400">
+                                {justSinGoce?.anticipado_min_justificados
+                                  ? `${justSinGoce.anticipado_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
                       )}
                     </TableBody>
                   </Table>
