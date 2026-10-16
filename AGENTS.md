@@ -147,9 +147,8 @@ Do not document or generate fictional atoms/molecules/templates as if they alrea
 
 - Before consuming or creating a new API service, verify if the request belongs to one of the existing global clients in `shared/services/api/`.
 - Current global API clients:
-  - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`) para auth, docentes, horarios y asignaciones.
+  - `shared/services/api/client.ts` → main application API (`NEXT_PUBLIC_API_URL`) para auth, docentes, horarios, asignaciones, partes diarios, partes mensuales, reglas de asistencia y justificaciones.
   - `shared/services/api/infraClient.ts` → infrastructure API (`NEXT_PUBLIC_INFRA_URL`) para campus, bloques, ambientes y espacios físicos.
-  - `shared/services/api/partesClient.ts` → partes y asistencias API (`NEXT_PUBLIC_PARTES_URL`) para partes diarios, partes mensuales y reglas de asistencia.
 - Reuse these clients instead of creating ad-hoc fetch wrappers inside features whenever possible.
 
 ## Common Mistakes to Avoid
