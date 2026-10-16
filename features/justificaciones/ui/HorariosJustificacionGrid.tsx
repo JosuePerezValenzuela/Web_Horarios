@@ -3,7 +3,17 @@
 import { useMemo } from "react"
 import { Button, Badge } from "@umss/estilos-base/components"
 
-import { Check, Calendar, Clock, MapPin, AlertCircle, Users, Laptop } from "lucide-react"
+import {
+  Check,
+  Calendar,
+  Clock,
+  MapPin,
+  AlertCircle,
+  Users,
+  Laptop,
+  Layers,
+  Link2,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { NormalizedSchedule, GroupSummary } from "@/features/scheduling/docentes/domain/types"
 import {
@@ -249,17 +259,26 @@ export function HorariosJustificacionGrid({
                           )}
                         </div>
 
-                        {/* Materia y Badge de Principal con Dependientes */}
-                        <div className="space-y-1">
+                        {/* Materia y Badges */}
+                        <div className="space-y-1.5">
                           <div className="font-semibold text-foreground text-xs leading-snug line-clamp-2">
                             {cluster.materia}
                           </div>
 
                           <div className="flex flex-wrap items-center gap-1 pt-0.5">
                             {cluster.hasDependents && (
-                              <span className="inline-flex items-center rounded-md bg-blue-50 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                                Principal
-                              </span>
+                              <>
+                                <span className="inline-flex items-center gap-1 rounded-md bg-blue-600 text-white dark:bg-blue-600 dark:text-white px-2 py-0.5 text-[9px] font-black uppercase tracking-wider shadow-xs">
+                                  <Layers className="w-2.5 h-2.5" />
+                                  Principal
+                                </span>
+                                <span className="inline-flex items-center gap-1 rounded-md bg-violet-100 text-violet-900 border border-violet-300/80 dark:bg-violet-950/80 dark:text-violet-200 dark:border-violet-700/80 px-2 py-0.5 text-[9px] font-bold shadow-2xs">
+                                  <Link2 className="w-2.5 h-2.5 text-violet-600 dark:text-violet-400 stroke-[2.5]" />
+                                  {cluster.dependentGrupos.length === 1
+                                    ? "1 vinculado"
+                                    : `${cluster.dependentGrupos.length} vinculados`}
+                                </span>
+                              </>
                             )}
                             {cluster.isVirtual && (
                               <span className="inline-flex items-center gap-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
@@ -271,21 +290,48 @@ export function HorariosJustificacionGrid({
                         </div>
 
                         {/* Grupo(s) y Ambiente */}
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
-                          <span className="flex items-center gap-0.5 font-medium text-foreground">
-                            <Users className="w-3 h-3 shrink-0" />
-                            G: {cluster.primaryGrupo}
-                          </span>
-                          {cluster.hasDependents && (
-                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border/60">
-                              + {cluster.dependentGrupos.map((g) => `G: ${g}`).join(", ")}
+                        <div className="mt-2 flex flex-col gap-1.5 text-[11px]">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {/* Grupo Principal */}
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-md border text-[11px]",
+                                cluster.hasDependents
+                                  ? "bg-blue-50 text-blue-900 border-blue-200/90 dark:bg-blue-950/60 dark:text-blue-200 dark:border-blue-800/80"
+                                  : "bg-muted/50 text-foreground border-border/60"
+                              )}
+                            >
+                              <Users className="w-3 h-3 shrink-0 text-primary" />
+                              <span>G: {cluster.primaryGrupo}</span>
+                              {cluster.hasDependents && (
+                                <span className="text-[9px] font-black uppercase text-blue-600 dark:text-blue-400">
+                                  (Principal)
+                                </span>
+                              )}
                             </span>
-                          )}
+
+                            {/* Grupos Vinculados / Dependientes */}
+                            {cluster.hasDependents &&
+                              cluster.dependentGrupos.map((depGrupo) => (
+                                <span
+                                  key={depGrupo}
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-bold text-[11px] bg-violet-100 text-violet-900 border border-violet-300 shadow-2xs dark:bg-violet-900/60 dark:text-violet-100 dark:border-violet-600/80"
+                                  title={`Grupo ${depGrupo} vinculado al grupo principal ${cluster.primaryGrupo}`}
+                                >
+                                  <Link2 className="w-3 h-3 text-violet-600 dark:text-violet-300 stroke-[2.5]" />
+                                  <span>G: {depGrupo}</span>
+                                  <span className="text-[9px] font-extrabold uppercase text-violet-700 dark:text-violet-300">
+                                    (Vinculado)
+                                  </span>
+                                </span>
+                              ))}
+                          </div>
+
                           {cluster.ambienteLabel && (
-                            <span className="flex items-center gap-0.5 truncate">
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground truncate">
                               <MapPin className="w-3 h-3 shrink-0" />
-                              {cluster.ambienteLabel}
-                            </span>
+                              <span className="truncate">{cluster.ambienteLabel}</span>
+                            </div>
                           )}
                         </div>
 
