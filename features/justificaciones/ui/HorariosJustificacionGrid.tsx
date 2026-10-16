@@ -3,17 +3,22 @@
 import { useMemo } from "react"
 import { Button, Badge } from "@umss/estilos-base/components"
 
-import { Check, Calendar, Clock, MapPin, AlertCircle, Users } from "lucide-react"
+import { Check, Calendar, Clock, MapPin, AlertCircle, Users, Laptop } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { NormalizedSchedule } from "@/features/scheduling/docentes/domain/types"
-import { getDaysOfWeekInRange, isScheduleQualifying } from "../application/filterSchedules"
+import type { NormalizedSchedule, GroupSummary } from "@/features/scheduling/docentes/domain/types"
+import {
+  getDaysOfWeekInRange,
+  clusterSchedules,
+  type HorarioCluster,
+} from "../application/filterSchedules"
 
 interface HorariosJustificacionGridProps {
   schedules: NormalizedSchedule[]
+  groups?: GroupSummary[]
   fechaDesde: string
   fechaHasta: string
   selectedIds: number[]
-  onToggleSchedule: (id: number) => void
+  onToggleCluster: (cluster: HorarioCluster) => void
   onSelectAll: (ids: number[]) => void
   onDeselectAll: () => void
 }
@@ -37,10 +42,11 @@ function formatMinutes(min: number): string {
 
 export function HorariosJustificacionGrid({
   schedules,
+  groups,
   fechaDesde,
   fechaHasta,
   selectedIds,
-  onToggleSchedule,
+  onToggleCluster,
   onSelectAll,
   onDeselectAll,
 }: HorariosJustificacionGridProps) {
@@ -51,37 +57,37 @@ export function HorariosJustificacionGrid({
     return getDaysOfWeekInRange(fechaDesde, fechaHasta)
   }, [fechaDesde, fechaHasta])
 
-  // Clasificar horarios en aplicables y no aplicables
-  const { qualifyingMap, qualifyingIds } = useMemo(() => {
-    const qMap = new Map<number, boolean>()
-    const qIds: number[] = []
+  // Agrupar horarios: primario + dependientes cuentan como un solo cluster
+  const clusters = useMemo(() => {
+    return clusterSchedules(schedules, groups, fechaDesde, fechaHasta, applicableDays)
+  }, [schedules, groups, fechaDesde, fechaHasta, applicableDays])
 
-    if (!hasDates) {
-      return { qualifyingMap: qMap, qualifyingIds: qIds }
-    }
+  // Filtrar clusters que califican dentro del rango y vigencia
+  const qualifyingClusters = useMemo(() => {
+    return clusters.filter((c) => c.isQualifying)
+  }, [clusters])
 
-    schedules.forEach((s) => {
-      if (s.dbId) {
-        const qualifies = isScheduleQualifying(s, fechaDesde, fechaHasta, applicableDays)
-        qMap.set(s.dbId, qualifies)
-        if (qualifies) {
-          qIds.push(s.dbId)
-        }
-      }
-    })
+  // Todos los dbIds de los clusters que califican
+  const qualifyingDbIds = useMemo(() => {
+    return Array.from(new Set(qualifyingClusters.flatMap((c) => c.dbIds)))
+  }, [qualifyingClusters])
 
-    return { qualifyingMap: qMap, qualifyingIds: qIds }
-  }, [schedules, fechaDesde, fechaHasta, applicableDays, hasDates])
+  // Clusters actualmente seleccionados (un cluster está seleccionado si todos sus dbIds están en selectedIds)
+  const selectedClusters = useMemo(() => {
+    return qualifyingClusters.filter(
+      (c) => c.dbIds.length > 0 && c.dbIds.every((id) => selectedIds.includes(id))
+    )
+  }, [qualifyingClusters, selectedIds])
 
-  // Organizar horarios por día de la semana
-  const schedulesByDay = useMemo(() => {
-    const map = new Map<number, NormalizedSchedule[]>()
+  // Organizar clusters por día de la semana
+  const clustersByDay = useMemo(() => {
+    const map = new Map<number, HorarioCluster[]>()
     DAYS.forEach(({ day }) => map.set(day, []))
 
-    schedules.forEach((s) => {
-      const list = map.get(s.day) || []
-      list.push(s)
-      map.set(s.day, list)
+    clusters.forEach((c) => {
+      const list = map.get(c.day) || []
+      list.push(c)
+      map.set(c.day, list)
     })
 
     // Ordenar cada lista por hora de inicio
@@ -92,10 +98,10 @@ export function HorariosJustificacionGrid({
     })
 
     return map
-  }, [schedules])
+  }, [clusters])
 
-  const selectedCount = selectedIds.length
-  const totalQualifying = qualifyingIds.length
+  const selectedCount = selectedClusters.length
+  const totalQualifying = qualifyingClusters.length
 
   return (
     <div className="space-y-3">
@@ -122,7 +128,7 @@ export function HorariosJustificacionGrid({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => onSelectAll(qualifyingIds)}
+              onClick={() => onSelectAll(qualifyingDbIds)}
               className="text-xs h-8 px-2.5"
             >
               Seleccionar aplicables ({totalQualifying})
@@ -159,10 +165,10 @@ export function HorariosJustificacionGrid({
         </div>
       )}
 
-      {/* Grilla Semanal de Horarios */}
+      {/* Grilla Semanal de Horarios Agrupados */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
         {DAYS.map(({ day, label }) => {
-          const daySchedules = schedulesByDay.get(day) || []
+          const dayClusters = clustersByDay.get(day) || []
           const isDayInDateRange = hasDates && applicableDays.has(day)
 
           return (
@@ -190,33 +196,32 @@ export function HorariosJustificacionGrid({
 
               {/* Lista de Clases del Día */}
               <div className="p-2 space-y-2 flex-1 min-h-[120px]">
-                {daySchedules.length === 0 ? (
+                {dayClusters.length === 0 ? (
                   <div className="h-full flex items-center justify-center p-3 text-center text-[11px] text-muted-foreground italic">
                     Sin clases
                   </div>
                 ) : (
-                  daySchedules.map((schedule) => {
-                    const isQualifying = schedule.dbId
-                      ? Boolean(qualifyingMap.get(schedule.dbId))
-                      : false
-                    const isSelected = schedule.dbId ? selectedIds.includes(schedule.dbId) : false
+                  dayClusters.map((cluster) => {
+                    const isSelected =
+                      cluster.dbIds.length > 0 &&
+                      cluster.dbIds.every((id) => selectedIds.includes(id))
 
                     return (
                       <div
-                        key={schedule.scheduleId}
+                        key={cluster.clusterKey}
                         onClick={() => {
-                          if (isQualifying && schedule.dbId) {
-                            onToggleSchedule(schedule.dbId)
+                          if (cluster.isQualifying && cluster.dbIds.length > 0) {
+                            onToggleCluster(cluster)
                           }
                         }}
                         className={cn(
                           "relative rounded-lg p-2.5 text-xs transition-all border select-none",
-                          !isQualifying &&
+                          !cluster.isQualifying &&
                             "opacity-40 bg-muted/20 border-dashed border-border cursor-not-allowed",
-                          isQualifying &&
+                          cluster.isQualifying &&
                             !isSelected &&
                             "bg-card border-border hover:border-primary/60 hover:shadow-xs cursor-pointer",
-                          isQualifying &&
+                          cluster.isQualifying &&
                             isSelected &&
                             "bg-primary/10 border-primary ring-1 ring-primary/40 text-foreground cursor-pointer shadow-xs"
                         )}
@@ -226,11 +231,11 @@ export function HorariosJustificacionGrid({
                           <div className="flex items-center gap-1 text-[11px] font-bold text-foreground">
                             <Clock className="w-3 h-3 text-primary shrink-0" />
                             <span>
-                              {formatMinutes(schedule.startMin)} - {formatMinutes(schedule.endMin)}
+                              {formatMinutes(cluster.startMin)} - {formatMinutes(cluster.endMin)}
                             </span>
                           </div>
 
-                          {isQualifying && (
+                          {cluster.isQualifying && (
                             <div
                               className={cn(
                                 "w-4 h-4 rounded-md border flex items-center justify-center transition-colors shrink-0",
@@ -244,26 +249,48 @@ export function HorariosJustificacionGrid({
                           )}
                         </div>
 
-                        {/* Materia y Grupo */}
-                        <div className="font-semibold text-foreground text-xs leading-snug line-clamp-2">
-                          {schedule.materia}
+                        {/* Materia y Badge de Principal con Dependientes */}
+                        <div className="space-y-1">
+                          <div className="font-semibold text-foreground text-xs leading-snug line-clamp-2">
+                            {cluster.materia}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-1 pt-0.5">
+                            {cluster.hasDependents && (
+                              <span className="inline-flex items-center rounded-md bg-blue-50 text-blue-800 dark:bg-blue-950/70 dark:text-blue-300 border border-blue-200 dark:border-blue-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                                Principal
+                              </span>
+                            )}
+                            {cluster.isVirtual && (
+                              <span className="inline-flex items-center gap-0.5 rounded-md bg-indigo-50 text-indigo-700 dark:bg-indigo-950/70 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/70 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                                <Laptop className="w-2.5 h-2.5" />
+                                Virtual
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
-                          <span className="flex items-center gap-0.5">
+                        {/* Grupo(s) y Ambiente */}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <span className="flex items-center gap-0.5 font-medium text-foreground">
                             <Users className="w-3 h-3 shrink-0" />
-                            G: {schedule.grupo}
+                            G: {cluster.primaryGrupo}
                           </span>
-                          {schedule.ambienteLabel && (
+                          {cluster.hasDependents && (
+                            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[10px] font-medium border border-border/60">
+                              + {cluster.dependentGrupos.map((g) => `G: ${g}`).join(", ")}
+                            </span>
+                          )}
+                          {cluster.ambienteLabel && (
                             <span className="flex items-center gap-0.5 truncate">
                               <MapPin className="w-3 h-3 shrink-0" />
-                              {schedule.ambienteLabel}
+                              {cluster.ambienteLabel}
                             </span>
                           )}
                         </div>
 
                         {/* Vigencia o Estado */}
-                        {!isQualifying && (
+                        {!cluster.isQualifying && (
                           <div className="mt-1.5 text-[10px] text-muted-foreground italic">
                             {!isDayInDateRange ? "Día fuera de rango" : "Fuera de vigencia"}
                           </div>

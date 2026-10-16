@@ -14,7 +14,7 @@ export default function NuevaJustificacionPage() {
   const params = useParams<{ id: string }>()
   const docenteId = params?.id ?? ""
 
-  const { docente, schedules, loading, error, fetchByDocenteId } = useDocenteHorariosStore()
+  const { docente, schedules, groups, loading, error, fetchByDocenteId } = useDocenteHorariosStore()
 
   useEffect(() => {
     if (docenteId) {
@@ -65,7 +65,12 @@ export default function NuevaJustificacionPage() {
         )}
 
         {docente && (
-          <JustificacionForm docente={docente} schedules={schedules} docenteId={docenteId} />
+          <JustificacionForm
+            docente={docente}
+            schedules={schedules}
+            groups={groups}
+            docenteId={docenteId}
+          />
         )}
       </div>
     </AppLayout>

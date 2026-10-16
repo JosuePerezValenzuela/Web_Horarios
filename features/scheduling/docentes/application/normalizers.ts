@@ -537,18 +537,29 @@ function assignStableColorIndices(
     }
   })
 
-  // 6. Assign matching colorIndex and toneIndex to each schedule
+  // 6. Assign matching colorIndex, toneIndex, primario and primario_id to each schedule
   const updatedSchedules = schedules.map((schedule) => {
     const colorInfo = colorMapByGroupKey.get(schedule.groupKey) ??
       (schedule.persona_grupo_id
         ? colorMapByPersonaGrupoId.get(schedule.persona_grupo_id)
         : undefined) ?? { colorIndex: 0, toneIndex: 0, isSecondary: false }
 
+    const matchingGroup =
+      (schedule.persona_grupo_id
+        ? groupByPersonaGrupoId.get(schedule.persona_grupo_id)
+        : undefined) ?? finalGroups.find((g) => g.groupKey === schedule.groupKey)
+
+    const primario = schedule.primario !== undefined ? schedule.primario : matchingGroup?.primario
+    const primario_id =
+      schedule.primario_id !== undefined ? schedule.primario_id : matchingGroup?.primario_id
+
     return {
       ...schedule,
       colorIndex: colorInfo.colorIndex,
       toneIndex: colorInfo.toneIndex,
       isSecondary: colorInfo.isSecondary,
+      primario,
+      primario_id,
     }
   })
 

@@ -25,20 +25,31 @@ import {
 import type {
   DocenteScheduleMeta,
   NormalizedSchedule,
+  GroupSummary,
 } from "@/features/scheduling/docentes/domain/types"
 import type { TipoJustificacion } from "../domain/types"
 import { fetchTiposJustificacion, crearJustificacion } from "../application/api"
 import { HorariosJustificacionGrid } from "./HorariosJustificacionGrid"
 import { ConfirmarJustificacionModal } from "./ConfirmarJustificacionModal"
-import { getDaysOfWeekInRange, isScheduleQualifying } from "../application/filterSchedules"
+import {
+  getDaysOfWeekInRange,
+  clusterSchedules,
+  type HorarioCluster,
+} from "../application/filterSchedules"
 
 interface JustificacionFormProps {
   docente: DocenteScheduleMeta
   schedules: NormalizedSchedule[]
+  groups?: GroupSummary[]
   docenteId: string
 }
 
-export function JustificacionForm({ docente, schedules, docenteId }: JustificacionFormProps) {
+export function JustificacionForm({
+  docente,
+  schedules,
+  groups,
+  docenteId,
+}: JustificacionFormProps) {
   const router = useRouter()
 
   // Catálogo de tipos de justificación
@@ -84,6 +95,26 @@ export function JustificacionForm({ docente, schedules, docenteId }: Justificaci
     }
   }, [])
 
+  // Días aplicables según el rango de fechas seleccionado
+  const applicableDays = useMemo(() => {
+    return getDaysOfWeekInRange(fechaDesde, fechaHasta)
+  }, [fechaDesde, fechaHasta])
+
+  // Agrupamiento de horarios en clusters (unión de horario principal + dependientes)
+  const clusters = useMemo(() => {
+    return clusterSchedules(schedules, groups, fechaDesde, fechaHasta, applicableDays)
+  }, [schedules, groups, fechaDesde, fechaHasta, applicableDays])
+
+  const qualifyingClusters = useMemo(() => {
+    return clusters.filter((c) => c.isQualifying)
+  }, [clusters])
+
+  const selectedClusters = useMemo(() => {
+    return qualifyingClusters.filter(
+      (c) => c.dbIds.length > 0 && c.dbIds.every((id) => selectedIds.includes(id))
+    )
+  }, [qualifyingClusters, selectedIds])
+
   // Auto-seleccionar horarios aplicables cuando cambian las fechas
   const updateSelectedForDates = (desde: string, hasta: string) => {
     if (!desde || !hasta) {
@@ -91,16 +122,13 @@ export function JustificacionForm({ docente, schedules, docenteId }: Justificaci
       return
     }
 
-    const applicableDays = getDaysOfWeekInRange(desde, hasta)
-    const qualifyingIds: number[] = []
+    const days = getDaysOfWeekInRange(desde, hasta)
+    const newClusters = clusterSchedules(schedules, groups, desde, hasta, days)
+    const qualifyingDbIds = Array.from(
+      new Set(newClusters.filter((c) => c.isQualifying).flatMap((c) => c.dbIds))
+    )
 
-    schedules.forEach((s) => {
-      if (s.dbId && isScheduleQualifying(s, desde, hasta, applicableDays)) {
-        qualifyingIds.push(s.dbId)
-      }
-    })
-
-    setSelectedIds(qualifyingIds)
+    setSelectedIds(qualifyingDbIds)
   }
 
   // Convertir string YYYY-MM-DD a objeto Date para DatePicker
@@ -110,11 +138,17 @@ export function JustificacionForm({ docente, schedules, docenteId }: Justificaci
     return new Date(parts[0], parts[1] - 1, parts[2])
   }
 
-  // Handlers para selección de horarios
-  const handleToggleSchedule = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    )
+  // Handlers para selección de horarios por cluster (el conjunto primario + dependientes cuenta como uno solo)
+  const handleToggleCluster = (cluster: HorarioCluster) => {
+    setSelectedIds((prev) => {
+      const isSelected = cluster.dbIds.length > 0 && cluster.dbIds.every((id) => prev.includes(id))
+      if (isSelected) {
+        return prev.filter((id) => !cluster.dbIds.includes(id))
+      } else {
+        const toAdd = cluster.dbIds.filter((id) => !prev.includes(id))
+        return [...prev, ...toAdd]
+      }
+    })
     if (validationError) setValidationError(null)
   }
 
@@ -344,10 +378,11 @@ export function JustificacionForm({ docente, schedules, docenteId }: Justificaci
       {/* Grilla Interactiva de Horarios */}
       <HorariosJustificacionGrid
         schedules={schedules}
+        groups={groups}
         fechaDesde={fechaDesde}
         fechaHasta={fechaHasta}
         selectedIds={selectedIds}
-        onToggleSchedule={handleToggleSchedule}
+        onToggleCluster={handleToggleCluster}
         onSelectAll={handleSelectAll}
         onDeselectAll={handleDeselectAll}
       />
@@ -415,7 +450,7 @@ export function JustificacionForm({ docente, schedules, docenteId }: Justificaci
         fechaDesde={fechaDesde}
         fechaHasta={fechaHasta}
         tipoJustificacionNombre={selectedTipo?.nombre || ""}
-        selectedSchedulesCount={selectedIds.length}
+        selectedSchedulesCount={selectedClusters.length}
         conGoceHaberes={conGoceHaberes}
         loading={isSubmitting}
       />
