@@ -13,6 +13,8 @@ import type {
   CargaHorariaItem,
   CargaFaltaItem,
   CargaJustificadaItem,
+  ParteReporteMensualItem,
+  JustificacionAprobadaReporteMensualItem,
 } from "@/features/partes-mensuales/application/partesMensualesApi"
 
 export async function POST(request: NextRequest) {
@@ -40,8 +42,42 @@ export async function POST(request: NextRequest) {
       alcance = "facultad",
       objetivo,
       personas = [],
+      partes = [],
+      justificaciones_aprobadas = [],
       alertas = { mas_3_retrasos: [], "3_faltas_mas": [], inasistencias_consecutivas: [] },
     } = reporte
+
+    const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+
+    const getDiaSemana = (fechaStr: string): string => {
+      if (!fechaStr) return "—"
+      const [y, m, d] = fechaStr.split("-").map(Number)
+      if (!y || !m || !d) return "—"
+      const date = new Date(y, m - 1, d)
+      return DIAS_SEMANA[date.getDay()] ?? "—"
+    }
+
+    const formatFechaHora = (isoStr: string | null | undefined): string => {
+      if (!isoStr) return "Sin registro (Histórico)"
+      try {
+        const date = new Date(isoStr)
+        if (isNaN(date.getTime())) return isoStr
+        const pad = (n: number) => String(n).padStart(2, "0")
+        const d = pad(date.getDate())
+        const m = pad(date.getMonth() + 1)
+        const y = date.getFullYear()
+        const hh = pad(date.getHours())
+        const mm = pad(date.getMinutes())
+        return `${d}/${m}/${y} ${hh}:${mm}`
+      } catch {
+        return isoStr
+      }
+    }
+
+    const formatHoraCorta = (h: string | null | undefined): string => {
+      if (!h) return "—"
+      return h.slice(0, 5)
+    }
 
     let logoBase64 = ""
     try {
@@ -158,7 +194,72 @@ export async function POST(request: NextRequest) {
       .join("")
 
     // ==========================================
-    // 2. ALERTAS: RETRASOS (Con divisor marcado entre docentes y reemplazo de 0 por -)
+    // 2. RESUMEN DE PARTES DIARIOS
+    // ==========================================
+    const partesRowsHtml = partes
+      .map((p: ParteReporteMensualItem, idx: number) => {
+        const dia = getDiaSemana(p.fecha)
+        const confirmacion = formatFechaHora(p.fecha_confirmacion)
+
+        return `
+        <tr class="hover:bg-gray-50/50">
+          <td style="text-align: center; font-family: monospace; color: #6b7280; width: 40px; vertical-align: middle;">${idx + 1}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; width: 70px; vertical-align: middle;">#${p.id}</td>
+          <td style="text-align: center; font-family: monospace; font-weight: 600; width: 120px; vertical-align: middle;">${p.fecha}</td>
+          <td style="text-align: center; font-weight: 500; width: 110px; vertical-align: middle;">${dia}</td>
+          <td style="text-align: center; font-family: monospace; color: #374151; vertical-align: middle;">${confirmacion}</td>
+          <td style="text-align: center; width: 100px; vertical-align: middle;">
+            <span style="display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 8px; font-weight: bold; background-color: #dcfce7; color: #15803d; text-transform: uppercase;">
+              Confirmado
+            </span>
+          </td>
+        </tr>
+      `
+      })
+      .join("")
+
+    // ==========================================
+    // 3. JUSTIFICACIONES APROBADAS
+    // ==========================================
+    const justificacionesRowsHtml = justificaciones_aprobadas
+      .map((j: JustificacionAprobadaReporteMensualItem, idx: number) => {
+        const horarioStr = `${formatHoraCorta(j.hora_inicio)} - ${formatHoraCorta(j.hora_fin)}`
+        const regimenHtml = j.con_goce_haberes
+          ? '<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: bold; background-color: #dbeafe; color: #1e40af;">Con goce</span>'
+          : '<span style="display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 8px; font-weight: bold; background-color: #f3e8ff; color: #6b21a8;">Sin goce</span>'
+
+        return `
+        <tr class="hover:bg-gray-50/50">
+          <td style="text-align: center; font-family: monospace; color: #6b7280; width: 35px; vertical-align: middle;">${idx + 1}</td>
+          <td style="vertical-align: middle; padding: 6px 8px; width: 190px;">
+            <div style="font-weight: bold; color: #111827;">${j.persona_nombre}</div>
+            <div style="font-size: 7.5px; font-family: monospace; color: #6b7280;">Cód: ${j.persona_codigo}</div>
+          </td>
+          <td style="vertical-align: middle; text-align: left; padding: 6px 8px;">
+            <div style="font-weight: 500;">${j.asignatura_nombre}</div>
+          </td>
+          <td style="text-align: center; font-family: monospace; font-weight: bold; width: 60px; vertical-align: middle;">
+            ${j.grupo_nombre}
+          </td>
+          <td style="text-align: center; font-family: monospace; width: 85px; vertical-align: middle;">
+            ${j.fecha}
+          </td>
+          <td style="text-align: center; font-family: monospace; width: 100px; vertical-align: middle;">
+            ${horarioStr}
+          </td>
+          <td style="text-align: center; width: 85px; vertical-align: middle;">
+            ${regimenHtml}
+          </td>
+          <td style="vertical-align: middle; font-size: 8px; color: #4b5563; padding: 6px 8px; width: 180px;">
+            ${j.descripcion || "—"}
+          </td>
+        </tr>
+      `
+      })
+      .join("")
+
+    // ==========================================
+    // 4. ALERTAS: RETRASOS (Con divisor marcado entre docentes y reemplazo de 0 por -)
     // ==========================================
     const retrasosRowsHtml = listaRetrasos
       .map((item: AlertaRetrasoItem) => {
@@ -519,10 +620,64 @@ export async function POST(request: NextRequest) {
                       </tbody>
                     </table>
 
-                    <!-- SECCIÓN 2: ALERTA DE RETRASOS -->
+                    <!-- SECCIÓN 2: RESUMEN DE PARTES DIARIOS -->
+                    <div class="page-break"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 6px 0;">
+                      <h3 style="font-size: 11px; font-weight: bold; margin: 0; text-transform: uppercase; color: #003770;">
+                        2. Resumen de Partes Diarios Confirmados
+                      </h3>
+                      <span style="font-size: 9px; color: #4b5563; font-weight: 500;">
+                        Total: <b>${partes.length}</b> partes reconciliados
+                      </span>
+                    </div>
+                    <table class="signatures-table" style="margin-bottom: 22px;">
+                      <thead>
+                        <tr>
+                          <th style="width: 40px; text-align: center;">N°</th>
+                          <th style="width: 70px; text-align: center;">ID Parte</th>
+                          <th style="width: 120px; text-align: center;">Fecha</th>
+                          <th style="width: 110px; text-align: center;">Día</th>
+                          <th style="text-align: center;">Fecha de Confirmación</th>
+                          <th style="width: 100px; text-align: center;">Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${partesRowsHtml || '<tr><td colspan="6" style="text-align: center; color: #9ca3af; padding: 12px;">Sin partes diarios registrados en este período</td></tr>'}
+                      </tbody>
+                    </table>
+
+                    <!-- SECCIÓN 3: JUSTIFICACIONES APROBADAS -->
+                    <div class="page-break"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin: 10px 0 6px 0;">
+                      <h3 style="font-size: 11px; font-weight: bold; margin: 0; text-transform: uppercase; color: #003770;">
+                        3. Justificaciones Aprobadas Relevantes
+                      </h3>
+                      <span style="font-size: 9px; color: #4b5563; font-weight: 500;">
+                        Total: <b>${justificaciones_aprobadas.length}</b> justificaciones aprobadas
+                      </span>
+                    </div>
+                    <table class="signatures-table" style="margin-bottom: 22px;">
+                      <thead>
+                        <tr>
+                          <th style="width: 35px; text-align: center;">N°</th>
+                          <th style="width: 190px;">Docente</th>
+                          <th>Asignatura</th>
+                          <th style="width: 60px; text-align: center;">Grupo</th>
+                          <th style="width: 85px; text-align: center;">Fecha</th>
+                          <th style="width: 100px; text-align: center;">Horario</th>
+                          <th style="width: 85px; text-align: center;">Régimen</th>
+                          <th style="width: 180px;">Motivo / Descripción</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${justificacionesRowsHtml || '<tr><td colspan="8" style="text-align: center; color: #9ca3af; padding: 12px;">Sin justificaciones aprobadas en este período</td></tr>'}
+                      </tbody>
+                    </table>
+
+                    <!-- SECCIÓN 4: ALERTA DE RETRASOS -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #b45309;">
-                      2. Reporte de Alertas — Retrasos Recurrentes (&gt; 3 retrasos)
+                      4. Reporte de Alertas — Retrasos Recurrentes (&gt; 3 retrasos)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 22px;">
                       <thead>
@@ -544,10 +699,10 @@ export async function POST(request: NextRequest) {
                       </tbody>
                     </table>
 
-                    <!-- SECCIÓN 3: ALERTA DE FALTAS -->
+                    <!-- SECCIÓN 5: ALERTA DE FALTAS -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #dc2626;">
-                      3. Reporte de Alertas — Faltas Acumuladas (3 faltas o más)
+                      5. Reporte de Alertas — Faltas Acumuladas (3 faltas o más)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 22px;">
                       <thead>
@@ -568,10 +723,10 @@ export async function POST(request: NextRequest) {
                       </tbody>
                     </table>
 
-                    <!-- SECCIÓN 4: INASISTENCIAS CONSECUTIVAS -->
+                    <!-- SECCIÓN 6: INASISTENCIAS CONSECUTIVAS -->
                     <div class="page-break"></div>
                     <h3 style="font-size: 11px; font-weight: bold; margin: 10px 0 6px 0; text-transform: uppercase; color: #7f1d1d;">
-                      4. Reporte de Alertas — Inasistencias Consecutivas (Secuencia de 6 o más días)
+                      6. Reporte de Alertas — Inasistencias Consecutivas (Secuencia de 6 o más días)
                     </h3>
                     <table class="signatures-table" style="margin-bottom: 10px;">
                       <thead>

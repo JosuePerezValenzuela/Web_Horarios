@@ -17,6 +17,8 @@ import {
   type CargaHorariaItem,
   type CargaFaltaItem,
   type CargaJustificadaItem,
+  type VistaPreviaReporteMensualResponse,
+  type VistaPreviaReporteMensualParams,
   calcularPeriodoMensual,
   MESES_OPTIONS,
 } from "../application/partesMensualesApi"
@@ -46,15 +48,53 @@ import {
   AlertCircle,
   CheckCircle2,
   Eye,
+  ClipboardCheck,
 } from "lucide-react"
+
+const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+
+function getDiaSemana(fechaStr: string): string {
+  if (!fechaStr) return "—"
+  const [y, m, d] = fechaStr.split("-").map(Number)
+  if (!y || !m || !d) return "—"
+  const date = new Date(y, m - 1, d)
+  return DIAS_SEMANA[date.getDay()] ?? "—"
+}
+
+function formatFechaHora(isoStr: string | null | undefined): string {
+  if (!isoStr) return "Sin registro (Histórico)"
+  try {
+    const date = new Date(isoStr)
+    if (isNaN(date.getTime())) return isoStr
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const d = pad(date.getDate())
+    const m = pad(date.getMonth() + 1)
+    const y = date.getFullYear()
+    const hh = pad(date.getHours())
+    const mm = pad(date.getMinutes())
+    return `${d}/${m}/${y} ${hh}:${mm}`
+  } catch {
+    return isoStr
+  }
+}
+
+function formatHoraCorta(h: string | null | undefined): string {
+  if (!h) return "—"
+  return h.slice(0, 5)
+}
 
 export default function PartesMensualesPage() {
   const { facultades, fetchFacultades } = useFacultadesStore()
   const { carreras, fetchCarreras, loading: loadingCarreras } = useCarrerasStore()
 
-  // Estado local del reporte
+  // Estado local de la vista previa
+  const [vistaPrevia, setVistaPrevia] = useState<VistaPreviaReporteMensualResponse | null>(null)
+  const [loadingVistaPrevia, setLoadingVistaPrevia] = useState(false)
+
+  // Estado local del reporte generado
   const [reporte, setReporte] = useState<ReporteMensualResponse | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [loadingGeneracion, setLoadingGeneracion] = useState(false)
+  const [isStaleUpdated, setIsStaleUpdated] = useState(false)
 
   // Filtros de Búsqueda
   const [alcance, setAlcance] = useState<AlcanceReporteMensual>("facultad")
@@ -66,7 +106,13 @@ export default function PartesMensualesPage() {
   const [facultadSearch, setFacultadSearch] = useState("")
   const [planSearch, setPlanSearch] = useState("")
   const [personasSearch, setPersonasSearch] = useState("")
+  const [partesSearch, setPartesSearch] = useState("")
+  const [justificacionesSearch, setJustificacionesSearch] = useState("")
   const [generatingPdf, setGeneratingPdf] = useState(false)
+
+  // Modal de confirmación cuando existen justificaciones pendientes
+  const [showJustificacionesPendientesModal, setShowJustificacionesPendientesModal] =
+    useState(false)
 
   // Modal de partes diarios en borrador que impiden la generación
   const [showDraftPartsModal, setShowDraftPartsModal] = useState(false)
@@ -120,6 +166,16 @@ export default function PartesMensualesPage() {
     })
   }, [carreras, planSearch])
 
+  // Métrica de partes confirmados para la vista previa
+  const totalPartesConfirmadosVista = useMemo(() => {
+    if (!vistaPrevia?.fechas) return 0
+    return vistaPrevia.fechas.reduce(
+      (acc, f) =>
+        acc + (f.partes?.filter((p) => p.estado?.toLowerCase() === "confirmado")?.length || 0),
+      0
+    )
+  }, [vistaPrevia])
+
   // Filtrar personas del reporte mensual por búsqueda
   const filteredPersonas = useMemo(() => {
     if (!reporte?.personas) return []
@@ -132,6 +188,36 @@ export default function PartesMensualesPage() {
     )
   }, [reporte, personasSearch])
 
+  // Filtrar partes del reporte mensual por búsqueda
+  const filteredPartes = useMemo(() => {
+    if (!reporte?.partes) return []
+    if (!partesSearch.trim()) return reporte.partes
+    const term = partesSearch.toLowerCase().trim()
+    return reporte.partes.filter(
+      (p) =>
+        String(p.id).includes(term) ||
+        p.fecha.toLowerCase().includes(term) ||
+        getDiaSemana(p.fecha).toLowerCase().includes(term) ||
+        (p.fecha_confirmacion && p.fecha_confirmacion.toLowerCase().includes(term))
+    )
+  }, [reporte, partesSearch])
+
+  // Filtrar justificaciones aprobadas del reporte mensual por búsqueda
+  const filteredJustificaciones = useMemo(() => {
+    if (!reporte?.justificaciones_aprobadas) return []
+    if (!justificacionesSearch.trim()) return reporte.justificaciones_aprobadas
+    const term = justificacionesSearch.toLowerCase().trim()
+    return reporte.justificaciones_aprobadas.filter(
+      (j) =>
+        j.persona_nombre.toLowerCase().includes(term) ||
+        j.persona_codigo.toLowerCase().includes(term) ||
+        j.asignatura_nombre.toLowerCase().includes(term) ||
+        j.grupo_nombre.toLowerCase().includes(term) ||
+        j.fecha.toLowerCase().includes(term) ||
+        (j.descripcion && j.descripcion.toLowerCase().includes(term))
+    )
+  }, [reporte, justificacionesSearch])
+
   const isFormValid = useMemo(() => {
     if (alcance === "todas_facultades") return true
     if (alcance === "facultad") return Boolean(selectedFacultadId)
@@ -139,12 +225,12 @@ export default function PartesMensualesPage() {
     return false
   }, [alcance, selectedFacultadId, selectedPlanId])
 
-  const handleBuscar = async (e: React.FormEvent) => {
+  const handleVisualizarVistaPrevia = async (e: React.FormEvent) => {
     e.preventDefault()
 
     const { fecha_desde, fecha_hasta } = periodo
 
-    let payload: GenerarReporteMensualRequest
+    let params: VistaPreviaReporteMensualParams
 
     if (alcance === "facultad") {
       if (!selectedFacultadId) {
@@ -156,7 +242,7 @@ export default function PartesMensualesPage() {
         toast.error("La facultad seleccionada no es válida")
         return
       }
-      payload = {
+      params = {
         alcance: "facultad",
         facultad_id: facIdNum,
         fecha_desde,
@@ -172,14 +258,14 @@ export default function PartesMensualesPage() {
         toast.error("El plan de estudio seleccionado debe tener un identificador numérico válido")
         return
       }
-      payload = {
+      params = {
         alcance: "plan_estudio",
         plan_estudio_id: planIdNum,
         fecha_desde,
         fecha_hasta,
       }
     } else if (alcance === "todas_facultades") {
-      payload = {
+      params = {
         alcance: "todas_facultades",
         fecha_desde,
         fecha_hasta,
@@ -189,11 +275,12 @@ export default function PartesMensualesPage() {
       return
     }
 
-    setLoading(true)
+    setLoadingVistaPrevia(true)
     try {
-      const data = await partesMensualesApi.generar(payload)
-      setReporte(data)
-      toast.success("Parte mensual generado y consultado con éxito")
+      const data = await partesMensualesApi.obtenerVistaPrevia(params)
+      setVistaPrevia(data)
+      setReporte(null)
+      toast.success("Vista previa obtenida correctamente")
     } catch (err: unknown) {
       const apiErr = err as {
         body?: {
@@ -202,12 +289,114 @@ export default function PartesMensualesPage() {
           partes?: DraftPartItem[]
         }
       }
-      if (apiErr?.body?.code === "DRAFT_PARTS" && Array.isArray(apiErr.body.partes)) {
+      if (
+        (apiErr?.body?.code === "DRAFT_PARTS" || apiErr?.body?.code === "UNCONFIRMED_PARTS") &&
+        Array.isArray(apiErr.body.partes)
+      ) {
         setDraftParts(apiErr.body.partes)
         setShowDraftPartsModal(true)
       }
     } finally {
-      setLoading(false)
+      setLoadingVistaPrevia(false)
+    }
+  }
+
+  const handleSolicitarGeneracion = () => {
+    if (!vistaPrevia) return
+    if (
+      vistaPrevia.justificaciones_pendientes &&
+      vistaPrevia.justificaciones_pendientes.length > 0
+    ) {
+      setShowJustificacionesPendientesModal(true)
+    } else {
+      ejecutarGeneracionReporte()
+    }
+  }
+
+  const ejecutarGeneracionReporte = async () => {
+    if (!vistaPrevia) return
+
+    const { fecha_desde, fecha_hasta, fingerprint } = vistaPrevia
+
+    let payload: GenerarReporteMensualRequest
+
+    if (vistaPrevia.alcance === "facultad") {
+      const facIdNum = parseInt(selectedFacultadId.trim(), 10)
+      payload = {
+        alcance: "facultad",
+        facultad_id: facIdNum,
+        fecha_desde,
+        fecha_hasta,
+        fingerprint,
+      }
+    } else if (vistaPrevia.alcance === "plan_estudio") {
+      const planIdNum = parseInt(selectedPlanId.trim(), 10)
+      payload = {
+        alcance: "plan_estudio",
+        plan_estudio_id: planIdNum,
+        fecha_desde,
+        fecha_hasta,
+        fingerprint,
+      }
+    } else {
+      payload = {
+        alcance: "todas_facultades",
+        fecha_desde,
+        fecha_hasta,
+        fingerprint,
+      }
+    }
+
+    setLoadingGeneracion(true)
+    setIsStaleUpdated(false)
+    try {
+      const data = await partesMensualesApi.generar(payload, { showErrorToast: false })
+      setReporte(data)
+      setShowJustificacionesPendientesModal(false)
+      setIsStaleUpdated(false)
+      toast.success("Parte mensual generado y consultado con éxito")
+    } catch (err: unknown) {
+      const apiErr = err as {
+        status?: number
+        body?: {
+          code?: string
+          message?: string
+          partes?: DraftPartItem[]
+          vista_previa?: VistaPreviaReporteMensualResponse
+        }
+      }
+
+      // Caso 1: 409 STALE_FINGERPRINT (La vista previa cambió y el backend devuelve la nueva)
+      if (
+        (apiErr?.status === 409 || apiErr?.body?.code === "STALE_FINGERPRINT") &&
+        apiErr?.body?.vista_previa
+      ) {
+        setVistaPrevia(apiErr.body.vista_previa)
+        setShowJustificacionesPendientesModal(false)
+        setIsStaleUpdated(true)
+        toast.warning(
+          apiErr.body.message || "La vista previa cambió. Revísela y vuelva a generar el reporte"
+        )
+        return
+      }
+
+      // Caso 2: 400 UNCONFIRMED_PARTS o DRAFT_PARTS (Partes diarios no confirmados)
+      if (
+        (apiErr?.body?.code === "DRAFT_PARTS" || apiErr?.body?.code === "UNCONFIRMED_PARTS") &&
+        Array.isArray(apiErr.body.partes)
+      ) {
+        setDraftParts(apiErr.body.partes)
+        setShowDraftPartsModal(true)
+        return
+      }
+
+      // Otros errores (INVALID_SCOPE_IDENTITY, INVALID_DATE_RANGE, FINGERPRINT_REQUIRED, NOT_FOUND, 500)
+      const msg =
+        apiErr?.body?.message ||
+        (err instanceof Error ? err.message : "Error al generar el reporte mensual")
+      toast.error(msg)
+    } finally {
+      setLoadingGeneracion(false)
     }
   }
 
@@ -331,6 +520,52 @@ export default function PartesMensualesPage() {
         : `Plan ID: ${reporte?.objetivo}`
       : facObj?.nombre || reporte?.objetivo || "—"
 
+  const isPlanVista = vistaPrevia?.alcance === "plan_estudio"
+  const isTodasVista = vistaPrevia?.alcance === "todas_facultades"
+  const planObjVista = isPlanVista
+    ? carreras.find((c) => String(c.id) === String(vistaPrevia?.objetivo))
+    : null
+  const facObjVista =
+    !isPlanVista && !isTodasVista
+      ? facultades.find((f) => f.codigo.toUpperCase() === vistaPrevia?.objetivo?.toUpperCase())
+      : null
+
+  const targetNombreDisplayVista = isTodasVista
+    ? "Todas las facultades"
+    : isPlanVista
+      ? planObjVista
+        ? `${planObjVista.nombre} (${planObjVista.codigo || planObjVista.id})`
+        : `Plan ID: ${vistaPrevia?.objetivo}`
+      : facObjVista?.nombre || vistaPrevia?.objetivo || "—"
+
+  const formatFechaConDia = (fechaIso: string): { diaNombre: string; fechaFormateada: string } => {
+    if (!fechaIso) return { diaNombre: "—", fechaFormateada: "—" }
+    const parts = fechaIso.split("-")
+    if (parts.length !== 3) return { diaNombre: "—", fechaFormateada: fechaIso }
+    const y = Number(parts[0])
+    const m = Number(parts[1])
+    const d = Number(parts[2])
+    const dateObj = new Date(Date.UTC(y, m - 1, d, 12, 0, 0))
+    const dias = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+    const diaNombre = dias[dateObj.getUTCDay()]
+    const fechaFormateada = `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`
+    return { diaNombre, fechaFormateada }
+  }
+
+  const formatFechaConfirmacion = (fechaConf: string | null): string => {
+    if (!fechaConf) return "Histórico / Sin fecha registrada"
+    try {
+      const d = new Date(fechaConf)
+      if (isNaN(d.getTime())) return fechaConf
+      return d.toLocaleString("es-BO", {
+        dateStyle: "short",
+        timeStyle: "short",
+      })
+    } catch {
+      return fechaConf
+    }
+  }
+
   const formatCargaHoraria = (val?: number | CargaHorariaItem[]): React.ReactNode => {
     if (val === null || val === undefined) return "—"
     if (typeof val === "number") return val > 0 ? `${val} hrs` : "—"
@@ -419,7 +654,7 @@ export default function PartesMensualesPage() {
 
         {/* Formulario de Filtros y Generación */}
         <header className="rounded-2xl border border-border bg-card p-3.5 shadow-xs shrink-0 w-full min-w-0 max-w-full">
-          <form onSubmit={handleBuscar}>
+          <form onSubmit={handleVisualizarVistaPrevia}>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 w-full min-w-0 max-w-full items-end">
               {/* 1. Alcance */}
               <div
@@ -442,6 +677,7 @@ export default function PartesMensualesPage() {
                   onValueChange={(val: AlcanceReporteMensual) => {
                     setAlcance(val)
                     setReporte(null)
+                    setVistaPrevia(null)
                   }}
                 >
                   <SelectTrigger
@@ -467,7 +703,14 @@ export default function PartesMensualesPage() {
                   >
                     Facultad Objetivo
                   </label>
-                  <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
+                  <Select
+                    value={selectedFacultadId}
+                    onValueChange={(val) => {
+                      setSelectedFacultadId(val)
+                      setReporte(null)
+                      setVistaPrevia(null)
+                    }}
+                  >
                     <SelectTrigger
                       id="facultad-select"
                       className="w-full h-11 max-w-full min-w-0 text-xs rounded-xl bg-card border-border text-foreground overflow-hidden"
@@ -503,6 +746,8 @@ export default function PartesMensualesPage() {
                       onValueChange={(val) => {
                         setFiltroFacultadId(val)
                         setSelectedPlanId("")
+                        setReporte(null)
+                        setVistaPrevia(null)
                       }}
                     >
                       <SelectTrigger
@@ -535,7 +780,11 @@ export default function PartesMensualesPage() {
                     </label>
                     <Select
                       value={selectedPlanId}
-                      onValueChange={setSelectedPlanId}
+                      onValueChange={(val) => {
+                        setSelectedPlanId(val)
+                        setReporte(null)
+                        setVistaPrevia(null)
+                      }}
                       disabled={loadingCarreras}
                     >
                       <SelectTrigger
@@ -602,6 +851,7 @@ export default function PartesMensualesPage() {
                   onValueChange={(val) => {
                     setSelectedMes(Number(val))
                     setReporte(null)
+                    setVistaPrevia(null)
                   }}
                 >
                   <SelectTrigger
@@ -639,6 +889,7 @@ export default function PartesMensualesPage() {
                   onValueChange={(val) => {
                     setSelectedAnio(Number(val))
                     setReporte(null)
+                    setVistaPrevia(null)
                   }}
                 >
                   <SelectTrigger
@@ -674,15 +925,15 @@ export default function PartesMensualesPage() {
                 <Button
                   type="submit"
                   size="lg"
-                  disabled={loading || !isFormValid}
+                  disabled={loadingVistaPrevia || !isFormValid}
                   className="w-full h-11 max-w-full min-w-0 overflow-hidden rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center justify-center gap-1.5 cursor-pointer text-xs truncate"
                 >
-                  {loading ? (
+                  {loadingVistaPrevia ? (
                     <Loader2 className="w-4 h-4 animate-spin shrink-0" />
                   ) : (
-                    <FileCheck2 className="w-4 h-4 shrink-0" />
+                    <Eye className="w-4 h-4 shrink-0" />
                   )}
-                  <span className="truncate">Generar Parte Mensual</span>
+                  <span className="truncate">Visualizar Vista Previa</span>
                 </Button>
               </div>
             </div>
@@ -733,7 +984,7 @@ export default function PartesMensualesPage() {
                   {generatingPdf ? "Generando..." : "Imprimir Reporte"}
                 </Button>
               </div>
-              <div className="p-3 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              <div className="p-3 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
                 <div className="p-2 bg-muted/20 border border-border rounded-xl">
                   <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
                     Alcance
@@ -773,6 +1024,24 @@ export default function PartesMensualesPage() {
                 </div>
 
                 <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 uppercase font-bold tracking-wider block">
+                    Partes Confirmados
+                  </span>
+                  <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
+                    {reporte.partes?.length ?? 0} partes
+                  </span>
+                </div>
+
+                <div className="p-2 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-blue-700 dark:text-blue-400 uppercase font-bold tracking-wider block">
+                    Justif. Aprobadas
+                  </span>
+                  <span className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                    {reporte.justificaciones_aprobadas?.length ?? 0} registradas
+                  </span>
+                </div>
+
+                <div className="p-2 bg-muted/20 border border-border rounded-xl">
                   <span className="text-[10px] text-amber-700 dark:text-amber-400 uppercase font-bold tracking-wider block">
                     Alertas Retrasos (&gt; 3)
                   </span>
@@ -801,12 +1070,411 @@ export default function PartesMensualesPage() {
               </div>
             </div>
 
-            {/* 2. Sección de Alertas - Retrasos Recurrentes (> 3) */}
+            {/* 1. Sección de Resumen por Personal y Cargas Horarias */}
+            {reporte.personas && reporte.personas.length > 0 && (
+              <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+                <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
+                    <Users className="w-4 h-4 text-primary" />
+                    1. Resumen por Personal y Cargas Horarias
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre o código..."
+                      value={personasSearch}
+                      onChange={(e) => setPersonasSearch(e.target.value)}
+                      className="text-xs px-2.5 py-1 rounded-lg border border-border bg-background text-foreground h-8 w-56 focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground shrink-0">
+                      {filteredPersonas.length} de {reporte.personas.length}
+                    </span>
+                  </div>
+                </div>
+                <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                  <Table className="min-w-[1000px] w-full border-collapse">
+                    <TableHeader className="bg-muted/30 border-b border-border">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead
+                          rowSpan={2}
+                          className="w-12 text-center border-r border-border font-bold text-xs text-foreground"
+                        >
+                          N°
+                        </TableHead>
+                        <TableHead
+                          rowSpan={2}
+                          className="w-24 text-center border-r border-border font-bold text-xs text-foreground"
+                        >
+                          Código
+                        </TableHead>
+                        <TableHead
+                          rowSpan={2}
+                          className="min-w-[180px] border-r border-border font-bold text-xs text-foreground"
+                        >
+                          Docente / Funcionario
+                        </TableHead>
+                        <TableHead
+                          rowSpan={2}
+                          className="w-24 text-center border-r border-border font-bold text-xs text-foreground bg-muted/40"
+                        >
+                          Carga Base
+                        </TableHead>
+                        <TableHead
+                          colSpan={3}
+                          className="text-center border-r border-border font-bold text-xs text-red-700 dark:text-red-400 bg-red-500/10"
+                        >
+                          Faltas
+                        </TableHead>
+                        <TableHead
+                          colSpan={3}
+                          className="text-center border-r border-border font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-500/10"
+                        >
+                          Justificaciones Con Goce
+                        </TableHead>
+                        <TableHead
+                          colSpan={3}
+                          className="text-center font-bold text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10"
+                        >
+                          Justificaciones Sin Goce
+                        </TableHead>
+                      </TableRow>
+                      <TableRow className="border-b border-border hover:bg-transparent text-[11px]">
+                        {/* Faltas */}
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-red-700 dark:text-red-400">
+                          Carga
+                        </TableHead>
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
+                          Retrasos
+                        </TableHead>
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-emerald-700 dark:text-emerald-400">
+                          Anticipados
+                        </TableHead>
+                        {/* Justificaciones Con Goce */}
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
+                          Carga
+                        </TableHead>
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
+                          Retrasos
+                        </TableHead>
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
+                          Anticipados
+                        </TableHead>
+                        {/* Justificaciones Sin Goce */}
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
+                          Carga
+                        </TableHead>
+                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
+                          Retrasos
+                        </TableHead>
+                        <TableHead className="w-20 text-center font-bold text-amber-700 dark:text-amber-400">
+                          Anticipados
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredPersonas.length === 0 ? (
+                        <TableRow>
+                          <TableCell
+                            colSpan={13}
+                            className="text-center text-muted-foreground text-xs py-6"
+                          >
+                            No se encontraron docentes coincidentes con la búsqueda.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filteredPersonas.map((p, idx) => {
+                          const justConGoce = p.justificaciones_con_goce ?? p.justificaciones
+                          const justSinGoce = p.justificaciones_sin_goce
+
+                          return (
+                            <TableRow
+                              key={p.persona_codigo || idx}
+                              className="border-b border-border hover:bg-muted/10"
+                            >
+                              <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
+                                {idx + 1}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
+                                {p.persona_codigo}
+                              </TableCell>
+                              <TableCell className="font-semibold text-xs text-foreground border-r border-border">
+                                {p.persona_nombres}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs font-bold border-r border-border bg-muted/20">
+                                {formatCargaHoraria(p.carga_horaria)}
+                              </TableCell>
+                              {/* Faltas */}
+                              <TableCell className="text-center font-mono text-xs font-semibold text-red-600 dark:text-red-400 border-r border-border">
+                                {formatCargaFaltas(p.faltas?.carga_faltas)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {p.faltas?.retrasos_min ? `${p.faltas.retrasos_min} min` : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-emerald-700 dark:text-emerald-400 border-r border-border">
+                                {p.faltas?.anticipados_min
+                                  ? `${p.faltas.anticipados_min} min`
+                                  : "—"}
+                              </TableCell>
+                              {/* Justificaciones Con Goce */}
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {formatCargaJustificada(justConGoce?.carga_justificada)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {justConGoce?.retrasos_min_justificados
+                                  ? `${justConGoce.retrasos_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
+                                {justConGoce?.anticipado_min_justificados
+                                  ? `${justConGoce.anticipado_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              {/* Justificaciones Sin Goce */}
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {formatCargaJustificada(justSinGoce?.carga_justificada)}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
+                                {justSinGoce?.retrasos_min_justificados
+                                  ? `${justSinGoce.retrasos_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400">
+                                {justSinGoce?.anticipado_min_justificados
+                                  ? `${justSinGoce.anticipado_min_justificados} min`
+                                  : "—"}
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Sección de Resumen de Partes Diarios */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+              <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
+                  <FileCheck2 className="w-4 h-4 text-primary" />
+                  2. Resumen de Partes Diarios
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Buscar por fecha, día, ID..."
+                    value={partesSearch}
+                    onChange={(e) => setPartesSearch(e.target.value)}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-border bg-background text-foreground h-8 w-56 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground shrink-0">
+                    {filteredPartes.length} de {reporte.partes?.length ?? 0} partes
+                  </span>
+                </div>
+              </div>
+              <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                <Table className="min-w-[800px] w-full border-collapse">
+                  <TableHeader className="bg-muted/30 border-b border-border">
+                    <TableRow className="border-b border-border hover:bg-transparent">
+                      <TableHead className="w-16 text-center border-r border-border font-bold text-xs text-foreground">
+                        N°
+                      </TableHead>
+                      <TableHead className="w-24 text-center border-r border-border font-bold text-xs text-foreground">
+                        ID Parte
+                      </TableHead>
+                      <TableHead className="w-36 text-center border-r border-border font-bold text-xs text-foreground">
+                        Fecha
+                      </TableHead>
+                      <TableHead className="w-36 text-center border-r border-border font-bold text-xs text-foreground">
+                        Día
+                      </TableHead>
+                      <TableHead className="border-r border-border font-bold text-xs text-foreground">
+                        Fecha de Confirmación
+                      </TableHead>
+                      <TableHead className="w-32 text-center font-bold text-xs text-foreground">
+                        Estado
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {!reporte.partes || reporte.partes.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center text-muted-foreground text-xs py-6"
+                        >
+                          Sin partes diarios registrados en este período.
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredPartes.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={6}
+                          className="text-center text-muted-foreground text-xs py-6"
+                        >
+                          No se encontraron partes coincidentes con la búsqueda.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredPartes.map((p, idx) => (
+                        <TableRow key={p.id} className="border-b border-border hover:bg-muted/10">
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
+                            #{p.id}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
+                            {p.fecha}
+                          </TableCell>
+                          <TableCell className="text-center font-medium text-xs text-foreground border-r border-border">
+                            {getDiaSemana(p.fecha)}
+                          </TableCell>
+                          <TableCell className="font-mono text-xs text-muted-foreground border-r border-border">
+                            {formatFechaHora(p.fecha_confirmacion)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-800 dark:text-emerald-300">
+                              Confirmado
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* 3. Sección de Justificaciones Aprobadas */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+              <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
+                  <ClipboardCheck className="w-4 h-4 text-primary" />
+                  3. Justificaciones Aprobadas
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    placeholder="Buscar por docente, materia, grupo..."
+                    value={justificacionesSearch}
+                    onChange={(e) => setJustificacionesSearch(e.target.value)}
+                    className="text-xs px-2.5 py-1 rounded-lg border border-border bg-background text-foreground h-8 w-56 focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground shrink-0">
+                    {filteredJustificaciones.length} de{" "}
+                    {reporte.justificaciones_aprobadas?.length ?? 0}
+                  </span>
+                </div>
+              </div>
+              <div className="overflow-x-auto w-full min-w-0 max-w-full">
+                <Table className="min-w-[1000px] w-full border-collapse">
+                  <TableHeader className="bg-muted/30 border-b border-border">
+                    <TableRow className="border-b border-border hover:bg-transparent">
+                      <TableHead className="w-14 text-center border-r border-border font-bold text-xs text-foreground">
+                        N°
+                      </TableHead>
+                      <TableHead className="w-60 border-r border-border font-bold text-xs text-foreground">
+                        Docente
+                      </TableHead>
+                      <TableHead className="min-w-[200px] border-r border-border font-bold text-xs text-foreground">
+                        Asignatura
+                      </TableHead>
+                      <TableHead className="w-20 text-center border-r border-border font-bold text-xs text-foreground">
+                        Grupo
+                      </TableHead>
+                      <TableHead className="w-28 text-center border-r border-border font-bold text-xs text-foreground">
+                        Fecha
+                      </TableHead>
+                      <TableHead className="w-32 text-center border-r border-border font-bold text-xs text-foreground">
+                        Horario
+                      </TableHead>
+                      <TableHead className="w-28 text-center border-r border-border font-bold text-xs text-foreground">
+                        Régimen
+                      </TableHead>
+                      <TableHead className="min-w-[180px] font-bold text-xs text-foreground">
+                        Motivo / Descripción
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {!reporte.justificaciones_aprobadas ||
+                    reporte.justificaciones_aprobadas.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="text-center text-muted-foreground text-xs py-6"
+                        >
+                          Sin justificaciones aprobadas registradas en este período.
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredJustificaciones.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={8}
+                          className="text-center text-muted-foreground text-xs py-6"
+                        >
+                          No se encontraron justificaciones coincidentes con la búsqueda.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredJustificaciones.map((j, idx) => (
+                        <TableRow
+                          key={j.id || idx}
+                          className="border-b border-border hover:bg-muted/10"
+                        >
+                          <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell className="border-r border-border py-2">
+                            <div className="font-semibold text-xs text-foreground">
+                              {j.persona_nombre}
+                            </div>
+                            <div className="text-[10px] font-mono text-muted-foreground">
+                              Cód: {j.persona_codigo}
+                            </div>
+                          </TableCell>
+                          <TableCell className="border-r border-border font-medium text-xs text-foreground">
+                            {j.asignatura_nombre}
+                          </TableCell>
+                          <TableCell className="text-center font-mono font-bold text-xs text-foreground border-r border-border">
+                            {j.grupo_nombre}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs text-foreground border-r border-border">
+                            {j.fecha}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-xs font-semibold text-foreground border-r border-border">
+                            {formatHoraCorta(j.hora_inicio)} - {formatHoraCorta(j.hora_fin)}
+                          </TableCell>
+                          <TableCell className="text-center border-r border-border">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                j.con_goce_haberes
+                                  ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                                  : "bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                              }`}
+                            >
+                              {j.con_goce_haberes ? "Con goce" : "Sin goce"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {j.descripcion || "—"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* 4. Sección de Alertas - Retrasos Recurrentes (> 3) */}
             <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
               <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
                 <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
                   <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-                  1. Alertas: Retrasos Recurrentes (&gt; 3 retrasos)
+                  4. Alertas: Retrasos Recurrentes (&gt; 3 retrasos)
                 </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                   {reporte.alertas?.mas_3_retrasos?.length ?? 0} docentes
@@ -992,12 +1660,12 @@ export default function PartesMensualesPage() {
               </div>
             </div>
 
-            {/* 3. Sección de Alertas - Faltas Acumuladas (3 o más) */}
+            {/* 5. Sección de Alertas - Faltas Acumuladas (3 o más) */}
             <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
               <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
                 <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
-                  2. Alertas: Faltas Acumuladas (3 faltas o más)
+                  5. Alertas: Faltas Acumuladas (3 faltas o más)
                 </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                   {reporte.alertas?.["3_faltas_mas"]?.length ?? 0} docentes
@@ -1166,12 +1834,12 @@ export default function PartesMensualesPage() {
               </div>
             </div>
 
-            {/* 4. Sección de Alertas - Inasistencias Consecutivas (6 o más días) */}
+            {/* 6. Sección de Alertas - Inasistencias Consecutivas (6 o más días) */}
             <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
               <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex items-center justify-between">
                 <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-                  3. Alertas: Inasistencias Consecutivas (Secuencia de 6 o más días)
+                  6. Alertas: Inasistencias Consecutivas (Secuencia de 6 o más días)
                 </div>
                 <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground">
                   {reporte.alertas?.inasistencias_consecutivas?.length ?? 0} docentes
@@ -1356,189 +2024,365 @@ export default function PartesMensualesPage() {
                 </Table>
               </div>
             </div>
-
-            {/* 4. Sección de Resumen por Personal y Cargas Horarias */}
-            {reporte.personas && reporte.personas.length > 0 && (
-              <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
-                <div className="bg-muted/40 px-4 py-2.5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="text-xs font-bold uppercase tracking-wider text-foreground dark:text-white flex items-center gap-2">
-                    <Users className="w-4 h-4 text-primary" />
-                    4. Resumen por Personal y Cargas Horarias
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="Buscar por nombre o código..."
-                      value={personasSearch}
-                      onChange={(e) => setPersonasSearch(e.target.value)}
-                      className="text-xs px-2.5 py-1 rounded-lg border border-border bg-background text-foreground h-8 w-56 focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-muted border border-border text-foreground shrink-0">
-                      {filteredPersonas.length} de {reporte.personas.length}
-                    </span>
+          </div>
+        ) : vistaPrevia ? (
+          <div className="space-y-4 pb-6 w-full min-w-0 max-w-full">
+            {/* Aviso si la vista previa fue actualizada por 409 STALE_FINGERPRINT */}
+            {isStaleUpdated && (
+              <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3.5 flex items-start sm:items-center justify-between gap-3 text-xs text-amber-900 dark:text-amber-200">
+                <div className="flex items-center gap-2.5">
+                  <AlertTriangle className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                  <div>
+                    <p className="font-bold">Vista previa actualizada por cambios recientes</p>
+                    <p className="text-[11px] opacity-90 mt-0.5">
+                      Las fuentes de datos cambiaron desde la última consulta. Se cargó la versión
+                      vigente con su nueva huella. Revise los datos y presione nuevamente{" "}
+                      <strong>Generar Parte Mensual</strong>.
+                    </p>
                   </div>
                 </div>
-                <div className="overflow-x-auto w-full min-w-0 max-w-full">
-                  <Table className="min-w-[1000px] w-full border-collapse">
-                    <TableHeader className="bg-muted/30 border-b border-border">
-                      <TableRow className="border-b border-border hover:bg-transparent">
-                        <TableHead
-                          rowSpan={2}
-                          className="w-12 text-center border-r border-border font-bold text-xs text-foreground"
-                        >
-                          N°
-                        </TableHead>
-                        <TableHead
-                          rowSpan={2}
-                          className="w-24 text-center border-r border-border font-bold text-xs text-foreground"
-                        >
-                          Código
-                        </TableHead>
-                        <TableHead
-                          rowSpan={2}
-                          className="min-w-[180px] border-r border-border font-bold text-xs text-foreground"
-                        >
-                          Docente / Funcionario
-                        </TableHead>
-                        <TableHead
-                          rowSpan={2}
-                          className="w-24 text-center border-r border-border font-bold text-xs text-foreground bg-muted/40"
-                        >
-                          Carga Base
-                        </TableHead>
-                        <TableHead
-                          colSpan={3}
-                          className="text-center border-r border-border font-bold text-xs text-red-700 dark:text-red-400 bg-red-500/10"
-                        >
-                          Faltas
-                        </TableHead>
-                        <TableHead
-                          colSpan={3}
-                          className="text-center border-r border-border font-bold text-xs text-blue-700 dark:text-blue-400 bg-blue-500/10"
-                        >
-                          Justificaciones Con Goce
-                        </TableHead>
-                        <TableHead
-                          colSpan={3}
-                          className="text-center font-bold text-xs text-amber-700 dark:text-amber-400 bg-amber-500/10"
-                        >
-                          Justificaciones Sin Goce
-                        </TableHead>
-                      </TableRow>
-                      <TableRow className="border-b border-border hover:bg-transparent text-[11px]">
-                        {/* Faltas */}
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-red-700 dark:text-red-400">
-                          Carga
-                        </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
-                          Retrasos
-                        </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-emerald-700 dark:text-emerald-400">
-                          Anticipados
-                        </TableHead>
-                        {/* Justificaciones Con Goce */}
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
-                          Carga
-                        </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
-                          Retrasos
-                        </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-blue-700 dark:text-blue-400">
-                          Anticipados
-                        </TableHead>
-                        {/* Justificaciones Sin Goce */}
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
-                          Carga
-                        </TableHead>
-                        <TableHead className="w-20 text-center border-r border-border font-bold text-amber-700 dark:text-amber-400">
-                          Retrasos
-                        </TableHead>
-                        <TableHead className="w-20 text-center font-bold text-amber-700 dark:text-amber-400">
-                          Anticipados
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredPersonas.length === 0 ? (
-                        <TableRow>
-                          <TableCell
-                            colSpan={13}
-                            className="text-center text-muted-foreground text-xs py-6"
-                          >
-                            No se encontraron docentes coincidentes con la búsqueda.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredPersonas.map((p, idx) => {
-                          const justConGoce = p.justificaciones_con_goce ?? p.justificaciones
-                          const justSinGoce = p.justificaciones_sin_goce
-
-                          return (
-                            <TableRow
-                              key={p.persona_codigo || idx}
-                              className="border-b border-border hover:bg-muted/10"
-                            >
-                              <TableCell className="text-center font-mono text-xs text-muted-foreground border-r border-border">
-                                {idx + 1}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs font-semibold border-r border-border">
-                                {p.persona_codigo}
-                              </TableCell>
-                              <TableCell className="font-semibold text-xs text-foreground border-r border-border">
-                                {p.persona_nombres}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs font-bold border-r border-border bg-muted/20">
-                                {formatCargaHoraria(p.carga_horaria)}
-                              </TableCell>
-                              {/* Faltas */}
-                              <TableCell className="text-center font-mono text-xs font-semibold text-red-600 dark:text-red-400 border-r border-border">
-                                {formatCargaFaltas(p.faltas?.carga_faltas)}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
-                                {p.faltas?.retrasos_min ? `${p.faltas.retrasos_min} min` : "—"}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-emerald-700 dark:text-emerald-400 border-r border-border">
-                                {p.faltas?.anticipados_min
-                                  ? `${p.faltas.anticipados_min} min`
-                                  : "—"}
-                              </TableCell>
-                              {/* Justificaciones Con Goce */}
-                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                                {formatCargaJustificada(justConGoce?.carga_justificada)}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                                {justConGoce?.retrasos_min_justificados
-                                  ? `${justConGoce.retrasos_min_justificados} min`
-                                  : "—"}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-blue-600 dark:text-blue-400 border-r border-border">
-                                {justConGoce?.anticipado_min_justificados
-                                  ? `${justConGoce.anticipado_min_justificados} min`
-                                  : "—"}
-                              </TableCell>
-                              {/* Justificaciones Sin Goce */}
-                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
-                                {formatCargaJustificada(justSinGoce?.carga_justificada)}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400 border-r border-border">
-                                {justSinGoce?.retrasos_min_justificados
-                                  ? `${justSinGoce.retrasos_min_justificados} min`
-                                  : "—"}
-                              </TableCell>
-                              <TableCell className="text-center font-mono text-xs text-amber-700 dark:text-amber-400">
-                                {justSinGoce?.anticipado_min_justificados
-                                  ? `${justSinGoce.anticipado_min_justificados} min`
-                                  : "—"}
-                              </TableCell>
-                            </TableRow>
-                          )
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsStaleUpdated(false)}
+                  className="h-7 px-2 text-xs border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 rounded-lg cursor-pointer shrink-0"
+                >
+                  Entendido
+                </Button>
               </div>
             )}
+
+            {/* 1. Resumen de la Vista Previa */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+              <div className="bg-muted/40 px-4 py-3 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-primary/10 text-primary rounded-xl shrink-0">
+                    <Eye className="size-5" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold uppercase tracking-wider text-foreground">
+                      Vista Previa del Período
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Verifique el estado de partes diarios y justificaciones pendientes antes de
+                      generar el reporte definitivo.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  type="button"
+                  onClick={handleSolicitarGeneracion}
+                  disabled={loadingGeneracion}
+                  className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs flex items-center justify-center gap-2 h-10 px-4 shadow-sm cursor-pointer shrink-0"
+                >
+                  {loadingGeneracion ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  ) : (
+                    <FileCheck2 className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>Generar Parte Mensual</span>
+                </Button>
+              </div>
+
+              <div className="p-3.5 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                    Alcance
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {vistaPrevia.alcance === "plan_estudio"
+                      ? "Plan de Estudio"
+                      : vistaPrevia.alcance === "todas_facultades"
+                        ? "Todas las Facultades"
+                        : "Facultad"}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                    Objetivo
+                  </span>
+                  <span
+                    className="text-xs font-bold text-foreground line-clamp-1"
+                    title={targetNombreDisplayVista}
+                  >
+                    {targetNombreDisplayVista}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                    Rango de Fechas
+                  </span>
+                  <span className="text-xs font-mono font-semibold text-foreground">
+                    {vistaPrevia.fecha_desde} al {vistaPrevia.fecha_hasta}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                    Total Fechas
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {vistaPrevia.fechas.length} días
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span
+                    className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block truncate"
+                    title="Partes Diarios Confirmados"
+                  >
+                    Partes Diarios Confirmados
+                  </span>
+                  <span className="text-xs font-bold text-foreground">
+                    {totalPartesConfirmadosVista}
+                  </span>
+                </div>
+
+                <div className="p-2.5 bg-muted/20 border border-border rounded-xl">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider block">
+                    Justif. Pendientes
+                  </span>
+                  <span
+                    className={`text-xs font-bold ${
+                      vistaPrevia.justificaciones_pendientes.length > 0
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                    }`}
+                  >
+                    {vistaPrevia.justificaciones_pendientes.length > 0
+                      ? `${vistaPrevia.justificaciones_pendientes.length} pendientes`
+                      : "0 (Al día)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Sección: Tabla de Fechas y Partes Diarios */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+              <div className="bg-muted/40 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-primary" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Fechas y Partes Diarios del Período ({vistaPrevia.fechas.length} fechas)
+                  </h2>
+                </div>
+                <span className="text-[11px] text-muted-foreground font-medium">
+                  {totalPartesConfirmadosVista} confirmados
+                </span>
+              </div>
+
+              <div className="max-h-96 overflow-y-auto">
+                <Table className="w-full text-xs">
+                  <TableHeader className="bg-muted/30 sticky top-0 z-10">
+                    <TableRow className="border-b border-border">
+                      <TableHead className="w-12 text-center font-bold">N°</TableHead>
+                      <TableHead className="w-32 text-center font-bold">Fecha</TableHead>
+                      <TableHead className="w-28 text-center font-bold">Día</TableHead>
+                      <TableHead className="w-32 text-center font-bold">Partes Diarios</TableHead>
+                      <TableHead className="font-bold">Detalle y Estado de Partes</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {vistaPrevia.fechas.map((f, idx) => {
+                      const { diaNombre, fechaFormateada } = formatFechaConDia(f.fecha)
+                      const hasPartes = f.partes && f.partes.length > 0
+                      const sortedPartes = hasPartes
+                        ? [...f.partes].sort((a, b) => {
+                            const aIsConf = a.estado?.toLowerCase() === "confirmado" ? 1 : 0
+                            const bIsConf = b.estado?.toLowerCase() === "confirmado" ? 1 : 0
+                            return bIsConf - aIsConf
+                          })
+                        : []
+
+                      return (
+                        <TableRow
+                          key={f.fecha}
+                          className="border-b border-border hover:bg-muted/10"
+                        >
+                          <TableCell className="text-center font-mono text-muted-foreground">
+                            {idx + 1}
+                          </TableCell>
+                          <TableCell className="text-center font-mono font-semibold text-foreground">
+                            {fechaFormateada}
+                          </TableCell>
+                          <TableCell className="text-center text-muted-foreground">
+                            {diaNombre}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {hasPartes ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">
+                                {f.partes.length} {f.partes.length === 1 ? "parte" : "partes"}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-muted text-muted-foreground">
+                                0 partes
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {hasPartes ? (
+                              <div className="flex flex-wrap items-center gap-2 py-1">
+                                {sortedPartes.map((p) => {
+                                  const isConfirmado = p.estado?.toLowerCase() === "confirmado"
+                                  const isBorrador = p.estado?.toLowerCase() === "borrador"
+
+                                  return (
+                                    <div
+                                      key={p.id}
+                                      className={`flex items-center gap-2 px-2.5 py-1 rounded-xl border text-xs ${
+                                        isConfirmado
+                                          ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-800 dark:text-emerald-300"
+                                          : isBorrador
+                                            ? "bg-destructive/10 border-destructive/20 text-destructive"
+                                            : "bg-muted/40 border-border text-foreground"
+                                      }`}
+                                    >
+                                      <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-background/60">
+                                        {p.estado}
+                                      </span>
+                                      {isConfirmado && (
+                                        <span className="text-[10px] opacity-80">
+                                          Confirmación:{" "}
+                                          {formatFechaConfirmacion(p.fecha_confirmacion)}
+                                        </span>
+                                      )}
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-xs italic">
+                                Sin parte diario generado para esta fecha
+                              </span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+
+            {/* 3. Sección: Justificaciones Pendientes */}
+            <div className="rounded-2xl border border-border bg-card shadow-xs overflow-hidden w-full min-w-0 max-w-full">
+              <div className="bg-muted/40 px-4 py-3 border-b border-border flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-primary" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Justificaciones Pendientes de Aprobación (
+                    {vistaPrevia.justificaciones_pendientes.length})
+                  </h2>
+                </div>
+              </div>
+
+              <div className="p-4">
+                {vistaPrevia.justificaciones_pendientes.length === 0 ? (
+                  <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-center gap-3 text-xs text-emerald-800 dark:text-emerald-300">
+                    <CheckCircle2 className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                    <div>
+                      <p className="font-bold">No existen justificaciones pendientes</p>
+                      <p className="text-[11px] opacity-90 mt-0.5">
+                        Todas las solicitudes del período se encuentran resueltas. El reporte
+                        mensual se generará sin omitir justificaciones.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-3 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2.5">
+                      <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+                      <span className="font-medium">
+                        Atención: Hay {vistaPrevia.justificaciones_pendientes.length}{" "}
+                        justificaciones pendientes, estas no serán consideradas.
+                      </span>
+                    </div>
+
+                    <div className="rounded-xl border border-border overflow-hidden">
+                      <Table className="w-full text-xs">
+                        <TableHeader className="bg-muted/30">
+                          <TableRow className="border-b border-border">
+                            <TableHead className="w-16 text-center font-bold">ID</TableHead>
+                            <TableHead className="font-bold">Docente / Funcionario</TableHead>
+                            <TableHead className="w-48 text-center font-bold">
+                              Rango Justificado
+                            </TableHead>
+                            <TableHead className="w-32 text-center font-bold">
+                              Goce Haberes
+                            </TableHead>
+                            <TableHead className="font-bold">Motivo / Descripción</TableHead>
+                            <TableHead className="w-28 text-center font-bold">Horarios</TableHead>
+                            <TableHead className="w-28 text-center font-bold">Estado</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {vistaPrevia.justificaciones_pendientes.map((j) => (
+                            <TableRow
+                              key={j.id}
+                              className="border-b border-border hover:bg-muted/10"
+                            >
+                              <TableCell className="text-center font-mono font-semibold">
+                                #{j.id}
+                              </TableCell>
+                              <TableCell className="font-semibold text-foreground">
+                                {j.persona?.nombres || "—"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-[11px]">
+                                {j.fecha_desde} al {j.fecha_hasta}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                    j.con_goce_haberes
+                                      ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                                      : "bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                                  }`}
+                                >
+                                  {j.con_goce_haberes ? "Con goce" : "Sin goce"}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-muted-foreground text-xs">
+                                {j.descripcion || "Sin descripción"}
+                              </TableCell>
+                              <TableCell className="text-center font-mono text-[11px]">
+                                {j.horario_ids?.length || 0} horarios
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                                  {j.estado}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Pie de acción */}
+              <div className="bg-muted/30 px-4 py-3 border-t border-border flex items-center justify-end">
+                <Button
+                  type="button"
+                  onClick={handleSolicitarGeneracion}
+                  disabled={loadingGeneracion}
+                  size="lg"
+                  className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs flex items-center gap-2 shadow-sm cursor-pointer"
+                >
+                  {loadingGeneracion ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  ) : (
+                    <FileCheck2 className="w-4 h-4 shrink-0" />
+                  )}
+                  <span>Generar Parte Mensual</span>
+                </Button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center py-20 text-center border border-dashed border-border/80 rounded-3xl bg-muted/10">
@@ -1650,6 +2494,93 @@ export default function PartesMensualesPage() {
                     </TableRow>
                   )
                 })}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </UmssModal>
+
+      {/* Modal de Confirmación: Justificaciones Pendientes */}
+      <UmssModal
+        isOpen={showJustificacionesPendientesModal}
+        onClose={() => setShowJustificacionesPendientesModal(false)}
+        title={
+          <div className="flex items-center gap-2 text-base font-bold text-amber-600 dark:text-amber-400">
+            <AlertTriangle className="size-5 text-amber-600 dark:text-amber-400" />
+            Justificaciones Pendientes en el Período
+          </div>
+        }
+        size="lg"
+        footer={
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-2 w-full">
+            <Button
+              variant="outline"
+              onClick={() => setShowJustificacionesPendientesModal(false)}
+              className="rounded-xl text-xs w-full sm:w-auto"
+            >
+              Cancelar y Revisar
+            </Button>
+            <Button
+              onClick={ejecutarGeneracionReporte}
+              disabled={loadingGeneracion}
+              className="rounded-xl font-bold bg-primary hover:bg-primary/90 text-primary-foreground text-xs gap-1.5 w-full sm:w-auto cursor-pointer"
+            >
+              {loadingGeneracion ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <FileCheck2 className="w-3.5 h-3.5" />
+              )}
+              Continuar y Generar Reporte
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-xs text-amber-900 dark:text-amber-200 flex items-center gap-2.5">
+            <AlertCircle className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span className="font-medium">
+              Atención: Hay {vistaPrevia?.justificaciones_pendientes.length} justificaciones
+              pendientes, estas no serán consideradas.
+            </span>
+          </div>
+
+          <div className="max-h-60 overflow-y-auto rounded-xl border border-border">
+            <Table className="w-full text-xs">
+              <TableHeader className="bg-muted/40 sticky top-0">
+                <TableRow>
+                  <TableHead className="w-16 text-center font-bold">ID</TableHead>
+                  <TableHead className="font-bold">Docente</TableHead>
+                  <TableHead className="w-36 text-center font-bold">Fechas</TableHead>
+                  <TableHead className="w-24 text-center font-bold">Goce</TableHead>
+                  <TableHead className="font-bold">Descripción</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {vistaPrevia?.justificaciones_pendientes.map((j) => (
+                  <TableRow key={j.id} className="border-b border-border">
+                    <TableCell className="text-center font-mono font-semibold">#{j.id}</TableCell>
+                    <TableCell className="font-semibold text-foreground">
+                      {j.persona?.nombres || "—"}
+                    </TableCell>
+                    <TableCell className="text-center font-mono text-[11px]">
+                      {j.fecha_desde} al {j.fecha_hasta}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          j.con_goce_haberes
+                            ? "bg-blue-500/10 text-blue-700 dark:text-blue-300"
+                            : "bg-purple-500/10 text-purple-700 dark:text-purple-300"
+                        }`}
+                      >
+                        {j.con_goce_haberes ? "Con goce" : "Sin goce"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground text-xs truncate max-w-xs">
+                      {j.descripcion || "Sin descripción"}
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </div>

@@ -1,4 +1,4 @@
-import { apiClient } from "@/shared/services/api/client"
+import { apiClient, type ApiClientOptions } from "@/shared/services/api/client"
 
 export interface CargaHorariaItem {
   grupo_tipo: string
@@ -108,6 +108,26 @@ export interface ReporteMensualMembership {
   annulled_links?: number
 }
 
+export interface ParteReporteMensualItem {
+  id: number
+  fecha: string
+  fecha_confirmacion: string | null
+}
+
+export interface JustificacionAprobadaReporteMensualItem {
+  id: number
+  descripcion: string
+  con_goce_haberes: boolean
+  detalle_id: number
+  fecha: string
+  persona_codigo: string
+  persona_nombre: string
+  grupo_nombre: string
+  asignatura_nombre: string
+  hora_inicio: string
+  hora_fin: string
+}
+
 export interface ReporteMensualResponse {
   id: number
   fecha_desde: string
@@ -115,9 +135,57 @@ export interface ReporteMensualResponse {
   alcance: AlcanceReporteMensual | string
   objetivo: string
   membership?: ReporteMensualMembership
+  partes?: ParteReporteMensualItem[]
+  justificaciones_aprobadas?: JustificacionAprobadaReporteMensualItem[]
   personas: ReporteMensualPersona[]
   observados?: unknown[]
   alertas: ReporteMensualAlertas
+}
+
+export interface ParteDiarioEnVistaPrevia {
+  id: number
+  estado: string
+  fecha_confirmacion: string | null
+}
+
+export interface FechaVistaPrevia {
+  fecha: string
+  partes: ParteDiarioEnVistaPrevia[]
+}
+
+export interface PersonaJustificacionPendiente {
+  nombres: string
+}
+
+export interface JustificacionPendienteVistaPrevia {
+  id: number
+  persona_id: number
+  persona: PersonaJustificacionPendiente
+  fecha_desde: string
+  fecha_hasta: string
+  descripcion: string
+  con_goce_haberes: boolean
+  tipo_justificacion_id: number
+  estado: string
+  horario_ids: number[]
+}
+
+export interface VistaPreviaReporteMensualResponse {
+  alcance: AlcanceReporteMensual | string
+  objetivo: string
+  fecha_desde: string
+  fecha_hasta: string
+  fechas: FechaVistaPrevia[]
+  justificaciones_pendientes: JustificacionPendienteVistaPrevia[]
+  fingerprint: string
+}
+
+export interface VistaPreviaReporteMensualParams {
+  alcance: AlcanceReporteMensual
+  plan_estudio_id?: number
+  facultad_id?: number
+  fecha_desde: string
+  fecha_hasta: string
 }
 
 export interface GenerarReporteMensualPlanRequest {
@@ -125,6 +193,7 @@ export interface GenerarReporteMensualPlanRequest {
   plan_estudio_id: number
   fecha_desde: string
   fecha_hasta: string
+  fingerprint: string
 }
 
 export interface GenerarReporteMensualFacultadRequest {
@@ -132,18 +201,26 @@ export interface GenerarReporteMensualFacultadRequest {
   facultad_id: number
   fecha_desde: string
   fecha_hasta: string
+  fingerprint: string
 }
 
 export interface GenerarReporteMensualTodasRequest {
   alcance: "todas_facultades"
   fecha_desde: string
   fecha_hasta: string
+  fingerprint: string
 }
 
 export type GenerarReporteMensualRequest =
   | GenerarReporteMensualPlanRequest
   | GenerarReporteMensualFacultadRequest
   | GenerarReporteMensualTodasRequest
+
+export interface StaleFingerprintErrorBody {
+  message: string
+  code: "STALE_FINGERPRINT"
+  vista_previa: VistaPreviaReporteMensualResponse
+}
 
 export interface DraftPartItem {
   part_id: number
@@ -155,6 +232,12 @@ export interface DraftPartItem {
 export interface DraftPartsErrorBody {
   message: string
   code: "DRAFT_PARTS"
+  partes: DraftPartItem[]
+}
+
+export interface UnconfirmedPartsErrorBody {
+  message: string
+  code: "UNCONFIRMED_PARTS"
   partes: DraftPartItem[]
 }
 
@@ -197,7 +280,28 @@ export function calcularPeriodoMensual(
 }
 
 export const partesMensualesApi = {
-  generar: async (payload: GenerarReporteMensualRequest): Promise<ReporteMensualResponse> => {
-    return apiClient.post<ReporteMensualResponse>("/partes-mensuales", payload)
+  obtenerVistaPrevia: async (
+    params: VistaPreviaReporteMensualParams
+  ): Promise<VistaPreviaReporteMensualResponse> => {
+    const query = new URLSearchParams()
+    query.set("alcance", params.alcance)
+    query.set("fecha_desde", params.fecha_desde)
+    query.set("fecha_hasta", params.fecha_hasta)
+    if (params.alcance === "plan_estudio" && params.plan_estudio_id) {
+      query.set("plan_estudio_id", String(params.plan_estudio_id))
+    }
+    if (params.alcance === "facultad" && params.facultad_id) {
+      query.set("facultad_id", String(params.facultad_id))
+    }
+    return apiClient.get<VistaPreviaReporteMensualResponse>(
+      `/partes-mensuales/vista-previa?${query.toString()}`
+    )
+  },
+
+  generar: async (
+    payload: GenerarReporteMensualRequest,
+    options?: ApiClientOptions
+  ): Promise<ReporteMensualResponse> => {
+    return apiClient.post<ReporteMensualResponse>("/partes-mensuales", payload, options)
   },
 }

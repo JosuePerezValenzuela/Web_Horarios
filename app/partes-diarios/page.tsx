@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react"
+import { useEffect, useState, useCallback, useMemo, useRef, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
 import { format } from "date-fns"
 import { AppLayout } from "@/components/organisms/AppLayout"
@@ -282,7 +282,7 @@ export function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   return groupedRows.sort((a, b) => a.indices[0] - b.indices[0])
 }
 
-export default function PartesDiariosPage() {
+function PartesDiariosContent() {
   const searchParams = useSearchParams()
   const { facultades, loading: loadingFacultades, fetchFacultades } = useFacultadesStore()
 
@@ -1921,5 +1921,13 @@ export default function PartesDiariosPage() {
         </div>
       </UmssModal>
     </AppLayout>
+  )
+}
+
+export default function PartesDiariosPage() {
+  return (
+    <Suspense fallback={null}>
+      <PartesDiariosContent />
+    </Suspense>
   )
 }
