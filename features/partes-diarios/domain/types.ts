@@ -15,32 +15,15 @@ export interface GenerarParteDiarioRequest {
 export interface ParteDiarioDetalle {
   detalle_parte_id: number
   horario_id: number
-  hora_inicio: string // "HH:mm:ss"
-  hora_fin: string // "HH:mm:ss"
-  aula_id: number | null
+  hora_inicio: string // "HH:mm"
+  hora_fin: string // "HH:mm"
   aula_codigo: string | null
   virtual: boolean
-  persona_grupo_id: number
-  persona_id: number
-  persona_codigo: string
   persona_nombres: string
-  persona_documento: string | null
-  persona_complemento_documento: string | null
-  tipo_designacion: string
-  persona_grupo_carga_horaria: number
   primario: boolean
   primario_id: number | null
-  grupo_id: number
   grupo_nombre: string
-  grupo_tipo: string
-  grupo_equivalente_carga_horaria_minutos: number
-  asignatura_id: number
-  asignatura_codigo: string
   asignatura_nombre: string
-  asignatura_tipo: string
-  asignatura_unidad_id: number | null
-  asignatura_unidad_nombre: string | null
-  fuente_registro: string | null
   minutos_retraso: number | null
   minutos_anticipados_salida: number | null
   falta: boolean | null
@@ -50,6 +33,24 @@ export interface ParteDiarioDetalle {
   tiene_justificacion: boolean
   tipo_justificacion_nombre: string | null
   estado_justificacion: string | null
+  // Campos opcionales para retrocompatibilidad
+  aula_id?: number | null
+  persona_grupo_id?: number
+  persona_id?: number
+  persona_codigo?: string
+  persona_documento?: string | null
+  persona_complemento_documento?: string | null
+  tipo_designacion?: string
+  persona_grupo_carga_horaria?: number
+  grupo_id?: number
+  grupo_tipo?: string
+  grupo_equivalente_carga_horaria_minutos?: number
+  asignatura_id?: number
+  asignatura_codigo?: string
+  asignatura_tipo?: string
+  asignatura_unidad_id?: number | null
+  asignatura_unidad_nombre?: string | null
+  fuente_registro?: string | null
 }
 
 export interface ParteDiarioReporte {

@@ -38,6 +38,7 @@ import {
 
 export interface JustificarParteTarget {
   horarioId: number
+  horarioIds?: number[]
   docenteNombre: string
   docenteCodigo?: string
   fecha: string // "YYYY-MM-DD"
@@ -76,7 +77,6 @@ function CrearJustificacionParteForm({
   const [loadingTipos, setLoadingTipos] = useState(true)
 
   // Form state inicializado directamente desde props
-  const [selectedHorarioId, setSelectedHorarioId] = useState<number>(target.horarioId)
   const [tipoJustificacionId, setTipoJustificacionId] = useState<string>("")
   const fechaDesde = target.fecha
   const fechaHasta = target.fecha
@@ -123,8 +123,15 @@ function CrearJustificacionParteForm({
   const handleSubmit = async () => {
     setErrorMsg(null)
 
-    if (!selectedHorarioId) {
-      setErrorMsg("Debe especificar un horario válido a justificar.")
+    const targetHorarioIds =
+      target.horarioIds && target.horarioIds.length > 0
+        ? target.horarioIds
+        : target.horarioId
+          ? [target.horarioId]
+          : []
+
+    if (targetHorarioIds.length === 0) {
+      setErrorMsg("Debe especificar al menos un horario válido a justificar.")
       return
     }
 
@@ -162,7 +169,7 @@ function CrearJustificacionParteForm({
       setLoadingSubmit(true)
 
       await crearJustificacion({
-        horario_ids: [selectedHorarioId],
+        horario_ids: targetHorarioIds,
         fecha_desde: fechaDesde,
         fecha_hasta: fechaHasta,
         tipo_justificacion_id: Number(tipoJustificacionId),
@@ -179,14 +186,12 @@ function CrearJustificacionParteForm({
     }
   }
 
-  const hasMultipleOptions = target.detallesOpciones && target.detallesOpciones.length > 1
-
-  const activeOption = target.detallesOpciones?.find((d) => d.horarioId === selectedHorarioId)
-
-  const materiaDisplay = activeOption?.asignaturaNombre || target.materia || "Asignatura"
-  const grupoDisplay = activeOption?.grupoNombre || target.grupo || "Grupo"
-  const aulaDisplay = activeOption?.aulaCodigo || target.aulaCodigo || "S/R"
-  const isVirtual = activeOption?.virtual ?? target.virtual
+  const hasMultipleOptions = Boolean(target.detallesOpciones && target.detallesOpciones.length > 1)
+  const firstOption = target.detallesOpciones?.[0]
+  const materiaDisplay = firstOption?.asignaturaNombre || target.materia || "Asignatura"
+  const grupoDisplay = firstOption?.grupoNombre || target.grupo || "Grupo"
+  const aulaDisplay = firstOption?.aulaCodigo || target.aulaCodigo || "S/R"
+  const isVirtual = firstOption?.virtual ?? target.virtual
 
   return (
     <>
@@ -212,28 +217,47 @@ function CrearJustificacionParteForm({
             </div>
           </div>
 
-          {/* Si hay múltiples clases solapadas, permitir seleccionar cuál */}
+          {/* Si hay múltiples clases agrupadas con la misma hora de inicio y fin */}
           {hasMultipleOptions ? (
-            <div className="space-y-1 pt-1 border-t border-border/50">
-              <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                Seleccione la materia / grupo a justificar:
-              </label>
-              <Select
-                value={String(selectedHorarioId)}
-                onValueChange={(val) => setSelectedHorarioId(Number(val))}
-                disabled={loadingSubmit}
-              >
-                <SelectTrigger className="w-full h-8 text-xs rounded-xl">
-                  <SelectValue placeholder="Seleccione clase" />
-                </SelectTrigger>
-                <SelectContent>
-                  {target.detallesOpciones?.map((op) => (
-                    <SelectItem key={op.horarioId} value={String(op.horarioId)} className="text-xs">
-                      {op.asignaturaNombre} - Gr: {op.grupoNombre} (Horario #{op.horarioId})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="space-y-1.5 pt-2 border-t border-border/50">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Clases agrupadas en este horario ({target.detallesOpciones?.length}):
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 h-4 border-primary/30 text-primary"
+                >
+                  Aplica a las {target.detallesOpciones?.length} materias
+                </Badge>
+              </div>
+              <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
+                {target.detallesOpciones?.map((op, idx) => (
+                  <div
+                    key={`${op.horarioId}-${idx}`}
+                    className="flex items-center justify-between text-xs p-1.5 rounded-lg bg-background border border-border/60 text-foreground"
+                  >
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <BookOpen className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                      <span className="font-semibold truncate">{op.asignaturaNombre}</span>
+                      <span className="text-muted-foreground shrink-0">- Gr: {op.grupoNombre}</span>
+                    </div>
+                    <div className="flex items-center gap-1 text-muted-foreground shrink-0 pl-2">
+                      {op.virtual ? (
+                        <Badge variant="brand" className="text-[9px] px-1.5 py-0 h-4">
+                          <Laptop className="w-2.5 h-2.5 mr-1" />
+                          Virtual
+                        </Badge>
+                      ) : (
+                        <span className="flex items-center gap-0.5 text-[11px]">
+                          <MapPin className="w-3 h-3 text-muted-foreground" />
+                          {op.aulaCodigo || "S/R"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="flex items-center justify-between text-xs pt-1 border-t border-border/50 text-foreground">

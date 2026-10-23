@@ -51,7 +51,51 @@ describe("Partes Diarios groupSchedules algorithm", () => {
     expect(grouped[1].hora_fin).toBe("11:30")
   })
 
-  it("groupSchedules merges overlapping schedules for the same teacher", () => {
+  it("groupSchedules merges schedules with exact same teacher, hora_inicio, and hora_fin", () => {
+    const detalles = [
+      {
+        detalle_parte_id: 201,
+        horario_id: 1001,
+        hora_inicio: "08:15",
+        hora_fin: "09:45",
+        persona_nombres: "Lopez Maria",
+        persona_codigo: "DOC-2",
+        asignatura_nombre: "Física I (Teoría)",
+        grupo_nombre: "1",
+        aula_codigo: "Aula 1",
+        minutos_retraso: null,
+        minutos_anticipados: null,
+        falta: false,
+      },
+      {
+        detalle_parte_id: 202,
+        horario_id: 1002,
+        hora_inicio: "08:15",
+        hora_fin: "09:45",
+        persona_nombres: "Lopez Maria",
+        persona_codigo: "DOC-2",
+        asignatura_nombre: "Física I (Laboratorio)",
+        grupo_nombre: "2",
+        aula_codigo: "Lab 1",
+        minutos_retraso: null,
+        minutos_anticipados: null,
+        falta: false,
+      },
+    ]
+
+    const grouped = groupSchedules(detalles)
+    expect(grouped).toHaveLength(1)
+    expect(grouped[0].ids).toEqual([201, 202])
+    expect(grouped[0].hora_inicio).toBe("08:15")
+    expect(grouped[0].hora_fin).toBe("09:45")
+    expect(grouped[0].detalles).toHaveLength(2)
+    expect(grouped[0].detalles[0].horario_id).toBe(1001)
+    expect(grouped[0].detalles[0].asignatura_nombre).toBe("Física I (Teoría)")
+    expect(grouped[0].detalles[1].horario_id).toBe(1002)
+    expect(grouped[0].detalles[1].asignatura_nombre).toBe("Física I (Laboratorio)")
+  })
+
+  it("groupSchedules does NOT merge overlapping schedules with different start or end times", () => {
     const detalles = [
       {
         detalle_parte_id: 201,
@@ -82,13 +126,14 @@ describe("Partes Diarios groupSchedules algorithm", () => {
     ]
 
     const grouped = groupSchedules(detalles)
-    expect(grouped).toHaveLength(1)
-    expect(grouped[0].ids).toEqual([201, 202])
+    expect(grouped).toHaveLength(2)
+    expect(grouped[0].ids).toEqual([201])
     expect(grouped[0].hora_inicio).toBe("08:15")
-    expect(grouped[0].hora_fin).toBe("10:30")
-    expect(grouped[0].detalles).toHaveLength(2)
-    expect(grouped[0].detalles[0].asignatura_nombre).toBe("Física I (Teoría)")
-    expect(grouped[0].detalles[1].asignatura_nombre).toBe("Física I (Laboratorio)")
+    expect(grouped[0].hora_fin).toBe("09:45")
+
+    expect(grouped[1].ids).toEqual([202])
+    expect(grouped[1].hora_inicio).toBe("09:00")
+    expect(grouped[1].hora_fin).toBe("10:30")
   })
 
   it("groupSchedules correctly identifies alreadySaved rows", () => {

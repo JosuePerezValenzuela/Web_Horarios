@@ -146,7 +146,7 @@ export function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
   const groupedRows: GroupedRow[] = []
 
   Object.entries(byTeacher).forEach(([teacherKey, list]) => {
-    const sorted = [...list].sort((a, b) => a.startMin - b.startMin)
+    const sorted = [...list].sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin)
 
     const mergedGroups: (typeof itemsWithIndex)[] = []
     const groupStarts: number[] = []
@@ -156,21 +156,14 @@ export function groupSchedules(detalles: ReporteDetalle[]): GroupedRow[] {
       const start = item.startMin
       const end = item.endMin
 
-      let merged = false
-      if (mergedGroups.length > 0) {
-        const lastIdx = mergedGroups.length - 1
-        const gStart = groupStarts[lastIdx]
-        const gEnd = groupEnds[lastIdx]
+      // Solo agrupar si el docente tiene exactamente la misma hora_inicio y hora_fin (no solapamientos parciales)
+      const matchingIdx = mergedGroups.findIndex(
+        (_, idx) => groupStarts[idx] === start && groupEnds[idx] === end
+      )
 
-        if (start < gEnd && gStart < end) {
-          mergedGroups[lastIdx].push(item)
-          groupStarts[lastIdx] = Math.min(gStart, start)
-          groupEnds[lastIdx] = Math.max(gEnd, end)
-          merged = true
-        }
-      }
-
-      if (!merged) {
+      if (matchingIdx !== -1) {
+        mergedGroups[matchingIdx].push(item)
+      } else {
         mergedGroups.push([item])
         groupStarts.push(start)
         groupEnds.push(end)
@@ -346,8 +339,17 @@ function PartesDiariosContent() {
 
   const handleOpenJustificar = useCallback(
     (row: GroupedRow) => {
+      const uniqueHorarioIds = Array.from(
+        new Set(
+          row.detalles
+            .map((d) => d.horario_id || row.horario_id)
+            .filter((id): id is number => typeof id === "number" && id > 0)
+        )
+      )
+
       const target: JustificarParteTarget = {
-        horarioId: row.detalles[0]?.horario_id || row.horario_id || 0,
+        horarioId: uniqueHorarioIds[0] || row.horario_id || 0,
+        horarioIds: uniqueHorarioIds,
         docenteNombre: row.persona_nombres,
         docenteCodigo: row.persona_codigo,
         fecha: fecha,
