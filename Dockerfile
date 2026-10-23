@@ -12,8 +12,6 @@ RUN mkdir -p "$COREPACK_HOME" \
     && corepack install --global pnpm@11.1.3 \
     && chmod -R a+rX "$COREPACK_HOME"
 ENV COREPACK_ENABLE_NETWORK=0
-ENV PUPPETEER_SKIP_DOWNLOAD=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 ENV TZ="America/La_Paz"
 ENV NEXT_PUBLIC_TIMEZONE="America/La_Paz"
 
@@ -23,9 +21,8 @@ WORKDIR /app
 # ----------------- DEVELOPMENT STAGE -----------------
 FROM base AS development
 
-# Install Git for attached VS Code Source Control, plus Chromium and its
-# runtime fonts/libraries.
-RUN apk add --no-cache git chromium nss freetype harfbuzz ca-certificates ttf-freefont tzdata
+# Install Git for attached VS Code Source Control and runtime utilities.
+RUN apk add --no-cache git ca-certificates tzdata
 
 # Run as the non-root node user.
 USER node
@@ -67,14 +64,9 @@ RUN pnpm build
 # ----------------- PRODUCTION RUNTIME STAGE -----------------
 FROM base AS runner
 
-# Install Chromium for the PDF routes and tini for the production process.
+# Install runtime certificates, timezone data, and tini for the production process.
 RUN apk add --no-cache \
-    chromium \
-    nss \
-    freetype \
-    harfbuzz \
     ca-certificates \
-    ttf-freefont \
     tzdata \
     tini
 
